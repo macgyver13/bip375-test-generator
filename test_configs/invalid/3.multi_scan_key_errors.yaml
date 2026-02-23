@@ -21,9 +21,9 @@ test_cases:
         derivation_suffix: "recipient_b"
     control_override:
       missing_ecdh_for_scan_key: "scan_key_a"
-      force_output_script: true
+      # force_output_script: true
   
-  - description: "ecdh coverage: one input/two sp outputs (different scan keys) - Output 1 missing ECDH share for scan key"
+  - description: "ecdh coverage: one input/three sp outputs (different scan keys) - Output 1 missing ECDH share for scan key"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -34,13 +34,18 @@ test_cases:
         amount: 90000
         scan_key_id: "scan_key_a"
       - type: "silent_payment"
-        amount: 90000
+        amount: 10000
         scan_key_id: "scan_key_b"
+      - type: "silent_payment"
+        amount: 20000
+        scan_key_id: "scan_key_c"
     scan_keys:
       - key_id: "scan_key_a"
         derivation_suffix: "recipient_a"
       - key_id: "scan_key_b"
         derivation_suffix: "recipient_b"
+      - key_id: "scan_key_c"
+        derivation_suffix: "recipient_c"
     control_override:
       missing_ecdh_for_scan_key: "scan_key_b"
       force_output_script: true
@@ -63,4 +68,4 @@ test_cases:
     control_override:
       missing_ecdh_for_input: 1
       force_output_script: true
-      reverse_k_order: true
+      # reverse_k_order: true

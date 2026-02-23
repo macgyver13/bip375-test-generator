@@ -23,7 +23,6 @@ test_cases:
       - type: "p2wpkh"
         amount: 100000
         key_derivation_suffix: "non_sighash_all"
-        private_key: 
     outputs:
       - type: "silent_payment"
         amount: 95000

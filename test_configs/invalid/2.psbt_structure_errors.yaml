@@ -11,8 +11,7 @@ test_cases:
       - type: "silent_payment"
         amount: 95000
         scan_key_id: "default"
-        label: 1
-        # This will need special handling - label but force missing SP_V0_INFO
+        label: 1 # label but force missing SP_V0_INFO
     scan_keys:
       - key_id: "default"
     control_override:
