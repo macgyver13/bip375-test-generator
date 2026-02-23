@@ -53,6 +53,7 @@ from generator_utils import (
     UTXO,
     compute_bip352_output_script,
     apply_label_to_spend_key,
+    compute_transaction_id,
     sign_p2wpkh_input,
     sign_p2pkh_input,
     sign_p2tr_input,
@@ -1895,6 +1896,10 @@ class ConfigBasedTestGenerator:
         }
         for key in scenario.exclude_material:
             all_material.pop(key, None)
+        if scenario.validation_result == ValidationResult.VALID:
+            all_material["unique_id"] = compute_transaction_id(
+                psbt_data["input_data"], psbt_data["output_data"]
+            )
         test_dict["supplementary"] = all_material
         if scenario.checks:
             test_dict["checks"] = scenario.checks

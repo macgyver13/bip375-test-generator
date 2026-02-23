@@ -545,7 +545,7 @@ def sign_p2tr_input(
 # ============================================================================
 
 
-def compute_unique_id(
+def compute_transaction_id(
     input_data: List[Dict],
     output_data: List[Dict],
 ) -> str:
@@ -566,9 +566,10 @@ def compute_unique_id(
         tx.vin.append(CTxIn(prevout, b"", 0))
 
     for out in output_data:
-        # For BIP-375 silent payment outputs, use the SP_V0_INFO bytes as the script
+        # For BIP-375 silent payment outputs, use the SP_V0_INFO bytes as the
+        # script, prepending the zero version byte per BIP-375.
         if "sp_v0_info" in out:
-            script = out["sp_v0_info"]
+            script = b"\x00" + out["sp_v0_info"]
         elif "script" in out:
             script = out["script"]
         else:
