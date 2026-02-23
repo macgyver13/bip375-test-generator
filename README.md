@@ -24,6 +24,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Signatures use the declared sighash type. The invalid non-`SIGHASH_ALL` and segwit version greater than 1 PSBT maps changed. |
 | | | P2TR inputs derived from the tweaked output key. Four PSBT maps changed. |
 | | | Signatures that cannot exist are dropped and a negative fee is fixed. Four invalid PSBT maps changed. |
+| | | Valid vectors gained `supplementary.psbt_unique_id`, computed as BIP-375 specifies. PSBT maps are equivalent. |
 
 ---
 
