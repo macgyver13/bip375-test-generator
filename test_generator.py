@@ -51,8 +51,9 @@ from generator_utils import (
     PublicKey,
     Wallet,
     UTXO,
-    compute_bip352_output_script,
     apply_label_to_spend_key,
+    compute_bip352_output_script,
+    compute_psbt_unique_id,
     normalize_psbt_field_order,
     sign_p2wpkh_input,
     sign_p2pkh_input,
@@ -1937,6 +1938,10 @@ class ConfigBasedTestGenerator:
         }
         for key in scenario.exclude_material:
             all_material.pop(key, None)
+        if scenario.validation_result == ValidationResult.VALID:
+            all_material["psbt_unique_id"] = compute_psbt_unique_id(
+                psbt_data["input_data"], psbt_data["output_data"]
+            )
         test_dict["supplementary"] = all_material
         if scenario.checks:
             test_dict["checks"] = scenario.checks
