@@ -719,8 +719,9 @@ class PSBTBuilder:
         # Compute ECDH shares for silent payment outputs
         ecdh_data = self._compute_ecdh_shares(input_data, scan_keys, scenario)
 
-        # Add ECDH shares to PSBT (with error injection)
-        self._add_ecdh_shares_to_psbt(psbt, ecdh_data, scenario, input_data, scan_keys)
+        # Add ECDH shares to PSBT (with error injection); track which inputs get signed
+        signed_input_indices: set = set()
+        self._add_ecdh_shares_to_psbt(psbt, ecdh_data, scenario, input_data, scan_keys, signed_input_indices)
 
         # Error injection: strip BIP32_DERIVATION from specified input
         if scenario.strip_input_pubkeys_for_input is not None:
@@ -729,8 +730,20 @@ class PSBTBuilder:
                 psbt, idx, PSBTKeyType.PSBT_IN_BIP32_DERIVATION
             )
 
-        # Compute and add outputs to PSBT
-        self._add_outputs_to_psbt(psbt, output_data, input_data, ecdh_data, scenario, scan_keys)
+        # Compute and add outputs to PSBT; collect finalized scripts for signing
+        finalized_outputs = self._add_outputs_to_psbt(psbt, output_data, input_data, ecdh_data, scenario, scan_keys)
+
+        # Auto-sign all eligible non-P2TR inputs when output scripts are complete
+        if self._should_auto_sign(scenario):
+            for input_info in input_data:
+                if input_info.get("is_eligible", False):
+                    self._sign_single_input(
+                        psbt, input_info, input_data, finalized_outputs, input_info["input_index"]
+                    )
+                    if input_info.get("input_type") != InputType.P2TR:
+                        signed_input_indices.add(input_info["input_index"])
+            if not scenario.set_tx_modifiable:
+                psbt.set_tx_modifiable(0x00)
 
         # Build result structure
         return {
@@ -740,6 +753,7 @@ class PSBTBuilder:
             "scan_keys": scan_keys,
             "ecdh_data": ecdh_data,
             "scenario": scenario,
+            "signed_input_indices": signed_input_indices,
         }
 
     def _create_psbt_base(
@@ -994,6 +1008,7 @@ class PSBTBuilder:
         scenario: TestScenario,
         input_data: List[Dict],
         scan_keys: Dict[str, tuple],
+        signed_input_indices: Optional[set] = None,
     ):
         """Add ECDH shares and DLEQ proofs to PSBT"""
         global_scan_keys = scenario.use_global_ecdh or []
@@ -1009,7 +1024,7 @@ class PSBTBuilder:
             k: v for k, v in ecdh_data.items() if k[1] not in global_scan_keys
         }
         if per_input_ecdh:
-            self._add_per_input_ecdh_shares(psbt, per_input_ecdh, scenario, input_data, scan_keys)
+            self._add_per_input_ecdh_shares(psbt, per_input_ecdh, scenario, input_data, scan_keys, signed_input_indices)
 
         # Error injection: Add ECDH share for ineligible input (only when explicitly requested)
         if scenario.inject_ineligible_ecdh:
@@ -1031,6 +1046,7 @@ class PSBTBuilder:
         scenario: TestScenario,
         input_data: List[Dict],
         scan_keys: Dict[str, tuple],
+        signed_input_indices: Optional[set] = None,
     ):
         """Add per-input ECDH shares"""
 
@@ -1071,12 +1087,15 @@ class PSBTBuilder:
                     scenario.wrong_sighash_for_input == input_idx
                     or scenario.use_segwit_v2_input
                 ):
-                    # Partially sign to support correct detection at signed stage
+                    # Partially sign to support correct detection at signed stage.
+                    # Empty outputs: signature validity doesn't matter here.
                     input_info = self._find_input_info_by_index(input_data, input_idx)
                     if input_info and input_info.get("is_eligible", False):
                         self._sign_single_input(
-                            psbt, input_info, input_data, input_idx
+                            psbt, input_info, input_data, [], input_idx
                         )
+                        if signed_input_indices is not None:
+                            signed_input_indices.add(input_idx)
 
                 processed_inputs.add(input_idx)
 
@@ -1091,18 +1110,46 @@ class PSBTBuilder:
             summed_private_key.bytes, scan_pub.bytes, random_bytes
         )
 
+    def _should_auto_sign(self, scenario: TestScenario) -> bool:
+        """Return True if all eligible inputs should be signed after output scripts are set.
+
+        Signing is appropriate only when PSBT_OUT_SCRIPT has been correctly computed
+        for every silent payment output (i.e., no error injection interferes with
+        script computation or validity).
+        """
+        return not any([
+            scenario.force_output_script,
+            scenario.force_partial_ecdh_output_script,
+            scenario.wrong_sighash_for_input is not None,
+            scenario.use_segwit_v2_input,
+            scenario.missing_ecdh_for_input is not None,
+            scenario.missing_ecdh_for_scan_key is not None,
+            scenario.missing_ecdh_for_input_scan_key is not None,
+            any(out.force_wrong_script for out in scenario.outputs),
+        ])
+
     def _sign_single_input(
         self,
         psbt: SilentPaymentPsbt,
         input_info: Dict,
         input_data: List[Dict],
+        output_data: List[Dict],
         input_idx: int,
     ):
         """Sign a single P2WPKH input and add PSBT_IN_PARTIAL_SIG as raw field.
 
-        Used for error-injection tests (wrong sighash, segwit v2) that need
-        a partial signature to trigger signed-stage validation.
+        For error-injection tests (wrong sighash, segwit v2), output_data may be
+        empty — signature correctness doesn't matter, only its presence.
+        For valid test vectors, pass the real output_data so SIGHASH_ALL commits
+        to the correct outputs.
+
+        P2TR signing is not yet implemented (TODO).
         """
+        input_type = input_info.get("input_type")
+        if input_type == InputType.P2TR:
+            # TODO: implement P2TR (Schnorr) signing
+            return
+
         script_bytes = input_info.get(
             "witness_script", input_info.get("script_pubkey", b"")
         )
@@ -1124,9 +1171,14 @@ class PSBTBuilder:
                 )
             )
 
-        # Empty outputs list: signature correctness doesn't matter here --
-        # this only needs to exist so the PSBT reaches signed-stage validation.
-        outputs: list = []
+        # Build output list for sighash commitment
+        outputs = []
+        for out in output_data:
+            script = out.get("script", b"")
+            outputs.append({
+                "amount": out["amount"],
+                "script_pubkey": script.hex() if isinstance(script, bytes) else script,
+            })
 
         signature = sign_p2wpkh_input(
             private_key=int(input_info["private_key"]),
@@ -1254,10 +1306,16 @@ class PSBTBuilder:
         ecdh_data: Dict,
         scenario: TestScenario,
         scan_keys: Dict[str, tuple],
-    ):
-        """Add outputs to PSBT"""
+    ) -> List[Dict]:
+        """Add outputs to PSBT. Returns finalized output list for sighash computation.
+
+        Each entry in the returned list has {"amount": int, "script_pubkey": hex_str}.
+        Silent payment outputs that did not get a PSBT_OUT_SCRIPT (e.g. incomplete
+        ECDH coverage) will have an empty script_pubkey.
+        """
         # Track k counter per scan key (matches BIP-352 / validator behavior)
         scan_key_k_counter: Dict[bytes, int] = {}
+        finalized_outputs: List[Dict] = []
 
         for output_info in output_data:
             idx = output_info["output_index"]
@@ -1273,18 +1331,28 @@ class PSBTBuilder:
             )
 
             if output_type == OutputType.SILENT_PAYMENT:
-                self._add_silent_payment_output(
+                script = self._add_silent_payment_output(
                     psbt, output_info, input_data, ecdh_data, scenario, scan_keys, scan_key_k_counter
                 )
+                finalized_outputs.append({
+                    "amount": output_info["amount"],
+                    "script_pubkey": script.hex() if script else "",
+                })
             else:
                 # Regular output - add script and optional BIP32_DERIVATION
                 add_raw_output_field(
                     psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_info["script"]
                 )
+                finalized_outputs.append({
+                    "amount": output_info["amount"],
+                    "script_pubkey": output_info["script"].hex(),
+                })
 
                 # Add BIP32_DERIVATION if requested (for change identification)
                 if output_info.get("add_bip32_derivation", False):
                     self._add_output_bip32_derivation(psbt, idx, input_data)
+
+        return finalized_outputs
 
     def _add_silent_payment_output(
         self,
@@ -1295,11 +1363,15 @@ class PSBTBuilder:
         scenario: TestScenario,
         scan_keys: Dict[str, tuple],
         scan_key_k_counter: Optional[Dict] = None,
-    ):
-        """Add silent payment output with proper BIP-352 script computation"""
+    ) -> Optional[bytes]:
+        """Add silent payment output with proper BIP-352 script computation.
+
+        Returns the computed output script bytes, or None if no script was set.
+        """
         idx = output_info["output_index"]
         scan_pub = output_info["scan_pubkey"]
         original_spend_pub = output_info["spend_pubkey"]
+        output_script: Optional[bytes] = None
 
         # Apply BIP-352 label if specified
         spend_pub = original_spend_pub
@@ -1310,10 +1382,10 @@ class PSBTBuilder:
 
         if output_info["force_wrong_script"]:
             # Force wrong script for address mismatch tests
-            wrong_script = (
+            output_script = (
                 bytes([0x51, 0x20]) + hashlib.sha256(b"wrong_address").digest()
             )
-            add_raw_output_field(psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", wrong_script)
+            add_raw_output_field(psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_script)
         else:
             # Compute proper BIP-352 script
             eligible_inputs = [
@@ -1369,12 +1441,12 @@ class PSBTBuilder:
                             psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_script
                         )
                     elif scenario.force_output_script:
-                        wrong_script = (
+                        output_script = (
                             bytes([0x51, 0x20])
                             + hashlib.sha256(b"wrong_address").digest()
                         )
                         add_raw_output_field(
-                            psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", wrong_script
+                            psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_script
                         )
 
         # Add SP_V0_INFO field (unless Error injection says to skip it)
@@ -1396,6 +1468,8 @@ class PSBTBuilder:
                 b"",
                 struct.pack("<I", output_info["label"]),
             )
+
+        return output_script
 
     def _compute_labeled_spend_key(
         self, spend_pub, label: int
@@ -1576,6 +1650,7 @@ class ConfigBasedTestGenerator:
         psbt = psbt_data["psbt"]
 
         # Convert to GenTestVector format for compatibility
+        signed_input_indices = psbt_data["signed_input_indices"]
         input_keys = []
         for inp in psbt_data["input_data"]:
             private_key = ""
@@ -1597,6 +1672,7 @@ class ConfigBasedTestGenerator:
                 "amount": inp["amount"],
                 "witness_utxo": inp.get("witness_utxo", inp.get("prev_tx", b"")).hex(),
                 "sequence": inp["sequence"],
+                "signed": inp["input_index"] in signed_input_indices,
             }
             input_keys.append(input_key)
 
