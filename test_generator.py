@@ -198,7 +198,7 @@ class InputType(Enum):
     P2WPKH = "p2wpkh"
     P2SH_MULTISIG = "p2sh_multisig"
     P2WSH_MULTISIG = "p2wsh_multisig"
-    P2TR = "p2tr"  # TODO: Implement when needed
+    P2TR = "p2tr"
 
 
 class OutputType(Enum):
@@ -288,6 +288,8 @@ class TestScenario:
     force_output_script: bool = False
     strip_input_pubkeys_for_input: Optional[int] = None
     invalid_global_dleq: bool = False
+    missing_ecdh_for_input_scan_key: Optional[tuple] = None  # (input_index, scan_key_id)
+    force_partial_ecdh_output_script: bool = False
 
 
 # ============================================================================
@@ -809,6 +811,13 @@ class PSBTBuilder:
                 if scenario.missing_ecdh_for_scan_key == scan_key_id:
                     continue
 
+                # Skip ECDH for a specific (input, scan_key) pair only
+                if (
+                    scenario.missing_ecdh_for_input_scan_key is not None
+                    and scenario.missing_ecdh_for_input_scan_key == (input_idx, scan_key_id)
+                ):
+                    continue
+
                 # Compute ECDH share
                 ecdh_result = private_key * scan_pub
 
@@ -1200,10 +1209,9 @@ class PSBTBuilder:
                         )
                     )
 
-                    if coverage_complete and summed_ecdh_share is not None:
+                    if (coverage_complete or scenario.force_partial_ecdh_output_script) and summed_ecdh_share is not None:
                         ecdh_share_bytes = summed_ecdh_share.to_bytes_compressed()
-
-                        # k is per-scan-key (matches validator/BIP-352 behavior)
+                        # k is per-scan-key (matches BIP-352 behavior)
                         scan_pub_bytes = scan_pub.to_bytes_compressed()
                         if scan_key_k_counter is not None:
                             k_index = scan_key_k_counter.get(scan_pub_bytes, 0)
@@ -1411,6 +1419,17 @@ class ConfigBasedTestGenerator:
                 "strip_input_pubkeys_for_input"
             ),
             invalid_global_dleq=control_override.get("invalid_global_dleq", False),
+            missing_ecdh_for_input_scan_key=(
+                (
+                    control_override["missing_ecdh_for_input_scan_key"]["input_index"],
+                    control_override["missing_ecdh_for_input_scan_key"]["scan_key_id"],
+                )
+                if control_override.get("missing_ecdh_for_input_scan_key")
+                else None
+            ),
+            force_partial_ecdh_output_script=control_override.get(
+                "force_partial_ecdh_output_script", False
+            ),
         )
 
     # Generate test vector for a given scenario
@@ -1598,11 +1617,6 @@ class TestVectorGenerator:
 
                 traceback.print_exc()
 
-        # Add custom invalid test cases that require manual PSBT construction
-        self.test_vectors["invalid"].insert(
-            9, self._generate_incomplete_per_input_ecdh_for_one_scan_key_test()
-        )
-
         # Load valid test cases
         valid_configs = list(test_configs_dir.glob("valid/**/*.yaml"))
         for config_file in sorted(valid_configs):
@@ -1625,172 +1639,6 @@ class TestVectorGenerator:
 
         return self.test_vectors
 
-    def _generate_incomplete_per_input_ecdh_for_one_scan_key_test(
-        self,
-    ) -> Dict[str, Any]:
-        """Two inputs, two outputs with different scan keys; input 1 missing ECDH for scan key B.
-
-        This creates an invalid PSBT where:
-        - Input 0 has ECDH shares for both scan keys A and B
-        - Input 1 has ECDH share only for scan key A (missing B)
-        - Output 0 (scan key A) uses correct summed ECDH
-        - Output 1 (scan key B) uses incomplete ECDH (only from input 0)
-        """
-        wallet = self.config_generator.wallet
-        input0_priv, input0_pub = wallet.input_key_pair(0)
-        input1_priv, input1_pub = wallet.input_key_pair(1)
-
-        # Scan key A (default wallet)
-        scan_pub_a = wallet.scan_pub
-        spend_pub_a = wallet.spend_pub
-
-        # Scan key B (second recipient)
-        _, scan_pub_b = wallet.create_key_pair("scan_b", 0)
-        _, spend_pub_b = wallet.create_key_pair("spend_b", 0)
-
-        # Input 0: Compute ECDH for both scan keys
-        ecdh_result_0a = input0_priv * scan_pub_a
-        ecdh_result_0b = input0_priv * scan_pub_b
-        random_bytes_0a = hashlib.sha256(b"dleq_0a_custom").digest()
-        random_bytes_0b = hashlib.sha256(b"dleq_0b_custom").digest()
-        valid_proof_0a = spdk_psbt.dleq_generate_proof(input0_priv.bytes, scan_pub_a.bytes, random_bytes_0a)
-        valid_proof_0b = spdk_psbt.dleq_generate_proof(input0_priv.bytes, scan_pub_b.bytes, random_bytes_0b)
-
-        # Input 1: Compute ECDH only for scan key A (incomplete coverage for B)
-        ecdh_result_1a = input1_priv * scan_pub_a
-        random_bytes_1a = hashlib.sha256(b"dleq_1a_custom").digest()
-        valid_proof_1a = spdk_psbt.dleq_generate_proof(input1_priv.bytes, scan_pub_a.bytes, random_bytes_1a)
-        # Deliberately NOT computing ECDH for scan key B on input 1
-
-        psbt = _create_psbt(2, 2)
-
-        # Build raw input info dicts
-        info_0 = _make_raw_p2wpkh_input(input0_pub, "prevout_multi_scan_3a_custom")
-        info_1 = _make_raw_p2wpkh_input(input1_pub, "prevout_multi_scan_3b_custom")
-
-        # Add inputs to PSBT
-        _add_raw_p2wpkh_input_to_psbt(psbt, 0, info_0, input0_pub, sighash_type=0x01)
-        _add_raw_p2wpkh_input_to_psbt(psbt, 1, info_1, input1_pub, sighash_type=0x01)
-
-        # Input 0: ECDH shares for both scan keys
-        add_raw_input_field(
-            psbt,
-            0,
-            PSBTKeyType.PSBT_IN_SP_ECDH_SHARE,
-            scan_pub_a.bytes,
-            ecdh_result_0a.to_bytes_compressed(),
-        )
-        add_raw_input_field(
-            psbt, 0, PSBTKeyType.PSBT_IN_SP_DLEQ, scan_pub_a.bytes, valid_proof_0a
-        )
-        add_raw_input_field(
-            psbt,
-            0,
-            PSBTKeyType.PSBT_IN_SP_ECDH_SHARE,
-            scan_pub_b.bytes,
-            ecdh_result_0b.to_bytes_compressed(),
-        )
-        add_raw_input_field(
-            psbt, 0, PSBTKeyType.PSBT_IN_SP_DLEQ, scan_pub_b.bytes, valid_proof_0b
-        )
-
-        # Input 1: ECDH share only for scan key A (missing B)
-        add_raw_input_field(
-            psbt,
-            1,
-            PSBTKeyType.PSBT_IN_SP_ECDH_SHARE,
-            scan_pub_a.bytes,
-            ecdh_result_1a.to_bytes_compressed(),
-        )
-        add_raw_input_field(
-            psbt, 1, PSBTKeyType.PSBT_IN_SP_DLEQ, scan_pub_a.bytes, valid_proof_1a
-        )
-        # Deliberately NOT adding ECDH share for scan key B on input 1
-
-        # Sum the ECDH shares and public keys for output computation
-        summed_ecdh_a = ecdh_result_0a + ecdh_result_1a
-        summed_pubkey = input0_pub + input1_pub
-        outpoints = [(info_0["prevout_txid"], 0), (info_1["prevout_txid"], 0)]
-
-        # Output 0: Silent payment to recipient A (valid - has all ECDH shares)
-        output_script_a = compute_bip352_output_script(
-            outpoints=outpoints,
-            summed_pubkey_bytes=summed_pubkey.to_bytes_compressed(),
-            ecdh_share_bytes=summed_ecdh_a.to_bytes_compressed(),
-            spend_pubkey_bytes=spend_pub_a.bytes,
-            k=0,
-        )
-        sp_info_a = scan_pub_a.bytes + spend_pub_a.bytes
-        add_raw_output_field(
-            psbt, 0, PSBTKeyType.PSBT_OUT_AMOUNT, b"", struct.pack("<Q", 45000)
-        )
-        add_raw_output_field(psbt, 0, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_script_a)
-        add_raw_output_field(psbt, 0, PSBTKeyType.PSBT_OUT_SP_V0_INFO, b"", sp_info_a)
-
-        # Output 1: Silent payment to recipient B (invalid - missing input 1 ECDH)
-        # Only have ecdh_result_0b, missing ecdh_result_1b for complete sum
-        # Use partial sum which would be incorrect
-        output_script_b = compute_bip352_output_script(
-            outpoints=outpoints,
-            summed_pubkey_bytes=summed_pubkey.to_bytes_compressed(),
-            ecdh_share_bytes=ecdh_result_0b.to_bytes_compressed(),  # Only from input 0
-            spend_pubkey_bytes=spend_pub_b.bytes,
-            k=0,
-        )
-        sp_info_b = scan_pub_b.bytes + spend_pub_b.bytes
-        add_raw_output_field(
-            psbt, 1, PSBTKeyType.PSBT_OUT_AMOUNT, b"", struct.pack("<Q", 45000)
-        )
-        add_raw_output_field(psbt, 1, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_script_b)
-        add_raw_output_field(psbt, 1, PSBTKeyType.PSBT_OUT_SP_V0_INFO, b"", sp_info_b)
-
-        return {
-            "description": "ecdh coverage: two inputs/two sp outputs (different scan keys) - full coverage input 0 / partial coverage input 1",
-            "psbt": base64.b64encode(psbt.serialize()).decode(),
-            "input_keys": [
-                _make_input_key_entry(0, input0_priv, input0_pub, info_0),
-                _make_input_key_entry(1, input1_priv, input1_pub, info_1),
-            ],
-            "scan_keys": [
-                {"scan_pubkey": scan_pub_a.hex, "spend_pubkey": spend_pub_a.hex},
-                {"scan_pubkey": scan_pub_b.hex, "spend_pubkey": spend_pub_b.hex},
-            ],
-            "expected_ecdh_shares": [
-                {
-                    "scan_key": scan_pub_a.hex,
-                    "ecdh_result": ecdh_result_0a.to_bytes_compressed().hex(),
-                    "dleq_proof": valid_proof_0a.hex(),
-                    "input_index": 0,
-                },
-                {
-                    "scan_key": scan_pub_b.hex,
-                    "ecdh_result": ecdh_result_0b.to_bytes_compressed().hex(),
-                    "dleq_proof": valid_proof_0b.hex(),
-                    "input_index": 0,
-                },
-                {
-                    "scan_key": scan_pub_a.hex,
-                    "ecdh_result": ecdh_result_1a.to_bytes_compressed().hex(),
-                    "dleq_proof": valid_proof_1a.hex(),
-                    "input_index": 1,
-                },
-                # Note: Missing ECDH share for scan_key_b on input 1
-            ],
-            "expected_outputs": [
-                {
-                    "output_index": 0,
-                    "amount": 45000,
-                    "is_silent_payment": True,
-                    "sp_info": sp_info_a.hex(),
-                },
-                {
-                    "output_index": 1,
-                    "amount": 45000,
-                    "is_silent_payment": True,
-                    "sp_info": sp_info_b.hex(),
-                },
-            ]
-        }
 
     def save_test_vectors(self, filename: str = "test_vectors.json"):
         """Generate and save all test vectors"""
