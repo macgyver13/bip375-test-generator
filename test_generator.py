@@ -21,7 +21,7 @@ import yaml
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# spdk_psbt — PSBT construction and DLEQ proofs
+from secp256k1 import GE, G
 import spdk_psbt
 from spdk_psbt import (
     add_raw_global_field, 
@@ -31,15 +31,15 @@ from spdk_psbt import (
     SilentPaymentPsbt
 )
 
-# Local helpers — EC math, BIP-352 crypto, key types, signing
 from generator_utils import (
     PSBTKeyType,
+    PrivateKey,
+    PublicKey,
     Wallet,
     UTXO,
     create_witness_utxo,
     compute_bip352_output_script,
     apply_label_to_spend_key,
-    compute_unique_id,
     sign_p2wpkh_input,
 )
 
@@ -459,10 +459,38 @@ class InputFactory:
         return result
 
     def _create_p2tr_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
-        """Create P2TR input - TODO: Implement when needed"""
-        # TODO: Implement P2TR input creation
-        # Will need taproot key generation and script construction
-        raise NotImplementedError("P2TR inputs not yet implemented")
+        """Create P2TR key-path input (unsigned/WIP — no taptweak applied)."""
+        key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
+        input_priv, input_pub = self.wallet.create_key_pair(
+            "input", _deterministic_hash(key_suffix)
+        )
+
+        prevout_txid = hashlib.sha256(
+            f"{self.base_seed}_p2tr_prevout_{input_index}".encode()
+        ).digest()
+
+        # Negate private key if pubkey has odd y (BIP340 even-y requirement for lift_x)
+        if int(input_pub.y) % 2 != 0:
+            input_priv = PrivateKey(GE.ORDER - int(input_priv))
+            input_pub = PublicKey(int(input_priv) * G)
+
+        # P2TR scriptPubKey: OP_1 (0x51) + push(32) (0x20) + 32-byte x-only key
+        witness_script = bytes([0x51, 0x20]) + input_pub.bytes_xonly
+        witness_utxo = create_witness_utxo(spec.amount, witness_script)
+
+        return {
+            "input_index": input_index,
+            "input_type": InputType.P2TR,
+            "private_key": input_priv,
+            "public_key": input_pub,
+            "prevout_txid": prevout_txid,
+            "prevout_index": 0,
+            "witness_script": witness_script,
+            "witness_utxo": witness_utxo,
+            "amount": spec.amount,
+            "sequence": spec.sequence,
+            "is_eligible": True,
+        }
 
     def _create_prev_tx(
         self, prev_input_txid: bytes, amount: int, script_pubkey: bytes
@@ -737,6 +765,23 @@ class PSBTBuilder:
                 PSBTKeyType.PSBT_IN_WITNESS_SCRIPT,
                 b"",
                 input_info["witness_script"],
+            )
+
+        elif input_type == InputType.P2TR:
+            # Add witness UTXO and taproot internal key
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_WITNESS_UTXO,
+                b"",
+                input_info["witness_utxo"],
+            )
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_TAP_INTERNAL_KEY,
+                b"",
+                input_info["public_key"].bytes_xonly,
             )
 
     def _compute_ecdh_shares(
