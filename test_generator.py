@@ -196,6 +196,8 @@ def _sum_ecdh_shares_for_scan_key(
 
 class InputType(Enum):
     P2WPKH = "p2wpkh"
+    P2PKH = "p2pkh"
+    P2SH_P2WPKH = "p2sh_p2wpkh"
     P2SH_MULTISIG = "p2sh_multisig"
     P2WSH_MULTISIG = "p2wsh_multisig"
     P2TR = "p2tr"
@@ -316,6 +318,10 @@ class InputFactory:
 
         if spec.input_type == InputType.P2WPKH:
             return self._create_p2wpkh_input(spec, input_index)
+        elif spec.input_type == InputType.P2PKH:
+            return self._create_p2pkh_input(spec, input_index)
+        elif spec.input_type == InputType.P2SH_P2WPKH:
+            return self._create_p2sh_p2wpkh_input(spec, input_index)
         elif spec.input_type == InputType.P2SH_MULTISIG:
             return self._create_p2sh_multisig_input(spec, input_index)
         elif spec.input_type == InputType.P2WSH_MULTISIG:
@@ -356,6 +362,83 @@ class InputFactory:
             "prevout_index": 0,
             "witness_script": witness_script,
             "witness_utxo": witness_utxo,
+            "amount": spec.amount,
+            "sequence": spec.sequence,
+            "is_eligible": True,
+        }
+
+    def _create_p2pkh_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
+        """Create P2PKH input (BIP-352 eligible; public key exposed via BIP32_DERIVATION)"""
+        key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
+        input_priv, input_pub = self.wallet.create_key_pair(
+            "input", _deterministic_hash(key_suffix)
+        )
+
+        pubkey_hash = hashlib.new(
+            "ripemd160", hashlib.sha256(input_pub.bytes).digest()
+        ).digest()
+        # OP_DUP OP_HASH160 <20-byte hash> OP_EQUALVERIFY OP_CHECKSIG
+        script_pubkey = bytes([0x76, 0xA9, 0x14]) + pubkey_hash + bytes([0x88, 0xAC])
+
+        prev_input_txid = hashlib.sha256(
+            f"{self.base_seed}_p2pkh_prevout_{input_index}".encode()
+        ).digest()
+        prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
+        prevout_txid = hashlib.sha256(hashlib.sha256(prev_tx).digest()).digest()
+
+        return {
+            "input_index": input_index,
+            "input_type": InputType.P2PKH,
+            "private_key": input_priv,
+            "public_key": input_pub,
+            "prevout_txid": prevout_txid,
+            "prevout_index": 0,
+            "script_pubkey": script_pubkey,
+            "prev_tx": prev_tx,
+            "amount": spec.amount,
+            "sequence": spec.sequence,
+            "is_eligible": True,
+        }
+
+    def _create_p2sh_p2wpkh_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
+        """Create P2SH-P2WPKH input (BIP-352 eligible wrapped segwit)"""
+        key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
+        input_priv, input_pub = self.wallet.create_key_pair(
+            "input", _deterministic_hash(key_suffix)
+        )
+
+        pubkey_hash = hashlib.new(
+            "ripemd160", hashlib.sha256(input_pub.bytes).digest()
+        ).digest()
+        # Redeem script is the inner P2WPKH script: OP_0 <20-byte hash>
+        redeem_script = bytes([0x00, 0x14]) + pubkey_hash
+
+        redeem_script_hash = hashlib.new(
+            "ripemd160", hashlib.sha256(redeem_script).digest()
+        ).digest()
+        # P2SH scriptPubKey: OP_HASH160 <20-byte hash> OP_EQUAL
+        script_pubkey = bytes([0xA9, 0x14]) + redeem_script_hash + bytes([0x87])
+
+        prev_input_txid = hashlib.sha256(
+            f"{self.base_seed}_p2sh_p2wpkh_prevout_{input_index}".encode()
+        ).digest()
+        prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
+        prevout_txid = hashlib.sha256(hashlib.sha256(prev_tx).digest()).digest()
+
+        # PSBT_IN_WITNESS_UTXO for P2SH-P2WPKH uses the P2SH scriptPubKey
+        witness_utxo = create_witness_utxo(spec.amount, script_pubkey)
+
+        return {
+            "input_index": input_index,
+            "input_type": InputType.P2SH_P2WPKH,
+            "private_key": input_priv,
+            "public_key": input_pub,
+            "prevout_txid": prevout_txid,
+            "prevout_index": 0,
+            "script_pubkey": script_pubkey,
+            "redeem_script": redeem_script,
+            "witness_utxo": witness_utxo,
+            "prev_tx": prev_tx,
             "amount": spec.amount,
             "sequence": spec.sequence,
             "is_eligible": True,
@@ -727,6 +810,57 @@ class PSBTBuilder:
             fake_derivation = struct.pack("<I", 0x80000000) + struct.pack(
                 "<I", idx
             )  # m/0'/idx'
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+                input_info["public_key"].bytes,
+                fake_derivation,
+            )
+
+        elif input_type == InputType.P2PKH:
+            # Non-witness UTXO (full prev tx) + BIP32 derivation to expose public key
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO,
+                b"",
+                input_info["prev_tx"],
+            )
+            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+                input_info["public_key"].bytes,
+                fake_derivation,
+            )
+
+        elif input_type == InputType.P2SH_P2WPKH:
+            # Both non-witness UTXO (full prev tx) and witness UTXO (P2SH scriptPubKey),
+            # plus the redeem script and BIP32 derivation to expose the public key
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO,
+                b"",
+                input_info["prev_tx"],
+            )
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_WITNESS_UTXO,
+                b"",
+                input_info["witness_utxo"],
+            )
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_REDEEM_SCRIPT,
+                b"",
+                input_info["redeem_script"],
+            )
+            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
             add_raw_input_field(
                 psbt,
                 idx,

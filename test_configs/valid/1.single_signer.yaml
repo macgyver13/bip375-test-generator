@@ -1,7 +1,7 @@
 description: "Valid single-signer ECDH share scenarios"
 
 test_cases:
-  - description: "one P2WPKH input using per-input ECDH shares"
+  - description: "one P2WPKH input single-signer"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
