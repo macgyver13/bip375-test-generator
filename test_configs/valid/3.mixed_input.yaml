@@ -1,7 +1,7 @@
 description: "Valid mixed-input scenarios"
 
 test_cases:
-  - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (P2SH excluded)"
+  - description: "can finalize: two inputs using per-input ECDH shares - only eligible inputs contribute shares (P2SH excluded)"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -16,6 +16,24 @@ test_cases:
         scan_key_id: "default"
     scan_keys:
       - key_id: "default"
+
+  - description: "can finalize: two inputs using global ECDH share - only eligible inputs contribute shares (P2SH excluded)"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2sh_multisig"
+        amount: 150000
+        multisig_threshold: 2
+        multisig_pubkey_count: 2
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
 
   - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (NUMS internal key excluded)"
     validation_result: "valid"

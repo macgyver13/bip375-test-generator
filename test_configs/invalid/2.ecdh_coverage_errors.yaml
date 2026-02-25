@@ -1,6 +1,18 @@
 description: "ECDH coverage validation errors"
 
 test_cases:
+  - description: "ecdh coverage: P2TR input with NUMS internal key cannot derive sp output"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2tr"
+        amount: 10000
+        use_nums_tap_internal_key: true
+        eligible_override: true
+    outputs:
+      - type: "silent_payment"
+        amount: 9500
+        scan_key_id: "default"
+
   - description: "ecdh coverage: only one ineligible P2MS input when PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]

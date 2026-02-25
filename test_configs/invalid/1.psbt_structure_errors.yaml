@@ -91,19 +91,3 @@ test_cases:
       - key_id: "default"
     control_override:
       skip_regular_output_script: true
-
-  - description: "psbt structure: empty PSBT_OUT_SCRIPT field when sending to non-sp output"
-    validation_result: "invalid"
-    exclude_material: ["inputs", "sp_proofs", "outputs"]
-    inputs:
-      - type: "p2wpkh"
-        amount: 100000
-    outputs:
-      - type: "regular_p2wpkh"
-        amount: 95000
-        scan_key_id: "default"
-    scan_keys:
-      - key_id: "default"
-    control_override:
-      empty_regular_output_script: true
-

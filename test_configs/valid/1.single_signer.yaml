@@ -1,10 +1,10 @@
 description: "Valid single-signer ECDH share scenarios"
 
 test_cases:
-  - description: "can finalize: one input single-signer"
+  - description: "can finalize: one P2PKH input single-signer"
     validation_result: "valid"
     inputs:
-      - type: "p2wpkh"
+      - type: "p2pkh"
         amount: 100000
     outputs:
       - type: "silent_payment"
