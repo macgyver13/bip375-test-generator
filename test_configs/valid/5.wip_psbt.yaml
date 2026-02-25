@@ -1,7 +1,7 @@
 description: "Valid in progress PSBT scenarios"
 
 test_cases:
-  - description: "WIP: two P2TR inputs - not signed"
+  - description: "in progress: two P2TR inputs - not signed"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
@@ -17,7 +17,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "WIP: no ECDH shares - no PSBT_OUT_SCRIPT"
+  - description: "in progress: no ECDH shares - no PSBT_OUT_SCRIPT"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
@@ -32,7 +32,7 @@ test_cases:
     control_override:
       missing_ecdh_for_input: 0
 
-  - description: "WIP: partial ECDH coverage - no PSBT_OUT_SCRIPT"
+  - description: "in progress: partial ECDH coverage - no PSBT_OUT_SCRIPT"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -50,8 +50,8 @@ test_cases:
     control_override:
       missing_ecdh_for_input: 1  # Input 1 will not have ECDH share
 
-  - description: "WIP: one input/two sp outputs (different scan keys) - Output 0 missing ECDH share for scan key"
-    validation_result: "invalid"
+  - description: "in progress: one input/two sp outputs (different scan keys) - missing ECDH share for output 0 scan key"
+    validation_result: "valid"
     inputs:
       - type: "p2wpkh"
         amount: 200000
@@ -70,3 +70,14 @@ test_cases:
         derivation_suffix: "recipient_b"
     control_override:
       missing_ecdh_for_scan_key: "scan_key_a"
+
+  - description: "in progress: one P2TR NUMS point - no sp outputs - not signed"
+    validation_result: "valid"
+    inputs:
+      - type: "p2tr"
+        amount: 10000
+        use_nums_tap_internal_key: true
+    outputs:
+      - type: "regular_p2tr"
+        amount: 9500
+        scan_key_id: "default"

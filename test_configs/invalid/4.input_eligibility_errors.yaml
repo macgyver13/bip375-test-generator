@@ -1,9 +1,9 @@
 description: "Signer constraint validation errors"
 
 test_cases:
-  - description: "signer constraints: segwit version greater than 1 in transaction inputs with silent payments output"
+  - description: "input eligibility: segwit version greater than 1 in transaction inputs with silent payments output"
     validation_result: "invalid"
-    checks: ["signer_constraints"]
+    checks: ["input_eligibility"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -17,7 +17,7 @@ test_cases:
     control_override:
       use_segwit_v2_input: True
 
-  - description: "signer constraints: non-SIGHASH_ALL signature on input with silent payment output"
+  - description: "input eligibility: non-SIGHASH_ALL signature on input with silent payments output"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -31,18 +31,3 @@ test_cases:
       - key_id: "default"
     control_override:
       wrong_sighash_for_input: 0
-
-  - description: "signer constraints: PSBT_GLOBAL_TX_MODIFIABLE with PSBT_OUT_SCRIPT set"
-    validation_result: "invalid"
-    inputs:
-      - type: "p2wpkh"
-        amount: 100000
-        key_derivation_suffix: "tx_modifiable"
-    outputs:
-      - type: "silent_payment"
-        amount: 95000
-        scan_key_id: "default"
-    scan_keys:
-      - key_id: "default"
-    control_override:
-      set_tx_modifiable: true

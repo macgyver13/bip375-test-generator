@@ -48,6 +48,7 @@ def _deterministic_hash(s: str) -> int:
     """Deterministic hash that is stable across Python sessions (unlike hash())."""
     return int.from_bytes(hashlib.sha256(s.encode()).digest()[:4], "big") % 1000
 
+NUMS_H = bytes.fromhex("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0")
 
 # ============================================================================
 # Pure PSBT helper functions
@@ -226,6 +227,8 @@ class InputSpec:
     multisig_threshold: Optional[int] = None
     multisig_pubkey_count: Optional[int] = None
     key_derivation_suffix: str = ""  # For deterministic key generation
+    use_nums_tap_internal_key: bool = False  # For testing taproot internal key
+    eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
 
 
 @dataclass
@@ -265,12 +268,13 @@ class TestScenario:
     outputs: List[OutputSpec]
     scan_keys: List[ScanKeySpec]
     # List of explicit validation checks to perform - all checks will be performed if empty
-    #  (e.g. ["psbt_structure", "ecdh_coverage", "signer_constraints", "output_scripts"])
+    #  (e.g. ["psbt_structure", "ecdh_coverage", "input_eligibility", "output_scripts"])
     checks: List[str]
 
     # control override for invalid tests
     missing_dleq_for_input: Optional[int] = None
     invalid_dleq_for_input: Optional[int] = None
+    no_sighash_for_input: Optional[int] = None
     wrong_sighash_for_input: Optional[int] = None
     missing_ecdh_for_input: Optional[int] = None
     wrong_sp_info_size: bool = False
@@ -317,19 +321,24 @@ class InputFactory:
             spec.use_segwit_v2 = True
 
         if spec.input_type == InputType.P2WPKH:
-            return self._create_p2wpkh_input(spec, input_index)
+            result = self._create_p2wpkh_input(spec, input_index)
         elif spec.input_type == InputType.P2PKH:
-            return self._create_p2pkh_input(spec, input_index)
+            result = self._create_p2pkh_input(spec, input_index)
         elif spec.input_type == InputType.P2SH_P2WPKH:
-            return self._create_p2sh_p2wpkh_input(spec, input_index)
+            result = self._create_p2sh_p2wpkh_input(spec, input_index)
         elif spec.input_type == InputType.P2SH_MULTISIG:
-            return self._create_p2sh_multisig_input(spec, input_index)
+            result = self._create_p2sh_multisig_input(spec, input_index)
         elif spec.input_type == InputType.P2WSH_MULTISIG:
-            return self._create_p2wsh_multisig_input(spec, input_index)
+            result = self._create_p2wsh_multisig_input(spec, input_index)
         elif spec.input_type == InputType.P2TR:
-            return self._create_p2tr_input(spec, input_index)  # TODO
+            result = self._create_p2tr_input(spec, input_index)  # TODO
         else:
             raise ValueError(f"Unknown input type: {spec.input_type}")
+
+        if spec.eligible_override is not None:
+            result["is_eligible"] = spec.eligible_override
+
+        return result
 
     def _create_p2wpkh_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
         """Create P2WPKH input"""
@@ -558,6 +567,26 @@ class InputFactory:
         if int(input_pub.y) % 2 != 0:
             input_priv = PrivateKey(GE.ORDER - int(input_priv))
             input_pub = PublicKey(int(input_priv) * G)
+
+        if spec.use_nums_tap_internal_key:
+            # NUMS point as taproot internal key: no private key exists, input is ineligible
+            # for Silent Payments (cannot contribute an ECDH share).
+            witness_script = bytes([0x51, 0x20]) + NUMS_H
+            witness_utxo = create_witness_utxo(spec.amount, witness_script)
+            return {
+                "input_index": input_index,
+                "input_type": InputType.P2TR,
+                "private_key": input_priv,
+                "public_key": input_pub,
+                "tap_internal_key": NUMS_H,
+                "prevout_txid": prevout_txid,
+                "prevout_index": 0,
+                "witness_script": witness_script,
+                "witness_utxo": witness_utxo,
+                "amount": spec.amount,
+                "sequence": spec.sequence,
+                "is_eligible": False,
+            }
 
         # P2TR scriptPubKey: OP_1 (0x51) + push(32) (0x20) + 32-byte x-only key
         witness_script = bytes([0x51, 0x20]) + input_pub.bytes_xonly
@@ -926,12 +955,13 @@ class PSBTBuilder:
                 b"",
                 input_info["witness_utxo"],
             )
+            tap_key = input_info.get("tap_internal_key", input_info["public_key"].bytes_xonly)
             add_raw_input_field(
                 psbt,
                 idx,
                 PSBTKeyType.PSBT_IN_TAP_INTERNAL_KEY,
                 b"",
-                input_info["public_key"].bytes_xonly,
+                tap_key,
             )
 
     def _compute_ecdh_shares(
@@ -1079,9 +1109,12 @@ class PSBTBuilder:
                 sighash_type = (
                     0x02 if scenario.wrong_sighash_for_input == input_idx else 0x01
                 )
-                add_raw_input_field(
-                    psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
-                )
+                if scenario.no_sighash_for_input == input_idx:
+                    sighash_type = None  # Don't add sighash type at all
+                if sighash_type:
+                    add_raw_input_field(
+                        psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
+                    )
 
                 if (
                     scenario.wrong_sighash_for_input == input_idx
@@ -1538,6 +1571,8 @@ class ConfigBasedTestGenerator:
                 multisig_threshold=input_config.get("multisig_threshold"),
                 multisig_pubkey_count=input_config.get("multisig_pubkey_count"),
                 key_derivation_suffix=input_config.get("key_derivation_suffix", ""),
+                use_nums_tap_internal_key=input_config.get("use_nums_tap_internal_key", False),
+                eligible_override=input_config.get("eligible_override"),
             )
 
             # Handle batch creation
@@ -1551,6 +1586,8 @@ class ConfigBasedTestGenerator:
                     multisig_threshold=input_spec.multisig_threshold,
                     multisig_pubkey_count=input_spec.multisig_pubkey_count,
                     key_derivation_suffix=f"{input_spec.key_derivation_suffix}_batch_{i}",
+                    use_nums_tap_internal_key=input_spec.use_nums_tap_internal_key,
+                    eligible_override=input_spec.eligible_override,
                 )
                 inputs.append(batch_spec)
 
@@ -1606,6 +1643,7 @@ class ConfigBasedTestGenerator:
             scan_keys=scan_keys,
             missing_dleq_for_input=control_override.get("missing_dleq_for_input"),
             invalid_dleq_for_input=control_override.get("invalid_dleq_for_input"),
+            no_sighash_for_input=control_override.get("no_sighash_for_input"),
             wrong_sighash_for_input=control_override.get("wrong_sighash_for_input"),
             missing_ecdh_for_input=control_override.get("missing_ecdh_for_input"),
             wrong_sp_info_size=control_override.get("wrong_sp_info_size", False),

@@ -1,7 +1,7 @@
 description: "Large PSBT test cases demonstrating scalability"
 
 test_cases:
-  - description: "large PSBT with nine mixed inputs / six outputs"
+  - description: "in progress: large PSBT with nine mixed inputs / six outputs - some signed"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"

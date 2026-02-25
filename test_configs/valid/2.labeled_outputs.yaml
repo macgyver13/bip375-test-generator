@@ -1,7 +1,7 @@
 description: "Valid PSBT with labeled silent payments and change outputs"
 
 test_cases:
-  - description: "P2WPKH to sp with labeled output and BIP 32 change"
+  - description: "can finalize: one P2WPKH input / two mixed outputs - sp with labeled output and BIP 32 change"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -18,7 +18,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "two sp outputs - output 0 no label / output 1 uses label=0 convention for sp change"
+  - description: "can finalize: one input / two sp outputs - output 0 no label / output 1 uses label=0 convention for sp change"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -35,5 +35,24 @@ test_cases:
         label: 0  # BIP-352 change convention
     scan_keys:
       - key_id: "change"
+      - key_id: "recipient"
+        derivation_suffix: "recipient"
+
+  - description: "can finalize: two sp outputs - output 0 uses label=3 / output 1 uses label=1"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 300000
+        key_derivation_suffix: "same_scan_key"
+    outputs:
+      - type: "silent_payment"
+        amount: 100000
+        scan_key_id: "recipient"
+        label: 3
+      - type: "silent_payment"
+        amount: 190000
+        scan_key_id: "recipient"
+        label: 1
+    scan_keys:
       - key_id: "recipient"
         derivation_suffix: "recipient"

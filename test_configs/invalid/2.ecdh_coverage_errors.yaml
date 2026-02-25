@@ -56,6 +56,18 @@ test_cases:
     control_override:
       inject_ineligible_ecdh: true # Inject fake ECDH shares into the ineligible P2SH input
 
+  - description: "ecdh coverage: ineligible P2TR input with NUMS point with PSBT_IN_SP_ECDH_SHARE set"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2tr"
+        amount: 10000
+        use_nums_tap_internal_key: true
+        eligible_override: true
+    outputs:
+      - type: "silent_payment"
+        amount: 9500
+        scan_key_id: "default"
+
   - description: "ecdh coverage: PSBT_IN_SP_DLEQ missing for input with ECDH share"
     validation_result: "invalid"
     inputs:

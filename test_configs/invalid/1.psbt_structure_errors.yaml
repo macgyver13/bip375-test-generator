@@ -47,7 +47,7 @@ test_cases:
     control_override:
       wrong_ecdh_share_size: true
 
-  - description: "psbt structure: PSBT_IN_SP_DLEQ proof field with incorrect size"
+  - description: "psbt structure: PSBT_IN_SP_DLEQ field with incorrect size"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -61,3 +61,31 @@ test_cases:
       - key_id: "default"
     control_override:
       wrong_dleq_proof_size: true
+
+  - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE with PSBT_OUT_SCRIPT set"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        key_derivation_suffix: "tx_modifiable"
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      set_tx_modifiable: true
+
+  - description: "psbt structure: PSBT_OUT_SCRIPT missing regular output"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "regular_p2tr"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+

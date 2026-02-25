@@ -49,7 +49,7 @@ description: "Human-readable description of this config file"
 
 test_cases:
   - description: "Specific scenario"
-    checks: [] # psbt_structure, ecdh_coverage, signer_constraints, output_scripts
+    checks: [] # psbt_structure, ecdh_coverage, input_eligibility, output_scripts
     validation_result: "valid"   # or "invalid"
     inputs: [...]
     outputs: [...]

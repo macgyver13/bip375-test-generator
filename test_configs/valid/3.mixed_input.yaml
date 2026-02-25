@@ -1,7 +1,7 @@
 description: "Valid mixed-input scenarios"
 
 test_cases:
-  - description: "two mixed input types - only eligible inputs contribute ECDH shares (P2SH excluded)"
+  - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (P2SH excluded)"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -18,3 +18,17 @@ test_cases:
         scan_key_id: "default"
     scan_keys:
       - key_id: "default"
+
+  - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (NUMS point excluded)"
+    validation_result: "valid"
+    inputs:
+      - type: "p2tr"
+        amount: 10000
+        use_nums_tap_internal_key: true
+      - type: "p2wpkh"
+        amount: 100000
+        key_derivation_suffix: "mixed_p2wpkh"
+    outputs:
+      - type: "silent_payment"
+        amount: 9500
+        scan_key_id: "default"
