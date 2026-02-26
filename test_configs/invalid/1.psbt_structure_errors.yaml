@@ -77,15 +77,17 @@ test_cases:
     control_override:
       set_tx_modifiable: true
 
-  - description: "psbt structure: PSBT_OUT_SCRIPT missing regular output"
+  - description: "psbt structure: P2WPKH output missing PSBT_OUT_SCRIPT"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
         amount: 100000
     outputs:
-      - type: "regular_p2tr"
+      - type: "regular_p2wpkh"
         amount: 95000
         scan_key_id: "default"
     scan_keys:
       - key_id: "default"
+    control_override:
+      skip_regular_output_script: true
 
