@@ -1,7 +1,7 @@
 description: "ECDH coverage validation errors"
 
 test_cases:
-  - description: "ecdh coverage: PSBT_OUT_SCRIPT set - no eligible inputs"
+  - description: "ecdh coverage: no eligible inputs with PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
     inputs:
       - type: "p2wsh_multisig"
@@ -17,7 +17,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "ecdh coverage: PSBT_OUT_SCRIPT set - Input 0 missing PSBT_IN_SP_ECDH_SHARE"
+  - description: "ecdh coverage: input 0 missing PSBT_IN_SP_ECDH_SHARE with PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -36,7 +36,7 @@ test_cases:
       missing_ecdh_for_input: 0
       force_output_script: true
 
-  - description: "ecdh coverage: ineligible P2SH multisig input with PSBT_IN_SP_ECDH_SHARE set"
+  - description: "ecdh coverage: ineligible P2SH multisig input with PSBT_IN_SP_ECDH_SHARE set for sp output"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -56,7 +56,7 @@ test_cases:
     control_override:
       inject_ineligible_ecdh: true # Inject fake ECDH shares into the ineligible P2SH input
 
-  - description: "ecdh coverage: ineligible P2TR input with NUMS point with PSBT_IN_SP_ECDH_SHARE set"
+  - description: "ecdh coverage: ineligible P2TR input with NUMS point that has PSBT_IN_SP_ECDH_SHARE set"
     validation_result: "invalid"
     inputs:
       - type: "p2tr"
@@ -68,7 +68,7 @@ test_cases:
         amount: 9500
         scan_key_id: "default"
 
-  - description: "ecdh coverage: PSBT_IN_SP_DLEQ missing for input with ECDH share"
+  - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input with PSBT_IN_SP_ECDH_SHARE set"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -83,7 +83,7 @@ test_cases:
     control_override:
       missing_dleq_for_input: 0
 
-  - description: "ecdh coverage: PSBT_GLOBAL_SP_DLEQ missing with global ECDH share"
+  - description: "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field with PSBT_GLOBAL_SP_ECDH_SHARE set"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -130,7 +130,7 @@ test_cases:
       use_global_ecdh: true
       invalid_global_dleq: true
 
-  - description: "ecdh coverage: input missing public key for DLEQ verification"
+  - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field, public key required for DLEQ verification"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"

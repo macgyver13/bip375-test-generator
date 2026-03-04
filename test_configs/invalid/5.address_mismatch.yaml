@@ -1,7 +1,7 @@
 description: "Address computation validation errors"
 
 test_cases:
-  - description: "output scripts: computed output script mismatch in PSBT_OUT_SCRIPT field from transaction inputs"
+  - description: "output scripts: invalid output script in PSBT_OUT_SCRIPT field for sp output"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -15,7 +15,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "output scripts: two sp outputs (same scan key/different spend keys) - outputs are not sorted lexicographically by spend key"
+  - description: "output scripts: outputs are not sorted lexicographically by spend key with two sp outputs (same scan key/different spend keys)"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -35,7 +35,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "output scripts: three sp outputs (same scan/spend keys) - output scripts are computed with swapped k values"
+  - description: "output scripts: output scripts are computed with swapped k values having three sp outputs (same scan/spend keys)"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"

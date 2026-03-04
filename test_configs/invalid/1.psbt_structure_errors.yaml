@@ -17,7 +17,7 @@ test_cases:
     control_override:
       missing_sp_info_field: true
 
-  - description: "psbt structure: PSBT_OUT_SP_V0_INFO field with incorrect size"
+  - description: "psbt structure: incorrect size for PSBT_OUT_SP_V0_INFO field"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -32,7 +32,7 @@ test_cases:
     control_override:
       wrong_sp_info_size: true
 
-  - description: "psbt structure: PSBT_IN_SP_ECDH_SHARE field with incorrect size"
+  - description: "psbt structure: incorrect size for PSBT_IN_SP_ECDH_SHARE field"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -47,7 +47,7 @@ test_cases:
     control_override:
       wrong_ecdh_share_size: true
 
-  - description: "psbt structure: PSBT_IN_SP_DLEQ field with incorrect size"
+  - description: "psbt structure: incorrect size for PSBT_IN_SP_DLEQ field"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -77,7 +77,7 @@ test_cases:
     control_override:
       set_tx_modifiable: true
 
-  - description: "psbt structure: P2WPKH output missing PSBT_OUT_SCRIPT"
+  - description: "psbt structure: missing PSBT_OUT_SCRIPT field when sending to non sp output"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"

@@ -1,7 +1,7 @@
 description: "Signer constraint validation errors"
 
 test_cases:
-  - description: "input eligibility: segwit version greater than 1 in transaction inputs with silent payments output"
+  - description: "input eligibility: segwit version greater than 1 in transaction inputs with sp output"
     validation_result: "invalid"
     checks: ["input_eligibility"]
     inputs:
@@ -17,7 +17,7 @@ test_cases:
     control_override:
       use_segwit_v2_input: True
 
-  - description: "input eligibility: non-SIGHASH_ALL signature on input with silent payments output"
+  - description: "input eligibility: non-SIGHASH_ALL signature on input with sp output"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"

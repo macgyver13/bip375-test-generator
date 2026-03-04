@@ -1,7 +1,7 @@
 description: "Valid single-signer ECDH share scenarios"
 
 test_cases:
-  - description: "can finalize: one P2WPKH input single-signer"
+  - description: "can finalize: one input single-signer"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -14,7 +14,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "can finalize: two inputs single-signer - using global ECDH share"
+  - description: "can finalize: two inputs single-signer using global ECDH share"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -31,7 +31,7 @@ test_cases:
       use_global_ecdh: true
       no_sighash_for_input: 0
 
-  - description: "can finalize: two inputs single-signer - using per-input ECDH shares"
+  - description: "can finalize: two inputs single-signer using per-input ECDH shares"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -47,7 +47,7 @@ test_cases:
     control_override:
       no_sighash_for_input: 0
 
-  - description: "can finalize: two inputs/two sp outputs - mixed global and per-input ECDH shares"
+  - description: "can finalize: two inputs/two sp outputs with mixed global and per-input ECDH shares"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -69,7 +69,7 @@ test_cases:
     control_override:
       use_global_ecdh: ["recipient_a"]
 
-  - description: "can finalize: three sp outputs (different scan keys) - multiple global ECDH shares"
+  - description: "can finalize: three sp outputs (different scan keys) with multiple global ECDH shares"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
