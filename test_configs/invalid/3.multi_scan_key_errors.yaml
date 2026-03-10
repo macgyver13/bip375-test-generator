@@ -29,7 +29,7 @@ test_cases:
       missing_ecdh_for_scan_key: "scan_key_b"
       force_output_script: true
 
-  - description: "ecdh coverage: full coverage input 0 / partial coverage input 1 with two inputs/two sp outputs (different scan keys)"
+  - description: "ecdh coverage: missing ECDH share for output 1 in input 0, output 0 has ECDH shares for both scan keys"
     validation_result: "invalid"
     exclude_material: ["expected_outputs"]
     inputs:

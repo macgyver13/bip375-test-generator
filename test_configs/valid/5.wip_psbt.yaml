@@ -70,14 +70,3 @@ test_cases:
         derivation_suffix: "recipient_b"
     control_override:
       missing_ecdh_for_scan_key: "scan_key_a"
-
-  - description: "in progress: one P2TR NUMS point input and no sp outputs - not signed"
-    validation_result: "valid"
-    inputs:
-      - type: "p2tr"
-        amount: 10000
-        use_nums_tap_internal_key: true
-    outputs:
-      - type: "regular_p2tr"
-        amount: 9500
-        scan_key_id: "default"

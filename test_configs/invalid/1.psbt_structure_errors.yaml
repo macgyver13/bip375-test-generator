@@ -66,7 +66,7 @@ test_cases:
     control_override:
       wrong_dleq_proof_size: true
 
-  - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE with PSBT_OUT_SCRIPT set"
+  - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE with PSBT_OUT_SCRIPT set with sp output"
     validation_result: "invalid"
     exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
     inputs:
@@ -110,5 +110,5 @@ test_cases:
     scan_keys:
       - key_id: "default"
     control_override:
-      skip_regular_output_script: true
+      empty_regular_output_script: true
 

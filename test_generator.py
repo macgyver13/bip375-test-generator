@@ -28,7 +28,8 @@ from spdk_psbt import (
     add_raw_input_field, 
     add_raw_output_field, 
     remove_raw_input_fields_by_type, 
-    SilentPaymentPsbt
+    SilentPaymentPsbt,
+    PsbtOutput
 )
 
 from generator_utils import (
@@ -296,8 +297,10 @@ class TestScenario:
     strip_input_pubkeys_for_input: Optional[int] = None
     invalid_global_dleq: bool = False
     missing_ecdh_for_input_scan_key: Optional[tuple] = None  # (input_index, scan_key_id)
+    force_ecdh_for_input_scan_key: Optional[tuple] = None  # (input_index, scan_key_id)
     force_partial_ecdh_output_script: bool = False
     skip_regular_output_script: bool = False
+    empty_regular_output_script: bool = False
 
 
 # ============================================================================
@@ -1053,7 +1056,10 @@ class PSBTBuilder:
                 self._add_global_ecdh_shares(psbt, global_ecdh, scenario, input_data, scan_keys)
 
         per_input_ecdh = {
-            k: v for k, v in ecdh_data.items() if k[1] not in global_scan_keys
+            k: v for k, v in ecdh_data.items()
+            if k[1] not in global_scan_keys
+            or (scenario.force_ecdh_for_input_scan_key is not None
+                and k == scenario.force_ecdh_for_input_scan_key)
         }
         if per_input_ecdh:
             self._add_per_input_ecdh_shares(psbt, per_input_ecdh, scenario, input_data, scan_keys, signed_input_indices)
@@ -1369,17 +1375,29 @@ class PSBTBuilder:
                 script = self._add_silent_payment_output(
                     psbt, output_info, input_data, ecdh_data, scenario, scan_keys, scan_key_k_counter
                 )
+                if script:
+                    add_raw_output_field(
+                        psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", script
+                    )
                 finalized_outputs.append({
                     "amount": output_info["amount"],
                     "script_pubkey": script.hex() if script else "",
                 })
+                
             else:
                 # Regular output - add script and optional BIP32_DERIVATION
                 if not scenario.skip_regular_output_script:
-                    add_raw_output_field(
-                        psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_info["script"]
-                    )
-                    output_info["script"] = b''
+                    if scenario.empty_regular_output_script:
+                        psbt.add_outputs([
+                            PsbtOutput.REGULAR(
+                                amount=output_info["amount"],
+                                script_pubkey=b"")
+                            ]
+                        )
+                    else:
+                        add_raw_output_field(
+                            psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_info["script"]
+                        )
                 finalized_outputs.append({
                     "amount": output_info["amount"],
                     "script_pubkey": output_info["script"].hex(),
@@ -1678,11 +1696,22 @@ class ConfigBasedTestGenerator:
                 if control_override.get("missing_ecdh_for_input_scan_key")
                 else None
             ),
+            force_ecdh_for_input_scan_key=(
+                (
+                    control_override["force_ecdh_for_input_scan_key"]["input_index"],
+                    control_override["force_ecdh_for_input_scan_key"]["scan_key_id"],
+                )
+                if control_override.get("force_ecdh_for_input_scan_key")
+                else None
+            ),
             force_partial_ecdh_output_script=control_override.get(
                 "force_partial_ecdh_output_script", False
             ),
             skip_regular_output_script=control_override.get(
                 "skip_regular_output_script", False
+            ),
+            empty_regular_output_script=control_override.get(
+                "empty_regular_output_script", False
             ),
         )
 

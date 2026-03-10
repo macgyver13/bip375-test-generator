@@ -1,7 +1,7 @@
 description: "ECDH coverage validation errors"
 
 test_cases:
-  - description: "ecdh coverage: no eligible inputs with PSBT_OUT_SCRIPT set for sp output"
+  - description: "ecdh coverage: P2MS input not eligible with PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
     exclude_material: ["expected_ecdh_shares", "expected_outputs"]
     inputs:
