@@ -4,6 +4,7 @@ test_cases:
   - description: "input eligibility: segwit version greater than 1 in transaction inputs with sp output"
     validation_result: "invalid"
     checks: ["input_eligibility"]
+    exclude_material: ["expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -19,6 +20,7 @@ test_cases:
 
   - description: "input eligibility: non-SIGHASH_ALL signature on input with sp output"
     validation_result: "invalid"
+    exclude_material: ["expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000

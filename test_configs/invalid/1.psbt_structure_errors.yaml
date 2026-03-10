@@ -3,6 +3,7 @@ description: "PSBT structure validation errors"
 test_cases:
   - description: "psbt structure: missing PSBT_OUT_SP_V0_INFO with PSBT_OUT_SP_V0_LABEL set"
     validation_result: "invalid"
+    exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -19,6 +20,7 @@ test_cases:
 
   - description: "psbt structure: incorrect size for PSBT_OUT_SP_V0_INFO field"
     validation_result: "invalid"
+    exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -34,6 +36,7 @@ test_cases:
 
   - description: "psbt structure: incorrect size for PSBT_IN_SP_ECDH_SHARE field"
     validation_result: "invalid"
+    exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -49,6 +52,7 @@ test_cases:
 
   - description: "psbt structure: incorrect size for PSBT_IN_SP_DLEQ field"
     validation_result: "invalid"
+    exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -64,6 +68,7 @@ test_cases:
 
   - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE with PSBT_OUT_SCRIPT set"
     validation_result: "invalid"
+    exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -79,6 +84,22 @@ test_cases:
 
   - description: "psbt structure: missing PSBT_OUT_SCRIPT field when sending to non sp output"
     validation_result: "invalid"
+    exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "regular_p2wpkh"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      skip_regular_output_script: true
+
+  - description: "psbt structure: empty PSBT_OUT_SCRIPT field when sending to non sp output"
+    validation_result: "invalid"
+    exclude_material: ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000

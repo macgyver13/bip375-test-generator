@@ -3,6 +3,7 @@ description: "Multi-scan-key validation errors"
 test_cases:
   - description: "ecdh coverage: output 1 missing ECDH share for scan key with one input/three sp outputs (different scan keys)"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 200000
@@ -30,6 +31,7 @@ test_cases:
 
   - description: "ecdh coverage: full coverage input 0 / partial coverage input 1 with two inputs/two sp outputs (different scan keys)"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -57,6 +59,7 @@ test_cases:
 
   - description: "ecdh coverage: input 1 missing ECDH share for scan key with two inputs/one sp output (two scan keys)"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 50000

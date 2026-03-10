@@ -7,7 +7,7 @@ Organized by validation type → input/output type → complexity.
 """
 
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import json
 import hashlib
@@ -270,6 +270,7 @@ class TestScenario:
     # List of explicit validation checks to perform - all checks will be performed if empty
     #  (e.g. ["psbt_structure", "ecdh_coverage", "input_eligibility", "output_scripts"])
     checks: List[str]
+    exclude_material: List[str] = field(default_factory=list)  # List of material fields to exclude from test vector (e.g. ["input_keys", "scan_keys", "expected_ecdh_shares", "expected_outputs"])
 
     # control override for invalid tests
     missing_dleq_for_input: Optional[int] = None
@@ -1643,6 +1644,7 @@ class ConfigBasedTestGenerator:
             checks=config.get("checks", []),
             inputs=inputs,
             outputs=outputs,
+            exclude_material=config.get("exclude_material", []),
             scan_keys=scan_keys,
             missing_dleq_for_input=control_override.get("missing_dleq_for_input"),
             invalid_dleq_for_input=control_override.get("invalid_dleq_for_input"),
@@ -1813,11 +1815,16 @@ class ConfigBasedTestGenerator:
         test_dict = {
             "description": scenario.description,
             "psbt": base64.b64encode(psbt.serialize()).decode(),
+        }
+        all_material = {
             "input_keys": input_keys,
             "scan_keys": scan_keys,
             "expected_ecdh_shares": expected_ecdh_shares,
             "expected_outputs": expected_outputs,
         }
+        for key in scenario.exclude_material:
+            all_material.pop(key, None)
+        test_dict.update(all_material)
         if scenario.checks:
             test_dict["checks"] = scenario.checks
         return test_dict

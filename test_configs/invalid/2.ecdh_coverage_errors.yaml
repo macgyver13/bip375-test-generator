@@ -3,6 +3,7 @@ description: "ECDH coverage validation errors"
 test_cases:
   - description: "ecdh coverage: no eligible inputs with PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
+    exclude_material: ["expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2wsh_multisig"
         amount: 100000
@@ -19,6 +20,7 @@ test_cases:
 
   - description: "ecdh coverage: input 0 missing PSBT_IN_SP_ECDH_SHARE with PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -38,6 +40,7 @@ test_cases:
 
   - description: "ecdh coverage: ineligible P2SH multisig input with PSBT_IN_SP_ECDH_SHARE set for sp output"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -58,6 +61,7 @@ test_cases:
 
   - description: "ecdh coverage: ineligible P2TR input with NUMS point that has PSBT_IN_SP_ECDH_SHARE set"
     validation_result: "invalid"
+    exclude_material: ["expected_ecdh_shares", "expected_outputs"]
     inputs:
       - type: "p2tr"
         amount: 10000
@@ -70,6 +74,7 @@ test_cases:
 
   - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input with PSBT_IN_SP_ECDH_SHARE set"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -85,6 +90,7 @@ test_cases:
 
   - description: "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field with PSBT_GLOBAL_SP_ECDH_SHARE set"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -101,6 +107,7 @@ test_cases:
 
   - description: "ecdh coverage: invalid proof set for PSBT_IN_SP_DLEQ field"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -116,6 +123,7 @@ test_cases:
 
   - description: "ecdh coverage: invalid proof set for PSBT_GLOBAL_SP_DLEQ field"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
@@ -132,6 +140,7 @@ test_cases:
 
   - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field, public key required for DLEQ verification"
     validation_result: "invalid"
+    exclude_material: ["expected_outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
