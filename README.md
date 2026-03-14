@@ -14,12 +14,20 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Installing `spdk_psbt`
 
-`spdk_psbt` is a Rust/uniffi Python extension. Its source lives in the `bip375-examples` repo under `rust/crates/spdk-uniffi`. Install it in editable mode, which compiles the Rust crate via maturin:
+**Note:** Version 1.2 requires rust dependencies that are not yet published like PSBT_OUT_SCRIPT missing field - `rust-psbt script_pubkey: Option<ScriptBuf>`.
+At this time using wheels is the easier solution to installing spdk_psbt - 3.14.2026
+```bash
+pip install --no-index --find-links wheels/ spdk_psbt
+```
 
+~~`spdk_psbt` is a Rust/uniffi Python extension. Its source lives in the `bip375-examples` repo under `rust/crates/spdk-uniffi`. Install it in editable mode, which compiles the Rust crate via maturin:~~
+
+<del>
 ```bash
 cd /path/to/bip375-examples/rust/crates/spdk-uniffi
 pip install -e .
 ```
+</del>
 
 ## Running the Generator
 
