@@ -7,17 +7,13 @@ test_cases:
       - type: "p2wpkh"
         count: 5
         amount: 100000
-        key_derivation_suffix: "large_batch"
       - type: "p2tr"
         count: 2
         amount: 100000
-        key_derivation_suffix: "large_batch"
       - type: "p2sh_p2wpkh"
         amount: 100000
-        key_derivation_suffix: "large_batch"
       - type: "p2pkh"
         amount: 100000
-        key_derivation_suffix: "large_batch"
     outputs:
       - type: "silent_payment"
         count: 2

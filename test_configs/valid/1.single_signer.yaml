@@ -6,7 +6,6 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "single_signer_per_input"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -20,7 +19,6 @@ test_cases:
       - type: "p2wpkh"
         amount: 100000
         count: 2
-        key_derivation_suffix: "single_signer"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -37,7 +35,6 @@ test_cases:
       - type: "p2wpkh"
         amount: 100000
         count: 2
-        key_derivation_suffix: "single_signer_per_input"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -47,13 +44,12 @@ test_cases:
     control_override:
       no_sighash_for_input: 0
 
-  - description: "can finalize: two inputs/two sp outputs with mixed global and per-input ECDH shares"
+  - description: "can finalize: two inputs / two sp outputs with mixed global and per-input ECDH shares"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
         amount: 200000
         count: 2
-        key_derivation_suffix: "mixed_ecdh"
     outputs:
       - type: "silent_payment"
         amount: 90000
@@ -69,12 +65,11 @@ test_cases:
     control_override:
       use_global_ecdh: ["recipient_a"]
 
-  - description: "can finalize: one input/one sp output with both global and per-input ECDH shares"
+  - description: "can finalize: one input / one sp output with both global and per-input ECDH shares"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
         amount: 200000
-        key_derivation_suffix: "mixed_ecdh"
     outputs:
       - type: "silent_payment"
         amount: 90000
@@ -93,10 +88,8 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 500000
-        key_derivation_suffix: "different_key"
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "different_key"
     outputs:
       - type: "silent_payment"
         amount: 90000

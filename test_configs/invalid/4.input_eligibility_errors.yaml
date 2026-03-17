@@ -8,7 +8,6 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "segwit_v2"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -24,7 +23,6 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "non_sighash_all"
     outputs:
       - type: "silent_payment"
         amount: 95000

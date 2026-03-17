@@ -1,13 +1,12 @@
 description: "Multi-scan-key validation errors"
 
 test_cases:
-  - description: "ecdh coverage: output 1 missing ECDH share for scan key with one input/three sp outputs (different scan keys)"
+  - description: "ecdh coverage: output 1 missing ECDH share for scan key with one input / three sp outputs (different scan keys)"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 200000
-        key_derivation_suffix: "multi_scan_missing_ecdh"
     outputs:
       - type: "silent_payment"
         amount: 90000
@@ -29,16 +28,14 @@ test_cases:
       missing_ecdh_for_scan_key: "scan_key_b"
       force_output_script: true
 
-  - description: "ecdh coverage: missing ECDH share for output 1 in input 0, output 0 has ECDH shares for both scan keys"
+  - description: "ecdh coverage: input 1 missing ECDH share for output 1 with two inputs / two sp outputs (different scan keys)"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "partial_cov_1"
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "partial_cov_2"
     outputs:
       - type: "silent_payment"
         amount: 90000
@@ -57,16 +54,14 @@ test_cases:
         scan_key_id: "scan_key_b"
       force_partial_ecdh_output_script: true
 
-  - description: "ecdh coverage: input 1 missing ECDH share for scan key with two inputs/one sp output (two scan keys)"
+  - description: "ecdh coverage: input 1 missing ECDH share for scan key with two inputs / one sp output"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 50000
-        key_derivation_suffix: "incomplete_1"
       - type: "p2wpkh"
         amount: 50000
-        key_derivation_suffix: "incomplete_2"
     outputs:
       - type: "silent_payment"
         amount: 95000

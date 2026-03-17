@@ -6,7 +6,6 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 400000
-        key_derivation_suffix: "multi_same_key"
     outputs:
       - type: "silent_payment"
         amount: 100000
@@ -25,7 +24,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "can finalize: three sp outputs (same scan key) / two regular outputs - k value must not follow output index"
+  - description: "can finalize: three sp outputs (same scan key) / two regular outputs - k values assigned independently of output index"
     validation_result: "valid"
     # SP outputs are at output indices 0, 2, 4; regular outputs at 1, 3.
     # With correct per-scan-key k counter: k=0, k=1, k=2.
@@ -33,7 +32,6 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 500000
-        key_derivation_suffix: "interleaved_same_key"
     outputs:
       - type: "silent_payment"
         amount: 100000

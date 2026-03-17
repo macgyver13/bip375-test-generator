@@ -1,15 +1,13 @@
 description: "Valid in progress PSBT scenarios"
 
 test_cases:
-  - description: "in progress: two P2TR inputs neither is signed"
+  - description: "in progress: two P2TR inputs, neither is signed"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
         amount: 100000
-        key_derivation_suffix: "input_0"
       - type: "p2tr"
         amount: 10000
-        key_derivation_suffix: "input_1"
     outputs:
       - type: "silent_payment"
         amount: 195000
@@ -17,12 +15,11 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "in progress: one P2TR input / one sp output with no ECDH shares and PSBT_OUT_SCRIPT field is not set"
+  - description: "in progress: one P2TR input / one sp output with no ECDH shares when PSBT_OUT_SCRIPT field is not set"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
         amount: 100000
-        key_derivation_suffix: "single_signer_per_input"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -32,15 +29,13 @@ test_cases:
     control_override:
       missing_ecdh_for_input: 0
 
-  - description: "in progress: two inputs / one sp output with partial ECDH coverage and PSBT_OUT_SCRIPT field is not set"
+  - description: "in progress: two inputs / one sp output, input 1 missing ECDH share when PSBT_OUT_SCRIPT field is not set"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "incomplete_input_0"
       - type: "p2wpkh"
         amount: 150000
-        key_derivation_suffix: "incomplete_input_1"
     outputs:
       - type: "silent_payment"
         amount: 200000
@@ -50,12 +45,11 @@ test_cases:
     control_override:
       missing_ecdh_for_input: 1  # Input 1 will not have ECDH share
 
-  - description: "in progress: one input / two sp outputs (different scan keys) and missing ECDH share for output 0 scan key"
+  - description: "in progress: one input / two sp outputs, input 0 missing ECDH share for output 0 when PSBT_OUT_SCRIPT field is not set"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
         amount: 200000
-        key_derivation_suffix: "multi_scan_missing_ecdh"
     outputs:
       - type: "silent_payment"
         amount: 90000

@@ -1,12 +1,23 @@
 description: "Address computation validation errors"
 
 test_cases:
-  - description: "output scripts: invalid output script in PSBT_OUT_SCRIPT field for sp output"
+  - description: "output scripts: P2TR input with NUMS internal key cannot derive sp output"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2tr"
+        amount: 10000
+        use_nums_tap_internal_key: true
+        eligible_override: true
+    outputs:
+      - type: "silent_payment"
+        amount: 9500
+        scan_key_id: "default"
+
+  - description: "output scripts: PSBT_OUT_SCRIPT does not match derived sp output"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "address_mismatch"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -15,12 +26,11 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "output scripts: outputs are not sorted lexicographically by spend key with two sp outputs (same scan key/different spend keys)"
+  - description: "output scripts: two sp outputs (same scan / different spend keys) not sorted lexicographically by spend key"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "address_mismatch"
     outputs:
       - type: "silent_payment"
         amount: 90000
@@ -35,12 +45,11 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "output scripts: output scripts are computed with swapped k values having three sp outputs (same scan/spend keys)"
+  - description: "output scripts: k values assigned to wrong output indices with three sp outputs (same scan / spend keys)"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "address_mismatch"
     outputs:
       - type: "silent_payment"
         amount: 90000

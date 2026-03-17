@@ -6,12 +6,10 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "mixed_p2wpkh"
       - type: "p2sh_multisig"
         amount: 150000
         multisig_threshold: 2
         multisig_pubkey_count: 2
-        key_derivation_suffix: "mixed_p2sh"
     outputs:
       - type: "silent_payment"
         amount: 90000
@@ -19,7 +17,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (NUMS point excluded)"
+  - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (NUMS internal key excluded)"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
@@ -27,7 +25,6 @@ test_cases:
         use_nums_tap_internal_key: true
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "mixed_p2wpkh"
     outputs:
       - type: "silent_payment"
         amount: 9500

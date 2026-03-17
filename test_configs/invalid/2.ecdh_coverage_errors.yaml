@@ -1,7 +1,7 @@
 description: "ECDH coverage validation errors"
 
 test_cases:
-  - description: "ecdh coverage: P2MS input not eligible with PSBT_OUT_SCRIPT set for sp output"
+  - description: "ecdh coverage: only one ineligible P2MS input when PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
@@ -9,7 +9,6 @@ test_cases:
         amount: 100000
         multisig_threshold: 2
         multisig_pubkey_count: 2
-        key_derivation_suffix: "p2wsh_only"
     outputs:
       - type: "silent_payment"
         amount: 90000
@@ -18,16 +17,14 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "ecdh coverage: input 0 missing PSBT_IN_SP_ECDH_SHARE with PSBT_OUT_SCRIPT set for sp output"
+  - description: "ecdh coverage: missing PSBT_IN_SP_ECDH_SHARE field for input 0 when PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "missing_ecdh"
       - type: "p2wpkh"
         amount: 10000
-        key_derivation_suffix: "default"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -38,26 +35,12 @@ test_cases:
       missing_ecdh_for_input: 0
       force_output_script: true
 
-  - description: "ecdh coverage: ineligible P2TR input with NUMS point that has PSBT_IN_SP_ECDH_SHARE set"
-    validation_result: "invalid"
-    exclude_material: ["sp_proofs", "outputs"]
-    inputs:
-      - type: "p2tr"
-        amount: 10000
-        use_nums_tap_internal_key: true
-        eligible_override: true
-    outputs:
-      - type: "silent_payment"
-        amount: 9500
-        scan_key_id: "default"
-
-  - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input with PSBT_IN_SP_ECDH_SHARE set"
+  - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input when PSBT_IN_SP_ECDH_SHARE set"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "missing_dleq"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -67,13 +50,12 @@ test_cases:
     control_override:
       missing_dleq_for_input: 0
 
-  - description: "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field with PSBT_GLOBAL_SP_ECDH_SHARE set"
+  - description: "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field when PSBT_GLOBAL_SP_ECDH_SHARE set"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "global_missing_dleq"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -84,13 +66,12 @@ test_cases:
       use_global_ecdh: true
       missing_global_dleq: true
 
-  - description: "ecdh coverage: invalid proof set for PSBT_IN_SP_DLEQ field"
+  - description: "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "invalid_dleq"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -100,13 +81,12 @@ test_cases:
     control_override:
       invalid_dleq_for_input: 0
 
-  - description: "ecdh coverage: invalid proof set for PSBT_GLOBAL_SP_DLEQ field"
+  - description: "ecdh coverage: invalid proof in PSBT_GLOBAL_SP_DLEQ field"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "invalid_global_dleq"
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -117,13 +97,12 @@ test_cases:
       use_global_ecdh: true
       invalid_global_dleq: true
 
-  - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field, public key required for DLEQ verification"
+  - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        key_derivation_suffix: "missing_pubkey_dleq"
     outputs:
       - type: "silent_payment"
         amount: 95000
