@@ -1741,17 +1741,24 @@ class ConfigBasedTestGenerator:
                 private_key = inp["private_key"].hex
                 public_key = inp["public_key"].hex
 
+            is_legacy = inp.get("input_type") in (
+                InputType.P2SH_MULTISIG,
+                InputType.P2PKH,
+            )
+            utxo_field = (
+                {"non_witness_utxo": inp["prev_tx"].hex()}
+                if is_legacy
+                else {"witness_utxo": inp["witness_utxo"].hex()}
+            )
             input_key = {
                 "input_index": inp["input_index"],
                 "private_key": private_key,
                 "public_key": public_key,
                 "prevout_txid": inp["prevout_txid"].hex(),
                 "prevout_index": inp["prevout_index"],
-                "prevout_scriptpubkey": inp.get(
-                    "witness_script", inp.get("script_pubkey", b"")
-                ).hex(),
+                "prevout_scriptpubkey": inp.get("script_pubkey", inp.get("witness_script", b"")).hex(),
                 "amount": inp["amount"],
-                "witness_utxo": inp.get("witness_utxo", inp.get("prev_tx", b"")).hex(),
+                **utxo_field,
                 "sequence": inp["sequence"],
                 "signed": inp["input_index"] in signed_input_indices,
             }

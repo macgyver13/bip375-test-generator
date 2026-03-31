@@ -1,6 +1,18 @@
 description: "Address computation validation errors"
 
 test_cases:
+  - description: "output scripts: P2TR input with NUMS internal key cannot derive sp output"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2tr"
+        amount: 10000
+        use_nums_tap_internal_key: true
+        eligible_override: true
+    outputs:
+      - type: "silent_payment"
+        amount: 9500
+        scan_key_id: "default"
+
   - description: "output scripts: PSBT_OUT_SCRIPT does not match derived sp output"
     validation_result: "invalid"
     inputs:

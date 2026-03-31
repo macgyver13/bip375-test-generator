@@ -39,55 +39,19 @@
       "supplementary": {}
     },
     {
-      "description": "ecdh coverage: P2TR input with NUMS internal key cannot derive sp output",
-      "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBAQYBAAABDiAT8Qa2S1e1sTdvn2xHGQ9AzAazvty4qrqXhQqz1/Z9AgEPBAAAAAABASsQJwAAAAAAACJRIFCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAAQMEAQAAAAEQBP7///8BFyBQkpt0waBJVLeLS2A16XpeB4paDyjsltVHv+6azoA6wCIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIHCUAAAAAAAABBCJRICdoyIruoiMiW6OthOeGNS+YKdLT6TeKOToL/1mvh83QAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
-      "supplementary": {
-        "inputs": [
-          {
-            "input_index": 0,
-            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
-            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
-            "prevout_txid": "13f106b64b57b5b1376f9f6c47190f40cc06b3bedcb8aaba97850ab3d7f67d02",
-            "prevout_index": 0,
-            "prevout_scriptpubkey": "512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0",
-            "amount": 10000,
-            "witness_utxo": "102700000000000022512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0",
-            "sequence": 4294967294,
-            "signed": false
-          }
-        ],
-        "sp_proofs": [
-          {
-            "scan_key": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe068",
-            "ecdh_share": "03eca4ff11b728e2e0f60ce6222943a6ff55b9d95f627bf9a99d084bc872d50a5b",
-            "dleq_proof": "8a13b3985545f72bd6e89714aeb909b3e354a842a9bb8b56cd0eded21df8a199598b31228a49e0bd7e95ce1053f7c5b28acb543a68707600e3ce89822ee32021",
-            "input_index": 0
-          }
-        ],
-        "outputs": [
-          {
-            "output_index": 0,
-            "amount": 9500,
-            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
-            "script": "51202768c88aeea223225ba3ad84e786352f9829d2d3e9378a393a0bff59af87cdd0"
-          }
-        ]
-      }
-    },
-    {
-      "description": "ecdh coverage: only one ineligible P2MS input when PSBT_OUT_SCRIPT set for sp output",
-      "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBAQYBAAABDiBPa2xI91PQstsuV3qY9lLMD4wBpxZ0Jhhhb5ag+ezmZwEPBAAAAAABASughgEAAAAAACIAIOr39e5jDu+omlGHtlFF4GmTiHzQv1oD8JZFgXkxw/hiAQVHUiEDaGidhEg6mw9BaLYu3+hU5d5PRyw42+0S4nN0susnfjohArPI8nEqzmYLPLqq/KShgFDY2qzp8YMkjzj0SWjwUgPjUq4BEAT+////AAEDCJBfAQAAAAAAAQQiUSDN452LBbSW+PGPILJ9CvmjIzMJ4EciGeCBP/O103h+KQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
+      "description": "ecdh coverage: only one ineligible P2SH multisig input when PSBT_OUT_SCRIPT set for sp output",
+      "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBAQYBAAABDiDNOBpFUI/j2cq2O34PcEoPVp2/1VqYEC2eozruYht19AEPBAAAAAABAFMCAAAAAXyoMfPUiQn+aMsOqqoR+Hc97n6McwhTN1kOJLsGOQ20AAAAAAD/////AaCGAQAAAAAAF6kU2OZohxTu7Qqi7dSJqhyjwXFwHk2HAAAAAAEER1IhAr5Ar99ismPLfe4rmF0cOP5BsZlNKwUHU0PRcsIY6rHEIQJ6R5JT0AogWhCpQ483IBm582TgqDaAC/g529KOfOa5VVKuARAE/v///wABAwiQXwEAAAAAAAEEIlEgzeOdiwW0lvjxjyCyfQr5oyMzCeBHIhnggT/ztdN4fikBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
           {
             "input_index": 0,
             "private_key": "",
             "public_key": "",
-            "prevout_txid": "4f6b6c48f753d0b2db2e577a98f652cc0f8c01a716742618616f96a0f9ece667",
+            "prevout_txid": "cd381a45508fe3d9cab63b7e0f704a0f569dbfd55a98102d9ea33aee621b75f4",
             "prevout_index": 0,
-            "prevout_scriptpubkey": "52210368689d84483a9b0f4168b62edfe854e5de4f472c38dbed12e27374b2eb277e3a2102b3c8f2712ace660b3cbaaafca4a18050d8daace9f183248f38f44968f05203e352ae",
+            "prevout_scriptpubkey": "a914d8e6688714eeed0aa2edd489aa1ca3c171701e4d87",
             "amount": 100000,
-            "witness_utxo": "a086010000000000220020eaf7f5ee630eefa89a5187b65145e06993887cd0bf5a03f09645817931c3f862",
+            "non_witness_utxo": "02000000017ca831f3d48909fe68cb0eaaaa11f8773dee7e8c73085337590e24bb06390db40000000000ffffffff01a08601000000000017a914d8e6688714eeed0aa2edd489aa1ca3c171701e4d8700000000",
             "sequence": 4294967294,
             "signed": false
           }
@@ -441,6 +405,42 @@
       }
     },
     {
+      "description": "output scripts: P2TR input with NUMS internal key cannot derive sp output",
+      "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBAQYBAAABDiAT8Qa2S1e1sTdvn2xHGQ9AzAazvty4qrqXhQqz1/Z9AgEPBAAAAAABASsQJwAAAAAAACJRIFCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAAQMEAQAAAAEQBP7///8BFyBQkpt0waBJVLeLS2A16XpeB4paDyjsltVHv+6azoA6wCIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIHCUAAAAAAAABBCJRICdoyIruoiMiW6OthOeGNS+YKdLT6TeKOToL/1mvh83QAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
+            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
+            "prevout_txid": "13f106b64b57b5b1376f9f6c47190f40cc06b3bedcb8aaba97850ab3d7f67d02",
+            "prevout_index": 0,
+            "prevout_scriptpubkey": "512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0",
+            "amount": 10000,
+            "witness_utxo": "102700000000000022512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe068",
+            "ecdh_share": "03eca4ff11b728e2e0f60ce6222943a6ff55b9d95f627bf9a99d084bc872d50a5b",
+            "dleq_proof": "8a13b3985545f72bd6e89714aeb909b3e354a842a9bb8b56cd0eded21df8a199598b31228a49e0bd7e95ce1053f7c5b28acb543a68707600e3ce89822ee32021",
+            "input_index": 0
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 9500,
+            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
+            "script": "51202768c88aeea223225ba3ad84e786352f9829d2d3e9378a393a0bff59af87cdd0"
+          }
+        ]
+      }
+    },
+    {
       "description": "output scripts: PSBT_OUT_SCRIPT does not match derived sp output",
       "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBAQYBAAABDiAYpxdmOwurFLEqGncTI/8eQHndUy5d0T4o6hCBxwCYSgEPBAAAAAABAR+ghgEAAAAAABYAFCKactNKZFvTSWu79Qu7gckGP0+UAQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIGHMBAAAAAAABBCJRIM3jnYsFtJb48Y8gsn0K+aMjMwngRyIZ4IE/87XTeH4pAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
@@ -581,7 +581,7 @@
             "prevout_index": 0,
             "prevout_scriptpubkey": "76a9141e2ad7872d329413a56df0968be338222783163b88ac",
             "amount": 100000,
-            "witness_utxo": "0200000001f4c212d5aed1e7f6ff633f2ce09c647c57bedd930314d98de77503d58e940b330000000000ffffffff01a0860100000000001976a9141e2ad7872d329413a56df0968be338222783163b88ac00000000",
+            "non_witness_utxo": "0200000001f4c212d5aed1e7f6ff633f2ce09c647c57bedd930314d98de77503d58e940b330000000000ffffffff01a0860100000000001976a9141e2ad7872d329413a56df0968be338222783163b88ac00000000",
             "sequence": 4294967294,
             "signed": true
           }
@@ -1034,7 +1034,7 @@
             "prevout_index": 0,
             "prevout_scriptpubkey": "a914f45f8cca268ec26e4bbe899170f138250d7cf55e87",
             "amount": 150000,
-            "witness_utxo": "020000000140e6faa61268f17a10101d62553582882ae4858bee13363db80fdf281f825ffc0000000000ffffffff01f04902000000000017a914f45f8cca268ec26e4bbe899170f138250d7cf55e8700000000",
+            "non_witness_utxo": "020000000140e6faa61268f17a10101d62553582882ae4858bee13363db80fdf281f825ffc0000000000ffffffff01f04902000000000017a914f45f8cca268ec26e4bbe899170f138250d7cf55e8700000000",
             "sequence": 4294967294,
             "signed": false
           }
@@ -1082,7 +1082,7 @@
             "prevout_index": 0,
             "prevout_scriptpubkey": "a914f45f8cca268ec26e4bbe899170f138250d7cf55e87",
             "amount": 150000,
-            "witness_utxo": "020000000140e6faa61268f17a10101d62553582882ae4858bee13363db80fdf281f825ffc0000000000ffffffff01f04902000000000017a914f45f8cca268ec26e4bbe899170f138250d7cf55e8700000000",
+            "non_witness_utxo": "020000000140e6faa61268f17a10101d62553582882ae4858bee13363db80fdf281f825ffc0000000000ffffffff01f04902000000000017a914f45f8cca268ec26e4bbe899170f138250d7cf55e8700000000",
             "sequence": 4294967294,
             "signed": false
           }
@@ -1547,7 +1547,7 @@
             "prevout_index": 0,
             "prevout_scriptpubkey": "76a914569bf311e68a383767b43f83042dfabe60093ede88ac",
             "amount": 100000,
-            "witness_utxo": "02000000012a34ac1b0db77a8198c1e29002cc47bbfcd6ed830960304d2c9a3ab548486b5d0000000000ffffffff01a0860100000000001976a914569bf311e68a383767b43f83042dfabe60093ede88ac00000000",
+            "non_witness_utxo": "02000000012a34ac1b0db77a8198c1e29002cc47bbfcd6ed830960304d2c9a3ab548486b5d0000000000ffffffff01a0860100000000001976a914569bf311e68a383767b43f83042dfabe60093ede88ac00000000",
             "sequence": 4294967294,
             "signed": true
           }
