@@ -1327,9 +1327,8 @@ class PSBTBuilder:
                     scan_key_id, (scan_pub, _) = next(iter(scan_keys.items()))
                     i = inp["input_index"]
                     # Create fake ECDH share
-                    fake_ecdh_bytes = (
-                        b"\x02" + hashlib.sha256(f"fake_ecdh_{i}".encode()).digest()
-                    )
+                    scalar = int.from_bytes(hashlib.sha256(f"fake_ecdh_{i}".encode()).digest(), 'big') % GE.ORDER
+                    fake_ecdh_bytes = (scalar * G).to_bytes_compressed()
                     fake_dleq = b"\x00" * 64
 
                     add_raw_input_field(

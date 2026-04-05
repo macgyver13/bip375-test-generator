@@ -16,6 +16,8 @@ test_cases:
         scan_key_id: "default"
     scan_keys:
       - key_id: "default"
+    control_override:
+      inject_ineligible_ecdh: True
 
   - description: "can finalize: two inputs using global ECDH share - only eligible inputs contribute shares (P2SH excluded)"
     validation_result: "valid"
