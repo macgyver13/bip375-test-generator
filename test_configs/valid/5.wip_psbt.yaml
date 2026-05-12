@@ -5,7 +5,7 @@ test_cases:
     validation_result: "valid"
     inputs:
       - type: "p2tr"
-        amount: 100000
+        amount: 200000
       - type: "p2tr"
         amount: 10000
     outputs:
