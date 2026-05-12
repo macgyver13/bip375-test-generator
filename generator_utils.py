@@ -1,76 +1,91 @@
 #!/usr/bin/env python3
 """
-Self-contained utilities for the BIP-375 test vector generator.
+Utilities for the BIP-375 test vector generator.
 
-Provides BIP-352 crypto wrapper, PSBT key type constants, witness UTXO
-construction, ECDSA signing, and unique ID computation — everything the
-generator needs not provided by spdk_psbt.
+Provides the BIP-352 crypto wrappers (spdk_psbt), PSBT key type constants,
+deterministic key generation, and transaction signing. Bitcoin primitive
+assembly (transactions, scripts, sighash, signing) is delegated to the
+vendored Bitcoin Core test_framework; only the BIP-375 silent-payment
+specifics remain custom here.
 
-txid handling: All txids in our data structures are in internal byte order (hash digest).
-When constructing PSBTs, we convert to display byte order (RPC format) as needed.
+txid handling: All txids in our data structures are in internal byte order
+(hash digest). When constructing PSBTs we convert to display byte order
+(RPC format) as needed.
 """
 
 from dataclasses import dataclass
 import hashlib
-import hmac
-import struct
 from typing import Dict, List, Optional, Tuple
 
 import spdk_psbt
 
-# secp256k1 reference implementation
-from secp256k1 import GE, G
+from test_framework import psbt as _tf_psbt
+from test_framework.crypto.secp256k1 import GE, G
+from test_framework.key import (
+    ECKey,
+    TaggedHash,
+    compute_xonly_pubkey,
+    sign_schnorr,
+    tweak_add_privkey,
+)
+from test_framework.messages import (
+    COutPoint,
+    CTransaction,
+    CTxIn,
+    CTxOut,
+    hash256,
+    uint256_from_str,
+)
+from test_framework.script import (
+    SIGHASH_ALL,
+    LegacySignatureHash,
+    SegwitV0SignatureHash,
+    TaprootSignatureHash,
+)
+from test_framework.script_util import keyhash_to_p2pkh_script
 
 
 # ============================================================================
-# PSBT Key Type Constants (from BIP 174/370/375)
+# PSBT Key Type Constants
 # ============================================================================
 
 
 class PSBTKeyType:
-    """PSBT Key Type Constants for BIP 174/370/375"""
+    """PSBT key type constants.
 
-    # Global fields
-    PSBT_GLOBAL_UNSIGNED_TX = 0x00
-    PSBT_GLOBAL_XPUB = 0x01
-    PSBT_GLOBAL_TX_VERSION = 0x02
-    PSBT_GLOBAL_FALLBACK_LOCKTIME = 0x03
-    PSBT_GLOBAL_INPUT_COUNT = 0x04
-    PSBT_GLOBAL_OUTPUT_COUNT = 0x05
-    PSBT_GLOBAL_TX_MODIFIABLE = 0x06
-    PSBT_GLOBAL_VERSION = 0xFB
-    PSBT_GLOBAL_PROPRIETARY = 0xFC
-    # BIP 375 Silent Payment global fields
+    Standard BIP-174/370 fields are sourced from the vendored Bitcoin Core
+    test_framework; the BIP-375 silent-payment fields below have no Core
+    equivalent and are defined from the BIP.
+    """
+
+    # Standard BIP-174/370 fields (Bitcoin Core test_framework)
+    PSBT_GLOBAL_UNSIGNED_TX = _tf_psbt.PSBT_GLOBAL_UNSIGNED_TX
+    PSBT_GLOBAL_TX_VERSION = _tf_psbt.PSBT_GLOBAL_TX_VERSION
+    PSBT_GLOBAL_TX_MODIFIABLE = _tf_psbt.PSBT_GLOBAL_TX_MODIFIABLE
+    PSBT_GLOBAL_VERSION = _tf_psbt.PSBT_GLOBAL_VERSION
+
+    PSBT_IN_NON_WITNESS_UTXO = _tf_psbt.PSBT_IN_NON_WITNESS_UTXO
+    PSBT_IN_WITNESS_UTXO = _tf_psbt.PSBT_IN_WITNESS_UTXO
+    PSBT_IN_PARTIAL_SIG = _tf_psbt.PSBT_IN_PARTIAL_SIG
+    PSBT_IN_SIGHASH_TYPE = _tf_psbt.PSBT_IN_SIGHASH_TYPE
+    PSBT_IN_REDEEM_SCRIPT = _tf_psbt.PSBT_IN_REDEEM_SCRIPT
+    PSBT_IN_WITNESS_SCRIPT = _tf_psbt.PSBT_IN_WITNESS_SCRIPT
+    PSBT_IN_BIP32_DERIVATION = _tf_psbt.PSBT_IN_BIP32_DERIVATION
+    PSBT_IN_PREVIOUS_TXID = _tf_psbt.PSBT_IN_PREVIOUS_TXID
+    PSBT_IN_OUTPUT_INDEX = _tf_psbt.PSBT_IN_OUTPUT_INDEX
+    PSBT_IN_SEQUENCE = _tf_psbt.PSBT_IN_SEQUENCE
+    PSBT_IN_TAP_KEY_SIG = _tf_psbt.PSBT_IN_TAP_KEY_SIG
+    PSBT_IN_TAP_INTERNAL_KEY = _tf_psbt.PSBT_IN_TAP_INTERNAL_KEY
+
+    PSBT_OUT_BIP32_DERIVATION = _tf_psbt.PSBT_OUT_BIP32_DERIVATION
+    PSBT_OUT_AMOUNT = _tf_psbt.PSBT_OUT_AMOUNT
+    PSBT_OUT_SCRIPT = _tf_psbt.PSBT_OUT_SCRIPT
+
+    # BIP-375 silent payment fields (no Bitcoin Core equivalent)
     PSBT_GLOBAL_SP_ECDH_SHARE = 0x07
     PSBT_GLOBAL_SP_DLEQ = 0x08
-
-    # Input fields
-    PSBT_IN_NON_WITNESS_UTXO = 0x00
-    PSBT_IN_WITNESS_UTXO = 0x01
-    PSBT_IN_PARTIAL_SIG = 0x02
-    PSBT_IN_SIGHASH_TYPE = 0x03
-    PSBT_IN_REDEEM_SCRIPT = 0x04
-    PSBT_IN_WITNESS_SCRIPT = 0x05
-    PSBT_IN_BIP32_DERIVATION = 0x06
-    PSBT_IN_FINAL_SCRIPTSIG = 0x07
-    PSBT_IN_TAP_INTERNAL_KEY = 0x17
-    PSBT_IN_FINAL_SCRIPTWITNESS = 0x08
-    PSBT_IN_PREVIOUS_TXID = 0x0E
-    PSBT_IN_OUTPUT_INDEX = 0x0F
-    PSBT_IN_SEQUENCE = 0x10
-    PSBT_IN_PROPRIETARY = 0xFC
-    # BIP 375 Silent Payment input fields
     PSBT_IN_SP_ECDH_SHARE = 0x1D
     PSBT_IN_SP_DLEQ = 0x1E
-
-    # Output fields
-    PSBT_OUT_REDEEM_SCRIPT = 0x00
-    PSBT_OUT_WITNESS_SCRIPT = 0x01
-    PSBT_OUT_BIP32_DERIVATION = 0x02
-    PSBT_OUT_AMOUNT = 0x03
-    PSBT_OUT_SCRIPT = 0x04
-    PSBT_OUT_PROPRIETARY = 0xFC
-    # BIP 375 Silent Payment output fields
     PSBT_OUT_SP_V0_INFO = 0x09
     PSBT_OUT_SP_V0_LABEL = 0x0A
 
@@ -216,36 +231,8 @@ class Wallet:
 
 
 # ============================================================================
-# Serialization helpers
+# BIP-352 Cryptographic Functions (spdk_psbt wrappers)
 # ============================================================================
-
-
-def compact_size_uint(n: int) -> bytes:
-    if n < 0xFD:
-        return struct.pack("<B", n)
-    elif n <= 0xFFFF:
-        return b"\xfd" + struct.pack("<H", n)
-    elif n <= 0xFFFFFFFF:
-        return b"\xfe" + struct.pack("<L", n)
-    else:
-        return b"\xff" + struct.pack("<Q", n)
-
-
-def create_witness_utxo(amount: int, script_pubkey: bytes) -> bytes:
-    """Create witness UTXO field value: amount (8 LE) + compact_size + script."""
-    return struct.pack("<Q", amount) + compact_size_uint(len(script_pubkey)) + script_pubkey
-
-
-# ============================================================================
-# BIP-352 Cryptographic Functions
-# ============================================================================
-
-
-def TaggedHash(tag: str, data: bytes) -> bytes:
-    ss = hashlib.sha256(tag.encode()).digest()
-    ss += ss
-    ss += data
-    return hashlib.sha256(ss).digest()
 
 
 def apply_label_to_spend_key(
@@ -265,7 +252,9 @@ def compute_bip352_output_script(
     k: int = 0,
 ) -> bytes:
     """Compute BIP-352 silent payment output script (P2TR)."""
-    serialized_outpoints = [txid + struct.pack("<I", idx) for txid, idx in outpoints]
+    serialized_outpoints = [
+        txid + idx.to_bytes(4, "little") for txid, idx in outpoints
+    ]
     smallest_outpoint = min(serialized_outpoints)
 
     input_hash = spdk_psbt.bip352_compute_input_hash(smallest_outpoint, summed_pubkey_bytes)
@@ -393,7 +382,7 @@ def verify_receiver_detects_outputs(
 
 
 # ============================================================================
-# ECDSA Signing (for error-injection test cases)
+# Transaction Signing (for error-injection test cases)
 # ============================================================================
 
 
@@ -413,116 +402,29 @@ class UTXO:
         return bytes.fromhex(self.script_pubkey)
 
 
-def _deterministic_nonce(private_key: int, message_hash: bytes) -> int:
-    """RFC 6979 deterministic nonce for ECDSA."""
-    private_key_bytes = private_key.to_bytes(32, "big")
-    v = b"\x01" * 32
-    k = b"\x00" * 32
-    k = hmac.new(
-        k, v + b"\x00" + private_key_bytes + message_hash, hashlib.sha256
-    ).digest()
-    v = hmac.new(k, v, hashlib.sha256).digest()
-    k = hmac.new(
-        k, v + b"\x01" + private_key_bytes + message_hash, hashlib.sha256
-    ).digest()
-    v = hmac.new(k, v, hashlib.sha256).digest()
-    while True:
-        v = hmac.new(k, v, hashlib.sha256).digest()
-        candidate_k = int.from_bytes(v, "big")
-        if 1 <= candidate_k < GE.ORDER:
-            return candidate_k
-        k = hmac.new(k, v + b"\x00", hashlib.sha256).digest()
-        v = hmac.new(k, v, hashlib.sha256).digest()
+def _build_tx(inputs: List[UTXO], outputs: List[dict]) -> CTransaction:
+    """Build a CTransaction (version 2) from UTXO inputs and output dicts.
 
-
-def _ecdsa_sign(private_key: int, message_hash: bytes) -> Tuple[int, int]:
-    """ECDSA sign producing (r, s) with low-S."""
-    z = int.from_bytes(message_hash, "big")
-    while True:
-        k = _deterministic_nonce(private_key, message_hash)
-        R = k * G
-        if R.infinity:
-            continue
-        r = int(R.x) % GE.ORDER
-        if r == 0:
-            continue
-        k_inv = pow(k, -1, GE.ORDER)
-        s = (k_inv * (z + r * private_key)) % GE.ORDER
-        if s == 0:
-            continue
-        if s > GE.ORDER // 2:
-            s = GE.ORDER - s
-        return (r, s)
-
-
-def _der_encode_signature(r: int, s: int) -> bytes:
-    """DER-encode ECDSA signature."""
-
-    def encode_integer(value: int) -> bytes:
-        byte_length = (value.bit_length() + 7) // 8 or 1
-        value_bytes = value.to_bytes(byte_length, "big")
-        if value_bytes[0] & 0x80:
-            value_bytes = b"\x00" + value_bytes
-        return b"\x02" + bytes([len(value_bytes)]) + value_bytes
-
-    r_enc = encode_integer(r)
-    s_enc = encode_integer(s)
-    content = r_enc + s_enc
-    return b"\x30" + bytes([len(content)]) + content
-
-
-def _sighash_all(
-    inputs: List[UTXO],
-    outputs: List[dict],
-    input_index: int,
-    script_code: bytes,
-    amount: int,
-) -> bytes:
-    """BIP 143 SIGHASH_ALL for P2WPKH input signing."""
-    version = struct.pack("<I", 2)
-
-    prevouts_data = b""
+    inp.txid is internal byte order (hash digest); COutPoint stores it as the
+    little-endian integer it serializes back to, so prevout serialization
+    commits to the same internal-order txid.
+    """
+    tx = CTransaction()
+    tx.version = 2
+    tx.nLockTime = 0
     for inp in inputs:
-        prevouts_data += bytes.fromhex(inp.txid)[::-1]
-        prevouts_data += struct.pack("<I", inp.vout)
-    prevouts_hash = hashlib.sha256(hashlib.sha256(prevouts_data).digest()).digest()
-
-    sequences_data = b""
-    for inp in inputs:
-        sequences_data += struct.pack("<I", inp.sequence)
-    sequences_hash = hashlib.sha256(hashlib.sha256(sequences_data).digest()).digest()
-
-    current_input = inputs[input_index]
-    outpoint = bytes.fromhex(current_input.txid)[::-1] + struct.pack(
-        "<I", current_input.vout
-    )
-    script_code_with_length = bytes([len(script_code)]) + script_code
-    amount_bytes = struct.pack("<Q", amount)
-    sequence = struct.pack("<I", current_input.sequence)
-
-    outputs_data = b""
+        prevout = COutPoint(uint256_from_str(bytes.fromhex(inp.txid)), inp.vout)
+        tx.vin.append(CTxIn(prevout, b"", inp.sequence))
     for out in outputs:
-        outputs_data += struct.pack("<Q", out["amount"])
-        script = bytes.fromhex(out.get("script_pubkey", ""))
-        outputs_data += bytes([len(script)]) + script
-    outputs_hash = hashlib.sha256(hashlib.sha256(outputs_data).digest()).digest()
+        spk = bytes.fromhex(out.get("script_pubkey", "") or "")
+        tx.vout.append(CTxOut(out["amount"], spk))
+    return tx
 
-    locktime = struct.pack("<I", 0)
-    sighash_type = struct.pack("<I", 1)
 
-    preimage = (
-        version
-        + prevouts_hash
-        + sequences_hash
-        + outpoint
-        + script_code_with_length
-        + amount_bytes
-        + sequence
-        + outputs_hash
-        + locktime
-        + sighash_type
-    )
-    return hashlib.sha256(hashlib.sha256(preimage).digest()).digest()
+def _eckey(private_key: int) -> ECKey:
+    k = ECKey()
+    k.set(int(private_key).to_bytes(32, "big"), True)
+    return k
 
 
 def sign_p2wpkh_input(
@@ -533,11 +435,55 @@ def sign_p2wpkh_input(
     pubkey_hash: bytes,
     amount: int,
 ) -> bytes:
-    """Sign a P2WPKH input. Returns DER signature + SIGHASH_ALL byte."""
-    script_code = b"\x76\xa9\x14" + pubkey_hash + b"\x88\xac"
-    sighash = _sighash_all(inputs, outputs, input_index, script_code, amount)
-    r, s = _ecdsa_sign(private_key, sighash)
-    return _der_encode_signature(r, s) + b"\x01"
+    """Sign a P2WPKH input (BIP-143). Returns DER signature + SIGHASH_ALL byte."""
+    tx = _build_tx(inputs, outputs)
+    script_code = keyhash_to_p2pkh_script(pubkey_hash)
+    sighash = SegwitV0SignatureHash(script_code, tx, input_index, SIGHASH_ALL, amount)
+    sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
+    return sig + bytes([SIGHASH_ALL])
+
+
+def sign_p2pkh_input(
+    private_key: int,
+    inputs: List[UTXO],
+    outputs: List[dict],
+    input_index: int,
+    pubkey_hash: bytes,
+) -> bytes:
+    """Sign a P2PKH input (legacy). Returns DER signature + SIGHASH_ALL byte."""
+    tx = _build_tx(inputs, outputs)
+    script = keyhash_to_p2pkh_script(pubkey_hash)
+    sighash, err = LegacySignatureHash(script, tx, input_index, SIGHASH_ALL)
+    assert err is None
+    sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
+    return sig + bytes([SIGHASH_ALL])
+
+
+def sign_p2tr_input(
+    private_key: int,
+    inputs: List[UTXO],
+    outputs: List[dict],
+    input_index: int,
+) -> bytes:
+    """Sign a P2TR key-path input (BIP-341).
+
+    Applies the key-path tweak with an empty script tree and produces a
+    64-byte Schnorr signature with an explicit SIGHASH_ALL trailing byte.
+    """
+    tx = _build_tx(inputs, outputs)
+    spent_utxos = [
+        CTxOut(inp.amount, bytes.fromhex(inp.script_pubkey)) for inp in inputs
+    ]
+    sighash = TaprootSignatureHash(
+        tx, spent_utxos, SIGHASH_ALL, input_index=input_index
+    )
+
+    priv_bytes = int(private_key).to_bytes(32, "big")
+    xonly, _ = compute_xonly_pubkey(priv_bytes)
+    tweak = TaggedHash("TapTweak", xonly)
+    tweaked = tweak_add_privkey(priv_bytes, tweak)
+    sig = sign_schnorr(tweaked, sighash)
+    return sig + bytes([SIGHASH_ALL])
 
 
 # ============================================================================
@@ -552,32 +498,28 @@ def compute_unique_id(
     """Compute BIP-375 PSBT unique identifier from data structures.
 
     Uses SP_V0_INFO bytes for silent payment outputs (BIP-375 extension)
-    and output script for regular outputs.  Returns hex txid in display order.
+    and the output script for regular outputs. Returns hex txid in display order.
     """
-    tx_bytes = struct.pack("<I", 2)  # version
-    tx_bytes += bytes([len(input_data)])
+    tx = CTransaction()
+    tx.version = 2
+    tx.nLockTime = 0
 
     for inp in input_data:
-        tx_bytes += inp["prevout_txid"]  # 32 bytes
-        tx_bytes += struct.pack("<I", inp["prevout_index"])
-        tx_bytes += b"\x00"  # empty scriptSig
-        tx_bytes += struct.pack("<I", 0)  # sequence = 0 per BIP-370
-
-    tx_bytes += bytes([len(output_data)])
+        prevout = COutPoint(
+            uint256_from_str(inp["previous_txid"]), inp["prevout_index"]
+        )
+        # sequence = 0 per BIP-370
+        tx.vin.append(CTxIn(prevout, b"", 0))
 
     for out in output_data:
-        tx_bytes += struct.pack("<Q", out["amount"])
-        if "_sp_info_bytes" in out:
-            # Silent payment: use SP_V0_INFO as script placeholder
-            sp_info = out["_sp_info_bytes"]
-            tx_bytes += bytes([len(sp_info)]) + sp_info
+        # For BIP-375 silent payment outputs, use the SP_V0_INFO bytes as the script
+        if "sp_v0_info" in out:
+            script = out["sp_v0_info"]
         elif "script" in out:
             script = out["script"]
-            tx_bytes += bytes([len(script)]) + script
         else:
-            tx_bytes += b"\x00"
+            script = b""
+        tx.vout.append(CTxOut(out["amount"], script))
 
-    tx_bytes += struct.pack("<I", 0)  # locktime
-
-    txid = hashlib.sha256(hashlib.sha256(tx_bytes).digest()).digest()
+    txid = hash256(tx.serialize_without_witness())
     return txid[::-1].hex()

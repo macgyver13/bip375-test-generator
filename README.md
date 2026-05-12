@@ -39,6 +39,14 @@ python test_generator.py
 
 Output: `bip375_test_vectors.json`
 
+### Vendored Bitcoin Core test_framework
+
+Bitcoin transaction, script, sighash, signing, and secp256k1 primitives are
+provided by a vendored snapshot of Bitcoin Core's `test/functional/test_framework`
+in `test_framework/` (origin commit `d7ed2840ac`). `util.py` is trimmed to the
+helpers the vendored modules actually use. Only the BIP-375 silent-payment
+specifics remain custom in `generator_utils.py`.
+
 ---
 
 ## YAML Test Configuration
