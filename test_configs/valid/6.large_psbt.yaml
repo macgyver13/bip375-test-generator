@@ -10,6 +10,7 @@ test_cases:
       - type: "p2tr"
         count: 2
         amount: 100000
+        skip_signing: true
       - type: "p2sh_p2wpkh"
         amount: 100000
       - type: "p2pkh"

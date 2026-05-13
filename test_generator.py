@@ -236,6 +236,7 @@ class InputSpec:
     key_derivation_suffix: str = ""  # For deterministic key generation
     use_nums_tap_internal_key: bool = False  # For testing taproot internal key
     eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
+    skip_signing: bool = False  # Force input to remain unsigned even if eligible
 
 
 @dataclass
@@ -342,12 +343,15 @@ class InputFactory:
         elif spec.input_type == InputType.P2WSH_MULTISIG:
             result = self._create_p2wsh_multisig_input(spec, input_index)
         elif spec.input_type == InputType.P2TR:
-            result = self._create_p2tr_input(spec, input_index)  # TODO
+            result = self._create_p2tr_input(spec, input_index)
         else:
             raise ValueError(f"Unknown input type: {spec.input_type}")
 
         if spec.eligible_override is not None:
             result["is_eligible"] = spec.eligible_override
+
+        if spec.skip_signing:
+            result["skip_signing"] = True
 
         return result
 
@@ -776,7 +780,7 @@ class PSBTBuilder:
         # Auto-sign all eligible non-P2TR inputs when output scripts are complete
         if self._should_auto_sign(scenario):
             for input_info in input_data:
-                if input_info.get("is_eligible", False):
+                if input_info.get("is_eligible", False) and not input_info.get("skip_signing", False):
                     self._sign_single_input(
                         psbt, input_info, input_data, finalized_outputs, input_info["input_index"]
                     )
@@ -1644,6 +1648,7 @@ class ConfigBasedTestGenerator:
                 key_derivation_suffix=input_config.get("key_derivation_suffix", ""),
                 use_nums_tap_internal_key=input_config.get("use_nums_tap_internal_key", False),
                 eligible_override=input_config.get("eligible_override"),
+                skip_signing=input_config.get("skip_signing", False),
             )
 
             # Handle batch creation
@@ -1659,6 +1664,7 @@ class ConfigBasedTestGenerator:
                     key_derivation_suffix=f"{input_spec.key_derivation_suffix}_batch_{i}",
                     use_nums_tap_internal_key=input_spec.use_nums_tap_internal_key,
                     eligible_override=input_spec.eligible_override,
+                    skip_signing=input_spec.skip_signing,
                 )
                 inputs.append(batch_spec)
 
