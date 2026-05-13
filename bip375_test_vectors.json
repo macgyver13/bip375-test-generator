@@ -904,7 +904,7 @@
           {
             "output_index": 0,
             "amount": 100000,
-            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
+            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe06803ea8f228be2b716dacdefcb2810072874f00a476f5c07bd051917126cc64b3def",
             "sp_v0_label": 1,
             "script": "51202268cf529959f30ac8f7a5471ca4c67536a51f0e5b168af03eed4715edcc72e0"
           },
@@ -958,7 +958,7 @@
           {
             "output_index": 1,
             "amount": 190000,
-            "sp_v0_info": "025f0ec1b38d9984a7eb62f15be403020410f142edf4d69e363f5615afd2a6b6cd037cd462358c69c40525247a8793944d9e67484b248fd84a1e7ee4f920b4da41b5",
+            "sp_v0_info": "025f0ec1b38d9984a7eb62f15be403020410f142edf4d69e363f5615afd2a6b6cd02be10512a9553641e407ad8e509a3418452a902e8556a0dba2e983f5e00f7bc51",
             "sp_v0_label": 0,
             "script": "5120761dbd34929884a66729ebdcdbacf167482df62c14f098e4ef18d70fe06aefd0"
           }
@@ -995,14 +995,14 @@
           {
             "output_index": 0,
             "amount": 100000,
-            "sp_v0_info": "028b790e0987fde9f0d12398eb6be30c7376793c647865a2a02f2efc960d96656803b44347335c63f505e55e268ab280f318b4a6aa14492ff379c3668a1f54ef8c9b",
+            "sp_v0_info": "028b790e0987fde9f0d12398eb6be30c7376793c647865a2a02f2efc960d96656803962461b6e35df754d00d486dc39decc20271845076614e5c0ed2c90f23d3e9be",
             "sp_v0_label": 3,
             "script": "5120caf732f41e7551909c94a335d1578ea7b766027b886cdd1c1701d9bfc6b78488"
           },
           {
             "output_index": 1,
             "amount": 190000,
-            "sp_v0_info": "028b790e0987fde9f0d12398eb6be30c7376793c647865a2a02f2efc960d96656803b44347335c63f505e55e268ab280f318b4a6aa14492ff379c3668a1f54ef8c9b",
+            "sp_v0_info": "028b790e0987fde9f0d12398eb6be30c7376793c647865a2a02f2efc960d966568035a5737d4c6782617cc6b0c496bb2bc62555a32b254244fbc9c9c035df469e5ab",
             "sp_v0_label": 1,
             "script": "51204d07a0d3b0f61a7c5efe36c2c3c587c8b698418546008cf819bbda4ce3181221"
           }

@@ -675,7 +675,7 @@ class OutputFactory:
             "output_type": OutputType.SILENT_PAYMENT,
             "amount": spec.amount,
             "scan_pubkey": scan_pub,
-            "spend_pubkey": spend_pub,
+            "base_spend_pubkey": spend_pub,
             "label": spec.label,
             "force_wrong_script": spec.force_wrong_script,
             "force_k_index": spec.force_k_index,
@@ -1430,15 +1430,16 @@ class PSBTBuilder:
         """
         idx = output_info["output_index"]
         scan_pub = output_info["scan_pubkey"]
-        original_spend_pub = output_info["spend_pubkey"]
+        base_spend_pub = output_info["base_spend_pubkey"]
         output_script: Optional[bytes] = None
 
         # Apply BIP-352 label if specified
-        spend_pub = original_spend_pub
+        spend_pub = base_spend_pub
         if output_info.get("label") is not None:
             spend_pub = self._compute_labeled_spend_key(
-                original_spend_pub, output_info["label"]
+                base_spend_pub, output_info["label"]
             )
+        output_info["spend_pubkey"] = spend_pub
 
         if output_info["force_wrong_script"]:
             # Force wrong script for address mismatch tests
@@ -1516,8 +1517,6 @@ class PSBTBuilder:
                 sp_info = sp_info[:65]  # Wrong size (65 instead of 66)
 
             add_raw_output_field(psbt, idx, PSBTKeyType.PSBT_OUT_SP_V0_INFO, b"", sp_info)
-            # Store for compute_unique_id
-            output_info["_sp_info_bytes"] = sp_info
 
         # Add label if specified (this will create invalid PSBT if SP_V0_INFO is missing)
         if output_info.get("label") is not None:
@@ -1536,7 +1535,7 @@ class PSBTBuilder:
     ):
         """Compute BIP-352 labeled spend key: B_m = B_spend + hash_BIP0352/Label(b_scan || m) * G"""
         scan_priv_bytes = self.wallet.scan_priv.to_bytes(32, "big")
-        return apply_label_to_spend_key(spend_pub, scan_priv_bytes, label)
+        return PublicKey(apply_label_to_spend_key(spend_pub, scan_priv_bytes, label))
 
     def _add_output_bip32_derivation(
         self, psbt: SilentPaymentPsbt, output_idx: int, input_data: List[Dict]
