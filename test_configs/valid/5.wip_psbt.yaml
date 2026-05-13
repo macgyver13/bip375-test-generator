@@ -6,8 +6,10 @@ test_cases:
     inputs:
       - type: "p2tr"
         amount: 200000
+        skip_signing: true
       - type: "p2tr"
         amount: 10000
+        skip_signing: true
     outputs:
       - type: "silent_payment"
         amount: 195000
