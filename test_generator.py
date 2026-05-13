@@ -75,13 +75,16 @@ def _make_raw_p2wpkh_input(
     amount: int = 50000,
     sequence: int = 0xFFFFFFFE,
 ) -> Dict[str, Any]:
-    """Build a raw P2WPKH input info dict (prevout, witness script, witness UTXO)."""
+    """Build a raw P2WPKH input info dict (prevout, scriptPubKey, witness UTXO)."""
     prevout_txid = hashlib.sha256(prevout_seed.encode()).digest()
-    witness_script = bytes([0x00, 0x14]) + hashlib.sha256(pub_key.bytes).digest()[:20]
-    witness_utxo = create_witness_utxo(amount, witness_script)
+    pubkey_hash = hashlib.new(
+        "ripemd160", hashlib.sha256(pub_key.bytes).digest()
+    ).digest()
+    script_pubkey = bytes([0x00, 0x14]) + pubkey_hash
+    witness_utxo = create_witness_utxo(amount, script_pubkey)
     return {
         "prevout_txid": prevout_txid,
-        "witness_script": witness_script,
+        "script_pubkey": script_pubkey,
         "witness_utxo": witness_utxo,
         "amount": amount,
         "sequence": sequence,
@@ -119,26 +122,6 @@ def _add_raw_p2wpkh_input_to_psbt(
         add_raw_input_field(
             psbt, input_index, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
         )
-
-
-def _make_input_key_entry(
-    input_index: int,
-    priv_key,
-    pub_key,
-    input_info: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Build a test-vector input_keys entry dict with hex-encoded values."""
-    return {
-        "input_index": input_index,
-        "private_key": priv_key.hex,
-        "public_key": pub_key.hex,
-        "prevout_txid": input_info["prevout_txid"].hex(),
-        "prevout_index": 0,
-        "prevout_scriptpubkey": input_info["witness_script"].hex(),
-        "amount": input_info["amount"],
-        "witness_utxo": input_info["witness_utxo"].hex(),
-        "sequence": input_info["sequence"],
-    }
 
 
 def _sorted_outpoints_and_input_map(
@@ -371,21 +354,25 @@ class InputFactory:
         # Create P2WPKH script: OP_0 OP_PUSHBYTES_20 <20-byte-hash160(pubkey)>
         # Error injection: Use segwit v2 instead of v0
         segwit_version = 0x52 if spec.use_segwit_v2 else 0x00
-        witness_script = (
-            bytes([segwit_version, 0x14])
-            + hashlib.sha256(input_pub.bytes).digest()[:20]
-        )
-        witness_utxo = create_witness_utxo(spec.amount, witness_script)
+        pubkey_hash = hashlib.new(
+            "ripemd160", hashlib.sha256(input_pub.bytes).digest()
+        ).digest()
+        script_pubkey = bytes([segwit_version, 0x14]) + pubkey_hash
+        prev_tx = self._create_prev_tx(prevout_txid, spec.amount, script_pubkey)
+        prevout_txid_final = hashlib.sha256(hashlib.sha256(prev_tx).digest()).digest()
+
+        witness_utxo = create_witness_utxo(spec.amount, script_pubkey)
 
         return {
             "input_index": input_index,
             "input_type": InputType.P2WPKH,
             "private_key": input_priv,
             "public_key": input_pub,
-            "prevout_txid": prevout_txid,
+            "prevout_txid": prevout_txid_final,
             "prevout_index": 0,
-            "witness_script": witness_script,
+            "script_pubkey": script_pubkey,
             "witness_utxo": witness_utxo,
+            "prev_tx": prev_tx,
             "amount": spec.amount,
             "sequence": spec.sequence,
             "is_eligible": True,
@@ -555,15 +542,19 @@ class InputFactory:
         prevout_txid = hashlib.sha256(
             f"{self.base_seed}_p2wsh_prevout_{input_index}".encode()
         ).digest()
+        prev_tx = self._create_prev_tx(prevout_txid, spec.amount, script_pubkey)
+        prevout_txid_final = hashlib.sha256(hashlib.sha256(prev_tx).digest()).digest()
+
         witness_utxo = create_witness_utxo(spec.amount, script_pubkey)
 
         result = self._multisig_common_fields(keys, spec, input_index)
         result.update({
             "input_type": InputType.P2WSH_MULTISIG,
-            "prevout_txid": prevout_txid,
+            "prevout_txid": prevout_txid_final,
             "script_pubkey": script_pubkey,
             "witness_script": witness_script,
             "witness_utxo": witness_utxo,
+            "prev_tx": prev_tx,
         })
         return result
 
@@ -586,36 +577,43 @@ class InputFactory:
         if spec.use_nums_tap_internal_key:
             # NUMS point as taproot internal key: no private key exists, input is ineligible
             # for Silent Payments (cannot contribute an ECDH share).
-            witness_script = bytes([0x51, 0x20]) + NUMS_H
-            witness_utxo = create_witness_utxo(spec.amount, witness_script)
+            script_pubkey = bytes([0x51, 0x20]) + NUMS_H
+            prev_tx = self._create_prev_tx(prevout_txid, spec.amount, script_pubkey)
+            prevout_txid_final = hashlib.sha256(hashlib.sha256(prev_tx).digest()).digest()
+
+            witness_utxo = create_witness_utxo(spec.amount, script_pubkey)
             return {
                 "input_index": input_index,
                 "input_type": InputType.P2TR,
                 "private_key": input_priv,
                 "public_key": input_pub,
                 "tap_internal_key": NUMS_H,
-                "prevout_txid": prevout_txid,
+                "prevout_txid": prevout_txid_final,
                 "prevout_index": 0,
-                "witness_script": witness_script,
+                "script_pubkey": script_pubkey,
                 "witness_utxo": witness_utxo,
+                "prev_tx": prev_tx,
                 "amount": spec.amount,
                 "sequence": spec.sequence,
                 "is_eligible": False,
             }
 
         # P2TR scriptPubKey: OP_1 (0x51) + push(32) (0x20) + 32-byte x-only key
-        witness_script = bytes([0x51, 0x20]) + input_pub.bytes_xonly
-        witness_utxo = create_witness_utxo(spec.amount, witness_script)
+        script_pubkey = bytes([0x51, 0x20]) + input_pub.bytes_xonly
+        prev_tx = self._create_prev_tx(prevout_txid, spec.amount, script_pubkey)
+        prevout_txid_final = hashlib.sha256(hashlib.sha256(prev_tx).digest()).digest()
+        witness_utxo = create_witness_utxo(spec.amount, script_pubkey)
 
         return {
             "input_index": input_index,
             "input_type": InputType.P2TR,
             "private_key": input_priv,
             "public_key": input_pub,
-            "prevout_txid": prevout_txid,
+            "prevout_txid": prevout_txid_final,
             "prevout_index": 0,
-            "witness_script": witness_script,
+            "script_pubkey": script_pubkey,
             "witness_utxo": witness_utxo,
+            "prev_tx": prev_tx,
             "amount": spec.amount,
             "sequence": spec.sequence,
             "is_eligible": True,
@@ -1201,26 +1199,16 @@ class PSBTBuilder:
         output_data: List[Dict],
         input_idx: int,
     ):
-        """Sign a single P2WPKH input and add PSBT_IN_PARTIAL_SIG as raw field.
+        """Sign a single input and add the appropriate PSBT signature field.
 
         For error-injection tests (wrong sighash, segwit v2), output_data may be
         empty — signature correctness doesn't matter, only its presence.
-        For valid test vectors, pass the real output_data so SIGHASH_ALL commits
+        For valid test vectors, pass the real output_data so the sighash commits
         to the correct outputs.
-
-        P2TR signing is not yet implemented (TODO).
         """
         input_type = input_info.get("input_type")
-        if input_type == InputType.P2TR:
-            # TODO: implement P2TR (Schnorr) signing
-            return
 
-        script_bytes = input_info.get(
-            "witness_script", input_info.get("script_pubkey", b"")
-        )
-        pubkey_hash = script_bytes[2:]  # strip OP_0 + push byte
-
-        # Build UTXO list from all inputs (needed for BIP143 sighash)
+        # Build UTXO list from all inputs (needed for sighash computation)
         utxos = []
         for inp in input_data:
             utxos.append(
@@ -1228,22 +1216,31 @@ class PSBTBuilder:
                     txid=inp["prevout_txid"].hex(),
                     vout=inp["prevout_index"],
                     amount=inp["amount"],
-                    script_pubkey=inp.get(
-                        "witness_script", inp.get("script_pubkey", b"")
-                    ).hex(),
+                    script_pubkey=inp.get("script_pubkey", b"").hex(),
                     private_key=inp.get("private_key"),
                     sequence=inp.get("sequence", 0xFFFFFFFE),
                 )
             )
 
-        # Build output list for sighash commitment
+        # Build output list for sighash commitment.
+        # _add_outputs_to_psbt produces dicts with key "script_pubkey" (hex string).
         outputs = []
         for out in output_data:
-            script = out.get("script", b"")
+            script = out.get("script_pubkey", "")
             outputs.append({
                 "amount": out["amount"],
                 "script_pubkey": script.hex() if isinstance(script, bytes) else script,
             })
+
+        if input_type == InputType.P2PKH:
+            # P2PKH scriptPubKey: OP_DUP OP_HASH160 <20-byte hash> OP_EQUALVERIFY OP_CHECKSIG
+            pubkey_hash = input_info["script_pubkey"][3:-2]
+        elif input_type == InputType.P2SH_P2WPKH:
+            # Inner P2WPKH redeem_script: OP_0 <20-byte hash>
+            pubkey_hash = input_info["redeem_script"][2:]
+        else:
+            # P2WPKH script_pubkey: OP_0 <20-byte hash>
+            pubkey_hash = input_info["script_pubkey"][2:]
 
         signature = sign_p2wpkh_input(
             private_key=int(input_info["private_key"]),
@@ -1790,22 +1787,16 @@ class ConfigBasedTestGenerator:
                 private_key = inp["private_key"].hex
                 public_key = inp["public_key"].hex
 
-            is_legacy = inp.get("input_type") in (
-                InputType.P2SH_MULTISIG,
-                InputType.P2PKH,
-            )
-            utxo_field = (
-                {"non_witness_utxo": inp["prev_tx"].hex()}
-                if is_legacy
-                else {"witness_utxo": inp["witness_utxo"].hex()}
-            )
+            utxo_field = {"non_witness_utxo": inp["prev_tx"].hex()}
+            if "witness_utxo" in inp:
+                utxo_field["witness_utxo"] = inp["witness_utxo"].hex()
+
             input_key = {
                 "input_index": inp["input_index"],
                 "private_key": private_key,
                 "public_key": public_key,
-                "prevout_txid": inp["prevout_txid"].hex(),
+                "prevout_txid": inp["prevout_txid"][::-1].hex(),
                 "prevout_index": inp["prevout_index"],
-                "prevout_scriptpubkey": inp.get("script_pubkey", inp.get("witness_script", b"")).hex(),
                 "amount": inp["amount"],
                 **utxo_field,
                 "sequence": inp["sequence"],

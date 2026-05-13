@@ -5,6 +5,9 @@ Self-contained utilities for the BIP-375 test vector generator.
 Provides BIP-352 crypto wrapper, PSBT key type constants, witness UTXO
 construction, ECDSA signing, and unique ID computation — everything the
 generator needs not provided by spdk_psbt.
+
+txid handling: All txids in our data structures are in internal byte order (hash digest).
+When constructing PSBTs, we convert to display byte order (RPC format) as needed.
 """
 
 from dataclasses import dataclass
@@ -404,10 +407,6 @@ class UTXO:
     script_pubkey: str  # hex
     private_key: Optional[PrivateKey] = None
     sequence: int = 0xFFFFFFFE
-
-    @property
-    def txid_bytes(self) -> bytes:
-        return bytes.fromhex(self.txid)
 
     @property
     def script_pubkey_bytes(self) -> bytes:
