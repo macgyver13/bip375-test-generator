@@ -1,0 +1,31 @@
+description: "Two-input P2WPKH to silent payment workflow"
+
+test_cases:
+  - description: "Two-input P2WPKH to silent payment workflow (global-share)"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        count: 2
+    outputs:
+      - type: "silent_payment"
+        amount: 190000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+      single_signer_shared_key: true
+
+  - description: "Two-input P2WPKH to silent payment workflow (per-input-share)"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        count: 2
+    outputs:
+      - type: "silent_payment"
+        amount: 190000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
