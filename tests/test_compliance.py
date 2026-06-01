@@ -1020,7 +1020,7 @@ class ComplianceTest(unittest.TestCase):
     def test_valid_and_workflows(self):
         failures = []
         for section in ("valid", "workflows"):
-            for vector in self.vectors.get(section, []):
+            for vector in self.vectors[section]:
                 for label, blob in _psbts(vector):
                     if not blob:
                         continue
