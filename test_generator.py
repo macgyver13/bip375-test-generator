@@ -182,6 +182,7 @@ class InputSpec:
     eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
     skip_signing: bool = False  # Force input to remain unsigned even if eligible
     mismatch_sp_pubkey: bool = False  # Inject a decoy SP pubkey (BIP32_DERIVATION/ECDH/DLEQ/output) that does not match the prevout script
+    decoy_first_derivation: bool = False  # Inject an extra non-matching PSBT_IN_BIP32_DERIVATION that sorts before the real key (selection test)
 
 
 @dataclass
@@ -312,6 +313,25 @@ class InputFactory:
             result["public_key"] = decoy_pub
             result["private_key"] = decoy_priv
             result["skip_signing"] = True
+
+        if spec.decoy_first_derivation:
+            # Inject an extra, non-matching PSBT_IN_BIP32_DERIVATION alongside the real
+            # key. The real key still drives all SP computation and signing; this only
+            # tests that a verifier selects the derivation matching the prevout rather
+            # than "the first" one. The library serializes same-type fields sorted by
+            # keydata, so pick a decoy whose compressed pubkey sorts before the real key
+            # to guarantee it appears first.
+            key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
+            real_pubkey_bytes = result["public_key"].bytes
+            n = 0
+            while True:
+                _, decoy_pub = self.wallet.create_key_pair(
+                    "input", _deterministic_hash(f"{key_suffix}_decoy_deriv_{n}")
+                )
+                if decoy_pub.bytes < real_pubkey_bytes:
+                    result["decoy_derivation_pubkey"] = decoy_pub.bytes
+                    break
+                n += 1
 
         return result
 
@@ -797,6 +817,32 @@ class PSBTBuilder:
 
         return scan_keys
 
+    def _add_input_pubkey_derivation(
+        self, psbt: SilentPaymentPsbt, idx: int, input_info: Dict[str, Any]
+    ):
+        """Add the input's PSBT_IN_BIP32_DERIVATION, optionally preceded by a decoy.
+
+        The optional decoy (a non-matching pubkey injected for selection tests) and the
+        real key are written as separate entries. The library serializes same-type fields
+        sorted by keydata, so the decoy is chosen to sort before the real key.
+        """
+        decoy = input_info.get("decoy_derivation_pubkey")
+        if decoy is not None:
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+                decoy,
+                struct.pack("<I", 0x80000000) + struct.pack("<I", 0xFF),
+            )
+        add_raw_input_field(
+            psbt,
+            idx,
+            PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+            input_info["public_key"].bytes,
+            struct.pack("<I", 0x80000000) + struct.pack("<I", idx),  # m/0'/idx'
+        )
+
     def _add_input_to_psbt(self, psbt: SilentPaymentPsbt, input_info: Dict[str, Any]):
         """Add input fields to PSBT based on input type"""
         idx = input_info["input_index"]
@@ -831,16 +877,7 @@ class PSBTBuilder:
                 input_info["witness_utxo"],
             )
             # Add BIP32 derivation for pubkey exposure
-            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack(
-                "<I", idx
-            )  # m/0'/idx'
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-                input_info["public_key"].bytes,
-                fake_derivation,
-            )
+            self._add_input_pubkey_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2PKH:
             # Non-witness UTXO (full prev tx) + BIP32 derivation to expose public key
@@ -851,14 +888,7 @@ class PSBTBuilder:
                 b"",
                 input_info["non_witness_utxo"],
             )
-            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-                input_info["public_key"].bytes,
-                fake_derivation,
-            )
+            self._add_input_pubkey_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2SH_P2WPKH:
             # Both non-witness UTXO (full prev tx) and witness UTXO (P2SH scriptPubKey),
@@ -884,14 +914,7 @@ class PSBTBuilder:
                 b"",
                 input_info["redeem_script"],
             )
-            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-                input_info["public_key"].bytes,
-                fake_derivation,
-            )
+            self._add_input_pubkey_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2SH_MULTISIG:
             # Add non-witness UTXO and redeem script
@@ -1627,6 +1650,7 @@ class ConfigBasedTestGenerator:
                 eligible_override=input_config.get("eligible_override"),
                 skip_signing=input_config.get("skip_signing", False),
                 mismatch_sp_pubkey=input_config.get("mismatch_sp_pubkey", False),
+                decoy_first_derivation=input_config.get("decoy_first_derivation", False),
             )
 
             # Handle batch creation
@@ -1644,6 +1668,7 @@ class ConfigBasedTestGenerator:
                     eligible_override=input_spec.eligible_override,
                     skip_signing=input_spec.skip_signing,
                     mismatch_sp_pubkey=input_spec.mismatch_sp_pubkey,
+                    decoy_first_derivation=input_spec.decoy_first_derivation,
                 )
                 inputs.append(batch_spec)
 
