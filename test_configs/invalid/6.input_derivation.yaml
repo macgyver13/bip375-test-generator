@@ -1,0 +1,70 @@
+description: "Input public key does not match the prevout script"
+
+# The PSBT_IN_BIP32_DERIVATION pubkey (and therefore the ECDH share, DLEQ proof, and
+# computed silent payment output) is a decoy that does not match the pubkey committed to
+# by the prevout scriptPubKey. The DLEQ proof is structurally valid for the decoy, so a
+# verifier that trusts the derivation pubkey without binding it to the prevout will accept
+# an output the receiver (scanning with the real on-chain key) can never detect. A correct
+# implementation must reject these by checking the derivation pubkey against the prevout.
+
+test_cases:
+  - description: "input derivation: P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      force_output_script: true
+
+  - description: "input derivation: P2PKH BIP32_DERIVATION pubkey does not match prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2pkh"
+        amount: 100000
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      force_output_script: true
+
+  - description: "input derivation: P2SH-P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2sh_p2wpkh"
+        amount: 100000
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      force_output_script: true
+
+  - description: "input pubkey mismatch: global ECDH share computed from decoy pubkey not matching prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+      force_output_script: true
