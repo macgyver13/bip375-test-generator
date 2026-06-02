@@ -36,6 +36,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | rust-psbt | Workflow update steps gained `non_witness_utxo`. |
 | | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. |
 | | | The single-input workflow's output amount changed. Four workflow steps changed. |
+| | | Added invalid “ecdh coverage: P2WPKH PSBT_IN_BIP32_DERIVATION pubkey does not match scriptPubKey”, its P2PKH and P2SH-P2WPKH variants, and “ecdh coverage: global ECDH share computed from a PSBT_IN_BIP32_DERIVATION pubkey not matching scriptPubKey”. 21 valid, 28 invalid. |
 
 ---
 
