@@ -273,6 +273,122 @@ def compute_bip352_output_script(
     return spdk_psbt.bip352_tweaked_key_to_p2tr_script(output_pubkey)
 
 
+def verify_receiver_detects_outputs(
+    input_data: List[Dict],
+    output_data: List[Dict],
+    scan_privs: Dict[bytes, "PrivateKey"],
+) -> None:
+    """Independently verify silent payment output scripts by scanning like a receiver.
+
+    For each scan key, derive the BIP-352 shared secret the way a receiver would
+    (b_scan * sum(eligible input pubkeys), tweaked by the input hash), then scan
+    exactly like a BIP-352 receiver: try k = 0, 1, 2, ... and at each k match the
+    remaining outputs against the receiver's base spend key and the labels it uses.
+
+    Crucially this does NOT assume the sender's ordering (it never reuses the
+    BIP-375 canonical sort). It only enforces the invariants a real receiver
+    actually depends on:
+      * every generated output is detected,
+      * k is contiguous from 0 (a gap makes later outputs unrecoverable), and
+      * no two outputs collide on the same k.
+
+    Because the spend keys are recomputed here from the base spend key and the
+    owning scan key's private key, an output whose script was built with the wrong
+    scan key (wrong B_m) is also detected (it simply never matches).
+
+    Raises AssertionError if any output is not recoverable as expected.
+    """
+    eligible = [inp for inp in input_data if inp.get("is_eligible", False)]
+    if not eligible:
+        return
+
+    summed_pubkey = None
+    for inp in eligible:
+        pk = inp["public_key"]
+        summed_pubkey = pk if summed_pubkey is None else summed_pubkey + pk
+    summed_pubkey_bytes = summed_pubkey.to_bytes_compressed()
+
+    # Smallest outpoint over ALL inputs (BIP-352 input_hash).
+    serialized_outpoints = [
+        inp["previous_txid"] + inp["prevout_index"].to_bytes(4, "little")
+        for inp in input_data
+    ]
+    smallest_outpoint = min(serialized_outpoints)
+    input_hash = spdk_psbt.bip352_compute_input_hash(
+        smallest_outpoint, summed_pubkey_bytes
+    )
+
+    # Group silent payment outputs (those with a computed script) by scan key.
+    # Silent payment outputs are identified by the presence of "scan_pubkey".
+    groups: Dict[bytes, List[Dict]] = {}
+    for out in output_data:
+        if "scan_pubkey" not in out or not out.get("script"):
+            continue
+        if out.get("force_wrong_script"):
+            continue
+        groups.setdefault(out["scan_pubkey"].to_bytes_compressed(), []).append(out)
+
+    for scan_pub_bytes, outs in groups.items():
+        b_scan = scan_privs[scan_pub_bytes]
+        # Receiver-side shared secret: input_hash * (b_scan * A_sum).
+        ecdh_point = int(b_scan) * summed_pubkey
+        shared_secret = spdk_psbt.bip352_compute_ecdh_share(
+            input_hash, ecdh_point.to_bytes_compressed()
+        )
+
+        # A receiver knows one base spend key per scan key (its own wallet) plus
+        # the set of labels it uses. Outputs sharing a scan key but with different
+        # base spend keys would be different wallets, which this model does not
+        # cover (and which silent payments do not produce in practice).
+        base_spend_set = {out["base_spend_pubkey"].to_bytes_compressed() for out in outs}
+        assert len(base_spend_set) == 1, (
+            f"scan {scan_pub_bytes.hex()[:12]}: outputs share a scan key but have "
+            f"different base spend keys; receiver model assumes one wallet per scan key"
+        )
+        base_spend = outs[0]["base_spend_pubkey"]
+        known_labels = sorted(
+            {out.get("label") for out in outs}, key=lambda m: (m is not None, m)
+        )
+
+        def script_for(label: Optional[int], k: int) -> bytes:
+            if label is None:
+                spend_bytes = base_spend.to_bytes_compressed()
+            else:
+                spend_bytes = apply_label_to_spend_key(
+                    base_spend, b_scan.bytes, label
+                ).to_bytes_compressed()
+            output_key = spdk_psbt.bip352_derive_silent_payment_output_pubkey(
+                spend_bytes, shared_secret, k
+            )
+            return spdk_psbt.bip352_tweaked_key_to_p2tr_script(output_key)
+
+        # Scan like a BIP-352 receiver: increment k and, at each k, match the
+        # remaining outputs against the base key and every known label. We never
+        # assume which output the sender placed at which k.
+        remaining = list(outs)
+        k = 0
+        while remaining:
+            matched = [
+                out
+                for out in remaining
+                if any(out["script"] == script_for(label, k) for label in known_labels)
+            ]
+            if not matched:
+                break
+            assert len(matched) == 1, (
+                f"scan {scan_pub_bytes.hex()[:12]}: outputs "
+                f"{[m['output_index'] for m in matched]} collide on k={k}"
+            )
+            remaining.remove(matched[0])
+            k += 1
+
+        assert not remaining, (
+            f"scan {scan_pub_bytes.hex()[:12]}: receiver scan could not detect "
+            f"output(s) {[o['output_index'] for o in remaining]} with contiguous k "
+            f"from 0 (wrong script, wrong scan key, or non-contiguous k assignment)"
+        )
+
+
 # ============================================================================
 # ECDSA Signing (for error-injection test cases)
 # ============================================================================

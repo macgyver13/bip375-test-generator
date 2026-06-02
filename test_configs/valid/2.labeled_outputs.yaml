@@ -36,20 +36,24 @@ test_cases:
       - key_id: "recipient"
         derivation_suffix: "recipient"
 
-  - description: "can finalize: two sp outputs - output 0 uses label=3 / output 1 uses label=1"
+  - description: "can finalize: three sp outputs (same scan key) - output 0 uses label=1, outputs 1 and 2 uses label=2 (same spend key)"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
-        amount: 300000
+        amount: 400000
     outputs:
       - type: "silent_payment"
-        amount: 100000
-        scan_key_id: "recipient"
-        label: 3
-      - type: "silent_payment"
-        amount: 190000
+        amount: 100001
         scan_key_id: "recipient"
         label: 1
+      - type: "silent_payment"
+        amount: 190002
+        scan_key_id: "recipient"
+        label: 2
+      - type: "silent_payment"
+        amount: 100002
+        scan_key_id: "recipient"
+        label: 2
     scan_keys:
       - key_id: "recipient"
         derivation_suffix: "recipient"

@@ -24,10 +24,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from secp256k1 import GE, G
 import spdk_psbt
 from spdk_psbt import (
-    add_raw_global_field, 
-    add_raw_input_field, 
-    add_raw_output_field, 
-    remove_raw_input_fields_by_type, 
+    add_raw_global_field,
+    add_raw_input_field,
+    add_raw_output_field,
+    remove_raw_input_fields_by_type,
     SilentPaymentPsbt,
     PsbtOutput
 )
@@ -42,6 +42,7 @@ from generator_utils import (
     compute_bip352_output_script,
     apply_label_to_spend_key,
     sign_p2wpkh_input,
+    verify_receiver_detects_outputs,
 )
 
 
@@ -784,6 +785,10 @@ class PSBTBuilder:
             if not scenario.set_tx_modifiable:
                 psbt.set_tx_modifiable(0x00)
 
+        # Self-check valid scenarios from the receiver side (independent oracle).
+        # if scenario.validation_result == ValidationResult.VALID:
+            # verify_receiver_detects_outputs(input_data, output_data, self.scan_privs)
+
         # Build result structure
         return {
             "psbt": psbt,
@@ -808,21 +813,31 @@ class PSBTBuilder:
     def _generate_scan_keys(
         self, scan_key_specs: List[ScanKeySpec]
     ) -> Dict[str, tuple]:
-        """Generate scan/spend key pairs deterministically"""
+        """Generate scan/spend key pairs deterministically.
+
+        Also records the scan private key for each scan public key in
+        self.scan_privs (keyed by compressed scan pubkey bytes) so labeled
+        spend keys can be computed with the correct scan key. The map is reset
+        on every call since the builder is reused across scenarios.
+        """
         scan_keys = {}
+        self.scan_privs: Dict[bytes, PrivateKey] = {}
 
         for spec in scan_key_specs:
             if spec.key_id == "default":
                 # Use wallet's default keys
-                scan_keys[spec.key_id] = (self.wallet.scan_pub, self.wallet.spend_pub)
+                scan_priv, scan_pub = self.wallet.scan_priv, self.wallet.scan_pub
+                scan_keys[spec.key_id] = (scan_pub, self.wallet.spend_pub)
             else:
                 # Generate deterministic keys
                 seed_suffix = _deterministic_hash(
                     f"{spec.key_id}_{spec.derivation_suffix}"
                 )
-                _, scan_pub = self.wallet.create_key_pair("scan", seed_suffix)
+                scan_priv, scan_pub = self.wallet.create_key_pair("scan", seed_suffix)
                 _, spend_pub = self.wallet.create_key_pair("spend", seed_suffix)
                 scan_keys[spec.key_id] = (scan_pub, spend_pub)
+
+            self.scan_privs[scan_pub.to_bytes_compressed()] = scan_priv
 
         return scan_keys
 
@@ -1343,6 +1358,36 @@ class PSBTBuilder:
                     )
                 break
 
+    def _canonical_k_map(self, output_data: List[Dict]) -> Dict[int, int]:
+        """Map output_index -> k per the BIP-375 canonical ordering.
+
+        Group silent payment outputs by scan key, then within each group sort
+        the codes lexicographically in ascending order to determine the k
+        ordering, breaking ties (same scan and spend keys) by output index. The
+        code's spend key is the labeled spend key B_m when a label is present,
+        since that is the key carried in the silent payment address.
+        """
+        groups: Dict[bytes, List[Tuple[bytes, int]]] = {}
+        for output_info in output_data:
+            if output_info["output_type"] != OutputType.SILENT_PAYMENT:
+                continue
+            scan_pub = output_info["scan_pubkey"]
+            spend_pub = output_info["base_spend_pubkey"]
+            if output_info.get("label") is not None:
+                spend_pub = self._compute_labeled_spend_key(
+                    scan_pub, spend_pub, output_info["label"]
+                )
+            groups.setdefault(scan_pub.to_bytes_compressed(), []).append(
+                (spend_pub.to_bytes_compressed(), output_info["output_index"])
+            )
+
+        k_map: Dict[int, int] = {}
+        for entries in groups.values():
+            entries.sort()  # (spend_key_bytes, output_index) ascending
+            for k, (_, output_index) in enumerate(entries):
+                k_map[output_index] = k
+        return k_map
+
     def _add_outputs_to_psbt(
         self,
         psbt: SilentPaymentPsbt,
@@ -1358,8 +1403,9 @@ class PSBTBuilder:
         Silent payment outputs that did not get a PSBT_OUT_SCRIPT (e.g. incomplete
         ECDH coverage) will have an empty script_pubkey.
         """
-        # Track k counter per scan key (matches BIP-352 / validator behavior)
-        scan_key_k_counter: Dict[bytes, int] = {}
+        # BIP-375 canonical k assignment: precompute output_index -> k by sorting
+        # each scan-key group's codes lexicographically (tie-break by output index).
+        k_map = self._canonical_k_map(output_data)
         finalized_outputs: List[Dict] = []
 
         for output_info in output_data:
@@ -1377,7 +1423,7 @@ class PSBTBuilder:
 
             if output_type == OutputType.SILENT_PAYMENT:
                 script = self._add_silent_payment_output(
-                    psbt, output_info, input_data, ecdh_data, scenario, scan_keys, scan_key_k_counter
+                    psbt, output_info, input_data, ecdh_data, scenario, scan_keys, k_map[idx]
                 )
                 if script:
                     output_info["script"] = script
@@ -1388,7 +1434,7 @@ class PSBTBuilder:
                     "amount": output_info["amount"],
                     "script_pubkey": script.hex() if script else "",
                 })
-                
+
             else:
                 # Regular output - add script and optional BIP32_DERIVATION
                 if not scenario.skip_regular_output_script:
@@ -1422,10 +1468,11 @@ class PSBTBuilder:
         ecdh_data: Dict,
         scenario: TestScenario,
         scan_keys: Dict[str, tuple],
-        scan_key_k_counter: Optional[Dict] = None,
+        k: int,
     ) -> Optional[bytes]:
         """Add silent payment output with proper BIP-352 script computation.
 
+        k is the canonical BIP-375 k value for this output (see _canonical_k_map).
         Returns the computed output script bytes, or None if no script was set.
         """
         idx = output_info["output_index"]
@@ -1437,7 +1484,7 @@ class PSBTBuilder:
         spend_pub = base_spend_pub
         if output_info.get("label") is not None:
             spend_pub = self._compute_labeled_spend_key(
-                base_spend_pub, output_info["label"]
+                scan_pub, base_spend_pub, output_info["label"]
             )
         output_info["spend_pubkey"] = spend_pub
 
@@ -1478,25 +1525,18 @@ class PSBTBuilder:
 
                     if (coverage_complete or scenario.force_partial_ecdh_output_script) and summed_ecdh_share is not None:
                         ecdh_share_bytes = summed_ecdh_share.to_bytes_compressed()
-                        # k is per-scan-key (matches BIP-352 behavior)
-                        scan_pub_bytes = scan_pub.to_bytes_compressed()
-                        if scan_key_k_counter is not None:
-                            k_index = scan_key_k_counter.get(scan_pub_bytes, 0)
-                        else:
-                            k_index = idx
-                        # force_k_index overrides for error injection
+                        # k is the canonical BIP-375 value; force_k_index overrides
+                        # it for error injection.
+                        k_index = k
                         if output_info["force_k_index"] is not None:
                             k_index = output_info["force_k_index"]
-                        # Advance counter for next output with this scan key
-                        if scan_key_k_counter is not None:
-                            scan_key_k_counter[scan_pub_bytes] = scan_key_k_counter.get(scan_pub_bytes, 0) + 1
                         # Compute BIP-352 output script
                         output_script = compute_bip352_output_script(
                             outpoints=outpoints,
                             summed_pubkey_bytes=summed_pubkey_bytes,
                             ecdh_share_bytes=ecdh_share_bytes,
                             spend_pubkey_bytes=spend_pub.to_bytes_compressed(),
-                            k=k_index,  # k is the output index
+                            k=k_index,
                         )
                         add_raw_output_field(
                             psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_script
@@ -1531,10 +1571,15 @@ class PSBTBuilder:
         return output_script
 
     def _compute_labeled_spend_key(
-        self, spend_pub, label: int
+        self, scan_pub, spend_pub, label: int
     ):
-        """Compute BIP-352 labeled spend key: B_m = B_spend + hash_BIP0352/Label(b_scan || m) * G"""
-        scan_priv_bytes = self.wallet.scan_priv.to_bytes(32, "big")
+        """Compute BIP-352 labeled spend key: B_m = B_spend + hash_BIP0352/Label(b_scan || m) * G
+
+        Uses the scan private key belonging to scan_pub (not the wallet default),
+        so labeled spend keys are correct for non-default scan keys.
+        """
+        scan_priv = self.scan_privs[scan_pub.to_bytes_compressed()]
+        scan_priv_bytes = scan_priv.to_bytes(32, "big")
         return PublicKey(apply_label_to_spend_key(spend_pub, scan_priv_bytes, label))
 
     def _add_output_bip32_derivation(
