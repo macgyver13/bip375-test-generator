@@ -1,0 +1,91 @@
+description: "Input public key does not match the prevout script"
+
+# The decoy sits on an input we do not own. A foreign co-signer contributes input 1's
+# PSBT_IN_BIP32_DERIVATION pubkey, ECDH share and DLEQ proof, and that pubkey is not the one
+# committed to by the prevout scriptPubKey. The DLEQ proof is structurally valid for the decoy,
+# so a verifier that trusts the claimed derivation pubkey has nothing to catch it with: it
+# accepts, signs its own input, and the receiver - scanning with the real on-chain key - can
+# never detect the output. A correct implementation must bind the derivation pubkey to the
+# prevout script before using it.
+#
+# The input has to be foreign for this to test coverage at all. On its own input a signer
+# derives the key from its own seed and sees the mismatch for free, which is ordinary BIP32
+# validation rather than anything BIP-375 specific.
+
+test_cases:
+  - description: "input derivation: P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2wpkh"
+        amount: 100000
+        owner: "foreign"
+        contribute_foreign_share: true
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 195000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      force_output_script: true
+
+  - description: "input derivation: P2PKH BIP32_DERIVATION pubkey does not match prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2pkh"
+        amount: 100000
+        owner: "foreign"
+        contribute_foreign_share: true
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 195000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      force_output_script: true
+
+  - description: "input derivation: P2SH-P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2sh_p2wpkh"
+        amount: 100000
+        owner: "foreign"
+        contribute_foreign_share: true
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 195000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      force_output_script: true
+
+  - description: "input pubkey mismatch: global ECDH share computed from decoy pubkey not matching prevout script"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2wpkh"
+        amount: 100000
+        owner: "foreign"
+        contribute_foreign_share: true
+        mismatch_sp_pubkey: true
+    outputs:
+      - type: "silent_payment"
+        amount: 195000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+      force_output_script: true

@@ -198,6 +198,8 @@ class InputSpec:
     mismatch_utxo_script: bool = False
     foreign_origin: bool = False
     omit_utxo: bool = False
+    mismatch_sp_pubkey: bool = False  # Inject a decoy SP pubkey (BIP32_DERIVATION/ECDH/DLEQ/output) that does not match the prevout script
+    contribute_foreign_share: bool = False  # Let a foreign input carry an ECDH share and DLEQ proof, as a co-signer would supply
 
 
 @dataclass
@@ -342,12 +344,28 @@ class InputFactory:
         if spec.skip_signing:
             result["skip_signing"] = True
 
+        if spec.contribute_foreign_share:
+            result["contribute_foreign_share"] = True
+
         if spec.foreign_origin and result.get("key_material") is not None:
             result["origin_fingerprint"] = JadeKeyProfile.FOREIGN_FINGERPRINT
         if spec.omit_utxo:
             result["omit_utxo"] = True
         if spec.mismatch_utxo_script:
             self._replace_utxo_script(result, input_index)
+        if spec.mismatch_sp_pubkey:
+            # Keep the prevout script/UTXO committed to the real key, but swap the
+            # pubkey used for all SP computation (BIP32_DERIVATION, ECDH share, DLEQ
+            # proof, summed output pubkey) to a decoy. The DLEQ stays valid for the
+            # decoy while the decoy does not match the prevout script. Left unsigned
+            # since the decoy private key cannot satisfy the real prevout script.
+            decoy_suffix = f"{spec.key_derivation_suffix}_{input_index}_decoy"
+            decoy_priv, decoy_pub = self.wallet.create_key_pair(
+                "input", _deterministic_hash(decoy_suffix)
+            )
+            result["public_key"] = decoy_pub
+            result["private_key"] = decoy_priv
+            result["skip_signing"] = True
 
         return result
 
@@ -1093,9 +1111,12 @@ class PSBTBuilder:
         """Compute ECDH shares for eligible inputs"""
         ecdh_shares = {}  # (input_idx, scan_key_id) -> (ecdh_result, dleq_proof)
 
+        # A signer contributes shares only for the inputs it owns. contribute_foreign_share
+        # opts a foreign input in, standing in for the share a co-signer would have supplied.
         eligible_inputs = [
             inp for inp in input_data
-            if inp["is_eligible"] and inp.get("owner", "wallet") == "wallet"
+            if inp["is_eligible"]
+            and (inp.get("owner", "wallet") == "wallet" or inp.get("contribute_foreign_share", False))
         ]
 
         for input_info in eligible_inputs:
@@ -1836,6 +1857,8 @@ class ConfigBasedTestGenerator:
                 mismatch_utxo_script=input_config.get("mismatch_utxo_script", False),
                 foreign_origin=input_config.get("foreign_origin", False),
                 omit_utxo=input_config.get("omit_utxo", False),
+                mismatch_sp_pubkey=input_config.get("mismatch_sp_pubkey", False),
+                contribute_foreign_share=input_config.get("contribute_foreign_share", False),
             )
 
             # Handle batch creation
@@ -1863,6 +1886,8 @@ class ConfigBasedTestGenerator:
                     mismatch_utxo_script=input_spec.mismatch_utxo_script,
                     foreign_origin=input_spec.foreign_origin,
                     omit_utxo=input_spec.omit_utxo,
+                    mismatch_sp_pubkey=input_spec.mismatch_sp_pubkey,
+                    contribute_foreign_share=input_spec.contribute_foreign_share,
                 )
                 inputs.append(batch_spec)
 
