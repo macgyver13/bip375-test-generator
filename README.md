@@ -35,6 +35,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | rust-psbt | Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
 | | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. PSBT maps are equivalent. |
 | | | The single-input workflow's output amount changed. Four workflow steps changed. One-shot PSBT maps are equivalent. |
+| | | Added invalid “ecdh coverage: P2WPKH BIP32_DERIVATION pubkey does not match prevout script”, its P2PKH and P2SH-P2WPKH variants, and “ecdh coverage: global ECDH share computed from decoy pubkey not matching prevout script”. 21 valid, 28 invalid. |
 
 ---
 
