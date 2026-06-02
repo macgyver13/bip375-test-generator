@@ -1,0 +1,97 @@
+description: "Jade BIP-375 inputs naming more than one key"
+
+# BIP-375 has the updater publish an input's pubkey as a PSBT_IN_BIP32_DERIVATION,
+# because a p2pkh, p2sh-p2wpkh or p2wpkh script commits only to its hash, and lets
+# it zero the origin rather than leak wallet structure. An input can therefore
+# carry a derivation that is not the one the signer spends with. The signer has to
+# choose by which key reproduces the prevout script, not by how many keys are
+# named or which comes first - psbt fields serialise sorted by keydata, so the
+# decoy here is chosen to sort ahead of the real key.
+
+test_cases:
+  - description: "Jade resolves a P2WPKH input carrying a decoy derivation first"
+    id: decoy_foreign_origin_p2wpkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2wpkh
+        amount: 100000
+        derivation_index: 0
+        decoy_first_derivation: true
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "Jade resolves a P2PKH input carrying a decoy derivation first"
+    id: decoy_foreign_origin_p2pkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2pkh
+        amount: 100000
+        derivation_index: 0
+        decoy_first_derivation: true
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "Jade resolves a P2SH-P2WPKH input carrying a decoy derivation first"
+    id: decoy_foreign_origin_p2sh_p2wpkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2sh_p2wpkh
+        amount: 100000
+        derivation_index: 0
+        decoy_first_derivation: true
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  # The sharper case: the decoy is our own key on a path we really derive, so it
+  # passes keypath validation and only the prevout script separates it from the
+  # key that owns the input. Selecting "the first key we can derive" would take
+  # the decoy, compute the ecdh share from it, and produce an output script the
+  # recipient could never detect.
+  - description: "Jade resolves a P2WPKH input whose decoy shares its own origin"
+    id: decoy_same_origin_p2wpkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2wpkh
+        amount: 100000
+        derivation_index: 0
+        decoy_first_derivation: true
+        decoy_same_origin: true
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "Jade resolves a P2PKH input whose decoy shares its own origin"
+    id: decoy_same_origin_p2pkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2pkh
+        amount: 100000
+        derivation_index: 0
+        decoy_first_derivation: true
+        decoy_same_origin: true
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
