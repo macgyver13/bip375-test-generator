@@ -39,6 +39,15 @@ python test_generator.py
 
 Output: `bip375_test_vectors.json`
 
+### rust-psbt Format Helper
+```bash
+just gen-rust
+```
+
+Writes `out/bip375.json`. Generated artifacts other than
+`bip375_test_vectors.json` live in the untracked `out/` directory and can be
+regenerated at any revision.
+
 ### Vendored Bitcoin Core test_framework
 
 Bitcoin transaction, script, sighash, signing, and secp256k1 primitives are
@@ -65,6 +74,7 @@ description: "Human-readable description of this config file"
 
 test_cases:
   - description: "Specific scenario"
+    task: "sign"                 # operation or expected failure mode for the case
     checks: [] # psbt_structure, ecdh_coverage, input_eligibility, output_scripts
     validation_result: "valid"   # or "invalid"
     inputs: [...]

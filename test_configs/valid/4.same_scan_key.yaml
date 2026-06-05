@@ -2,6 +2,7 @@ description: "Valid PSBT with multiple outputs to same scan key"
 
 test_cases:
   - description: "can finalize: three sp outputs (same scan key) - each output has distinct k value"
+    task: "finalize"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -25,6 +26,7 @@ test_cases:
       - key_id: "default"
 
   - description: "can finalize: three sp outputs (same scan key) / two regular outputs - k values assigned independently of output index"
+    task: "finalize"
     validation_result: "valid"
     # SP outputs are at output indices 0, 2, 4; regular outputs at 1, 3.
     # With correct per-scan-key k counter: k=0, k=1, k=2.
