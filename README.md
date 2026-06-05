@@ -28,6 +28,8 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | NUMS inputs are built from a script tree and carry `PSBT_IN_TAP_MERKLE_ROOT`. Two PSBT maps changed. |
 | | SIGHASH_DEFAULT | Added valid “can finalize: one P2TR input signed with SIGHASH_DEFAULT”. 21 valid, 24 invalid. |
 | | | Removed the per-vector `checks` field: every check applies to every vector. One invalid vector and the notes changed. |
+| | | `--hex` adds `supplementary.hex`, the serialized PSBT, for diagnostics. Default output is unchanged. |
+| | | Vectors gained a top-level `task`, the operation or expected failure for each vector. Invalid “psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output” is renamed “input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output”. PSBT maps are equivalent. |
 
 ---
 
@@ -47,8 +49,9 @@ via `just backend=spdk <recipe>` (or `BIP375_PSBT_BACKEND=spdk`).
 just test-parity
 ```
 
-Generates the vectors with both backends under `out/parity/` and fails unless they
-produce identical files. This needs `spdk_psbt` installed.
+Generates the vectors and the rust-psbt `bip375.json` with both backends under
+`out/parity/` and fails unless they produce identical files. This needs `spdk_psbt`
+installed.
 
 ### Installing `spdk_psbt`
 
@@ -76,6 +79,18 @@ python test_generator.py
 ```
 
 Output: `bip375_test_vectors.json`
+
+Pass `--hex` to also write each serialized PSBT as `supplementary.hex`, for
+diagnostics.
+
+### rust-psbt Format Helper
+```bash
+just gen-rust
+```
+
+Writes `out/bip375.json`. Generated artifacts other than
+`bip375_test_vectors.json` live in the untracked `out/` directory and can be
+regenerated at any revision.
 
 ### Regenerating vectors across a jj stack
 
@@ -115,6 +130,7 @@ description: "Human-readable description of this config file"
 
 test_cases:
   - description: "Specific scenario"
+    task: "sign"                 # operation or expected failure mode for the case
     validation_result: "valid"   # or "invalid"
     inputs: [...]
     outputs: [...]
@@ -218,5 +234,5 @@ python psbt_diff.py old.json new.json
 ### Display supplementary data
 
 ```sh
-jq -r '(.valid[], .invalid[]) | select(.supplementary.inputs != null) | .description, .supplementary.task, (.supplementary.inputs[] | "  input \(.input_index): signed=\(.signed)")' bip375_test_vectors.json
+jq -r '(.valid[], .invalid[]) | select(.supplementary.inputs != null) | .description, .task, (.supplementary.inputs[] | "  input \(.input_index): signed=\(.signed)")' bip375_test_vectors.json
 ```
