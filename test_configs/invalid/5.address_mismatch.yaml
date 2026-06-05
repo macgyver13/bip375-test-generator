@@ -3,6 +3,7 @@ description: "Address computation validation errors"
 test_cases:
   - description: "output scripts: P2TR input with NUMS internal key cannot derive sp output"
     violates: [bip352_outputs]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2tr"
@@ -18,6 +19,7 @@ test_cases:
 
   - description: "output scripts: PSBT_OUT_SCRIPT does not match derived sp output"
     violates: [bip352_outputs]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -32,6 +34,7 @@ test_cases:
 
   - description: "output scripts: two sp outputs (same scan / different spend keys) not sorted lexicographically by spend key"
     violates: [bip352_outputs]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -52,6 +55,7 @@ test_cases:
 
   - description: "output scripts: k values assigned to wrong output indices with three sp outputs (same scan / spend keys)"
     violates: [bip352_outputs]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"

@@ -9,72 +9,43 @@
   "invalid": [
     {
       "description": "psbt structure: missing PSBT_OUT_SP_V0_INFO field when PSBT_OUT_SP_V0_LABEL set",
+      "task": "fail_deserialize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIHSOn9kphbu7Vql4eUC0U1K4IbmX47CvRMs1l2IRXJA9AiA5LWx78eIc97ivz0+Lrb6yedfig7OPL13bkUHEe37shgEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwgYcwEAAAAAAAEEIlEgF7+BinQMjRO7LljmyriuuyJjz6u3lAQ3E1XjpqKJobQBCgQBAAAAAA==",
       "supplementary": {}
     },
     {
       "description": "psbt structure: incorrect byte length for PSBT_OUT_SP_V0_LABEL field",
+      "task": "fail_deserialize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQIBBgEAAfsEAgAAAAABAR8goQcAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIC8JqoNoi/gBn8o2JHc1a8hL0tFsAFqO9Gs9u4POGZPgAiBZY9NzmTp+KWhjqPZmwbHg+OCvZz5NZlvzYDOxjZH5+gEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiDUQOda/N1TGlkeN6vSbkryvw9v8uGRgwI1Yej8VxOPSgEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwighgEAAAAAAAEEIlEgstdQpg7E0FvSwiJx8I/iGwDicR04IwSLuWWiK8QXPS8BCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgD6o8ii+K3FtrN78soEAcodPAKR29cB70FGRcSbMZLPe8BCgEBACICA16V9Fce2ibg9jY+pcWUeUrU3SFeoSZi8TyamQbVqpOuDAAAAAAAAAAAAAAAAQEDCHDzBQAAAAAAAQQWABTXQ7NLhyjCo19qlMja9BGHRa2WmwA=",
       "supplementary": {}
     },
     {
       "description": "psbt structure: incorrect byte length for PSBT_OUT_SP_V0_INFO field",
+      "task": "fail_deserialize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIG9hTKsWyAwmppZy4viq5wvAiLUgLqne/2rOeM2n+2JyAiAQVYeP/VlnUGDrYKAL+jNMnLJB+6EoTBEkkNEA2ex8LgEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwgYcwEAAAAAAAEEIlEgZG9JTKC7m86tFLjbfkxpRFYfryMufMzDa91YaV90kVkBCUECekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84AA=",
       "supplementary": {}
     },
     {
       "description": "psbt structure: incorrect byte length for PSBT_IN_SP_ECDH_SHARE field",
+      "task": "fail_deserialize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIG9hTKsWyAwmppZy4viq5wvAiLUgLqne/2rOeM2n+2JyAiAQVYeP/VlnUGDrYKAL+jNMnLJB+6EoTBEkkNEA2ex8LgEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GggA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QoiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaECKE7OYVUX3K9bolxSuuQmz41SoQqm7i1bNDt7SHfihmVmLMSKKSeC9fpXOEFP3xbKKy1Q6aHB2AOPOiYIu4yAhAAEDCBhzAQAAAAAAAQQiUSBkb0lMoLubzq0UuNt+TGlEVh+vIy58zMNr3VhpX3SRWQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {}
     },
     {
       "description": "psbt structure: incorrect byte length for PSBT_IN_SP_DLEQ field",
+      "task": "fail_deserialize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIG9hTKsWyAwmppZy4viq5wvAiLUgLqne/2rOeM2n+2JyAiAQVYeP/VlnUGDrYKAL+jNMnLJB+6EoTBEkkNEA2ex8LgEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4Gg/ihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgAAEDCBhzAQAAAAAAAQQiUSBkb0lMoLubzq0UuNt+TGlEVh+vIy58zMNr3VhpX3SRWQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {}
     },
     {
-      "description": "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output",
-      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEBAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g907dH3W0uz5ddJwVv9tmNI9oBam01F/u4aLiAfUDu3EBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIGHMBAAAAAAABBCJRIGRvSUygu5vOrRS4235MaURWH68jLnzMw2vdWGlfdJFZAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
-      "supplementary": {
-        "inputs": [
-          {
-            "input_index": 0,
-            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
-            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
-            "prevout_txid": "71bb03f501e2a2e1ee5fd4b4a905688f3466dbbf159c745d3ebbb4751fdd4ef7",
-            "prevout_index": 0,
-            "amount": 100000,
-            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000ffffffff01a0860100000000001600141e2ad7872d329413a56df0968be338222783163b00000000",
-            "witness_utxo": "a0860100000000001600141e2ad7872d329413a56df0968be338222783163b",
-            "sequence": 4294967294,
-            "signed": false
-          }
-        ],
-        "sp_proofs": [
-          {
-            "scan_key": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe068",
-            "ecdh_share": "03eca4ff11b728e2e0f60ce6222943a6ff55b9d95f627bf9a99d084bc872d50a5b",
-            "dleq_proof": "8a13b3985545f72bd6e89714aeb909b3e354a842a9bb8b56cd0eded21df8a199598b31228a49e0bd7e95ce1053f7c5b28acb543a68707600e3ce89822ee32021",
-            "input_index": 0
-          }
-        ],
-        "outputs": [
-          {
-            "output_index": 0,
-            "amount": 95000,
-            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
-            "script": "5120646f494ca0bb9bcead14b8db7e4c6944561faf232e7cccc36bdd58695f749159"
-          }
-        ]
-      }
-    },
-    {
       "description": "psbt structure: missing PSBT_OUT_SCRIPT field when sending to non-sp output",
+      "task": "fail_deserialize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g907dH3W0uz5ddJwVv9tmNI9oBam01F/u4aLiAfUDu3EBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIGHMBAAAAAAAA",
       "supplementary": {}
     },
     {
       "description": "ecdh coverage: only one ineligible P2SH multisig input when PSBT_OUT_SCRIPT set for sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAFMCAAAAAXyoMfPUiQn+aMsOqqoR+Hc97n6McwhTN1kOJLsGOQ20AAAAAAD/////AaCGAQAAAAAAF6kU2OZohxTu7Qqi7dSJqhyjwXFwHk2HAAAAAAEER1IhAr5Ar99ismPLfe4rmF0cOP5BsZlNKwUHU0PRcsIY6rHEIQJ6R5JT0AogWhCpQ483IBm582TgqDaAC/g529KOfOa5VVKuAQ4gzTgaRVCP49nKtjt+D3BKD1adv9VamBAtnqM67mIbdfQBDwQAAAAAARAE/v///wABAwiQXwEAAAAAAAEEIlEgzeOdiwW0lvjxjyCyfQr5oyMzCeBHIhnggT/ztdN4fikBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -94,6 +65,7 @@
     },
     {
       "description": "ecdh coverage: missing PSBT_IN_SP_ECDH_SHARE field for input 0 when PSBT_OUT_SCRIPT set for sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////AAEBHxAnAAAAAAAAFgAUNyH6c8IwXLL4joSJLWvWuXcmHmoBAwQBAAAAIgYCQ6DUDp3giCeUFhdSuuQrqQlSeEIJ8GNDDwryVjVKhbsIAAAAgAEAAAABDiCT02M2J+tY6dwwP275yxvoDBZhNzq+im1o30frVfCaGwEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghAuV6etywGNj7MVToDBS5elCZS0I1aEHqn8ExcGFEAOY3Ih4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhA9/o4HeILO0WcbkJsYhPUF1MI8kgqROMyhCMmJNTa/Vcymb868WqzAsViY2OjfUSHB/fnoevqBke8zUhiA7srpgABAwgYcwEAAAAAAAEEIlEgzeOdiwW0lvjxjyCyfQr5oyMzCeBHIhnggT/ztdN4fikBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -134,6 +106,7 @@
     },
     {
       "description": "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input when PSBT_IN_SP_ECDH_SHARE set",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIG9hTKsWyAwmppZy4viq5wvAiLUgLqne/2rOeM2n+2JyAiAQVYeP/VlnUGDrYKAL+jNMnLJB+6EoTBEkkNEA2ex8LgEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbAAEDCBhzAQAAAAAAAQQiUSBkb0lMoLubzq0UuNt+TGlEVh+vIy58zMNr3VhpX3SRWQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -162,6 +135,7 @@
     },
     {
       "description": "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field when PSBT_GLOBAL_SP_ECDH_SHARE set",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAIgcCekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIG9hTKsWyAwmppZy4viq5wvAiLUgLqne/2rOeM2n+2JyAiAQVYeP/VlnUGDrYKAL+jNMnLJB+6EoTBEkkNEA2ex8LgEiBgLIF7t1Ia/DXqlvO/snDm61Dd/6VWBie5Yf7ADymWUIvwgAAACAAAAAAAEOIPdO3R91tLs+XXScFb/bZjSPaAWptNRf7uGi4gH1A7txAQ8EAAAAAAEQBP7///8AAQMIGHMBAAAAAAABBCJRIGRvSUygu5vOrRS4235MaURWH68jLnzMw2vdWGlfdJFZAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
@@ -188,6 +162,7 @@
     },
     {
       "description": "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIG9hTKsWyAwmppZy4viq5wvAiLUgLqne/2rOeM2n+2JyAiAQVYeP/VlnUGDrYKAL+jNMnLJB+6EoTBEkkNEA2ex8LgEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAbvHreDwFl9ZoVl4787j95b7SgVKV9D4XAVEk1EXcy9rdKkne51lhePEhbl1NuRdP/dpjNON8kDEQjAjOE3TeDwABAwgYcwEAAAAAAAEEIlEgZG9JTKC7m86tFLjbfkxpRFYfryMufMzDa91YaV90kVkBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -216,6 +191,7 @@
     },
     {
       "description": "ecdh coverage: invalid proof in PSBT_GLOBAL_SP_DLEQ field",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAIgcCekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIggCekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhA58j9RCuU2IoqaiyStDRkj6AHyf4IBHKjN4DQtSMoRNCb2Is/7obRLUOGxGV/u3heLS8Uv8+RhXQ/4SrIJQ+V2QH7BAIAAAAAAQEfoIYBAAAAAAAWABQeKteHLTKUE6Vt8JaL4zgiJ4MWOyICAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/RzBEAiBvYUyrFsgMJqaWcuL4qucLwIi1IC6p3v9qznjNp/ticgIgEFWHj/1ZZ1Bg62CgC/ozTJyyQfuhKEwRJJDRANnsfC4BIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////AAEDCBhzAQAAAAAAAQQiUSBkb0lMoLubzq0UuNt+TGlEVh+vIy58zMNr3VhpX3SRWQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -243,6 +219,7 @@
     },
     {
       "description": "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAAAEOIPdO3R91tLs+XXScFb/bZjSPaAWptNRf7uGi4gH1A7txAQ8EAAAAAAEQBP7///8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCED7KT/Ebco4uD2DOYiKUOm/1W52V9ie/mpnQhLyHLVClsiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaECKE7OYVUX3K9bolxSuuQmz41SoQqm7i1bNDt7SHfihmVmLMSKKSeC9fpXOEFP3xbKKy1Q6aHB2AOPOiYIu4yAhAAEDCBhzAQAAAAAAAQQiUSBkb0lMoLubzq0UuNt+TGlEVh+vIy58zMNr3VhpX3SRWQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -271,6 +248,7 @@
     },
     {
       "description": "ecdh coverage: output 1 missing ECDH share for scan key with one input / three sp outputs (different scan keys)",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQMBBgEAAfsEAgAAAAABAR9ADQMAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g/S309Ytav5uR/xoeQ+LjUj9QxqoZ1cIjYBQexIyagCEBDwQAAAAAARAE/v///yIdArlFYVfpRu8H90tU+gm+Sn6Tjcr7+ye0s3LFc8BZ8SqwIQLChkR0sISqyB9uMKxe30ZnOTzmBNgI0/SZoJhOi1JJdCIdA2UdLAc/ywKk2C3aU/HVAdd6A1BmZ5hUZHOyEmts0afeIQN2iSMnxOeAru7UzhvJK7ASK3t5ENlvCtUUi0lvnD6S+yIeArlFYVfpRu8H90tU+gm+Sn6Tjcr7+ye0s3LFc8BZ8SqwQPCxHVHD/ROzjgpsjvwu4Mpxdzr2dLMVHmiSFJJcS1fIFojJ4Hi3UIhabKsoa1d+k6JJfrSWNrGvG2vILnyRElEiHgNlHSwHP8sCpNgt2lPx1QHXegNQZmeYVGRzshJrbNGn3kCY8UrEWvZFmrDITUfaU2TPsUT/kL2scy+cq8bbAA3PGpXjsx97cKBCmKUbb9RRbIHXFsmVT4rxDD1ZgJruK704AAEDCJBfAQAAAAAAAQQiUSBg9n1lOOjDNhoPtXryD47AzuIAMtDb3yc6UykBnOW/TgEJQgNlHSwHP8sCpNgt2lPx1QHXegNQZmeYVGRzshJrbNGn3gPycOClYyGDtqsBB06HfmgA2wD1x8XS+vu2j5wo1IVFJAABAwgQJwAAAAAAAAEEIlEgzeOdiwW0lvjxjyCyfQr5oyMzCeBHIhnggT/ztdN4fikBCUIDUteMQTkAMq2RgWppf8dA2OuQnPBNcIhSZLBR8jheJewC4MTBh7chX5l8hIWnW0WRtsKEd7laESO5lpItMVSGC/gAAQMIIE4AAAAAAAABBCJRIM//VLPkWViKpOGXLVboPI42pZ2WjLKZ3vuvBMJDlKnuAQlCArlFYVfpRu8H90tU+gm+Sn6Tjcr7+ye0s3LFc8BZ8SqwAhJoHj8J6uOKjy8/7NfdVvxYbPoCjoqzP3KpD4QKbSJcAA==",
       "supplementary": {
         "inputs": [
@@ -305,6 +283,7 @@
     },
     {
       "description": "ecdh coverage: input 1 missing ECDH share for output 1 with two inputs / two sp outputs (different scan keys)",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQIBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g907dH3W0uz5ddJwVv9tmNI9oBam01F/u4aLiAfUDu3EBDwQAAAAAARAE/v///yIdA1LXjEE5ADKtkYFqaX/HQNjrkJzwTXCIUmSwUfI4XiXsIQMJH9SAORd/RNe3npYWiEnGLrP4eADEZ2fFCo84+Y79FSIdA2UdLAc/ywKk2C3aU/HVAdd6A1BmZ5hUZHOyEmts0afeIQN2iSMnxOeAru7UzhvJK7ASK3t5ENlvCtUUi0lvnD6S+yIeA1LXjEE5ADKtkYFqaX/HQNjrkJzwTXCIUmSwUfI4XiXsQL4acjrvVeiYG5lZmpvBKzj4froBWMxwZokPImnK3kY7dzQal9KScZZNAcAkHMMi/VOQwpuZFg+CbzKTZYmMvwIiHgNlHSwHP8sCpNgt2lPx1QHXegNQZmeYVGRzshJrbNGn3kCY8UrEWvZFmrDITUfaU2TPsUT/kL2scy+cq8bbAA3PGpXjsx97cKBCmKUbb9RRbIHXFsmVT4rxDD1ZgJruK704AAEBH6CGAQAAAAAAFgAUNyH6c8IwXLL4joSJLWvWuXcmHmoBAwQBAAAAIgYCQ6DUDp3giCeUFhdSuuQrqQlSeEIJ8GNDDwryVjVKhbsIAAAAgAEAAAABDiDnbAFxCDpMX7Sv4vbWHwCkcwG50B+NLkd4CrdULjd8CAEPBAAAAAABEAT+////Ih0DZR0sBz/LAqTYLdpT8dUB13oDUGZnmFRkc7ISa2zRp94hAnUEQAf+LQMNV3wymRzyo+deU1BCRbPL5bMFOufF8iBaIh4DZR0sBz/LAqTYLdpT8dUB13oDUGZnmFRkc7ISa2zRp95AOLnjgGtJvr7vxs7gZcKwZv2wCuzs8ei1sqr0fPBBeyma4KJW7Xy2yCcC63E31zv1eSccQoTQBuO1nXCpuWfYiQABAwiQXwEAAAAAAAEEIlEgUYxvb4GbCpCxtzrI2r6I+6L7jU21kKWeh5y2htZLPwoBCUIDZR0sBz/LAqTYLdpT8dUB13oDUGZnmFRkc7ISa2zRp94D8nDgpWMhg7arAQdOh35oANsA9cfF0vr7to+cKNSFRSQAAQMIkF8BAAAAAAABBCJRIJPCrCoXvlxLW2ZvyHz2ESYroSl4aKSY4YV32/tFpEJwAQlCA1LXjEE5ADKtkYFqaX/HQNjrkJzwTXCIUmSwUfI4XiXsAuDEwYe3IV+ZfISFp1tFkbbChHe5WhEjuZaSLTFUhgv4AA==",
       "supplementary": {
         "inputs": [
@@ -357,6 +336,7 @@
     },
     {
       "description": "ecdh coverage: input 1 missing ECDH share for scan key with two inputs / one sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR9QwwAAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g6xHhra18MFGah0Q1Mm7jehlliBwKVcouqa/tQZZIthYBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQEfUMMAAAAAAAAWABQ3IfpzwjBcsviOhIkta9a5dyYeaiIGAkOg1A6d4IgnlBYXUrrkK6kJUnhCCfBjQw8K8lY1SoW7CAAAAIABAAAAAQ4g245T4MzJHLEs15uROavlPi9D3Liqq6r37/AsHsiwHCgBDwQAAAAAARAE/v///wABAwgYcwEAAAAAAAEEIlEgzeOdiwW0lvjxjyCyfQr5oyMzCeBHIhnggT/ztdN4fikBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -397,6 +377,7 @@
     },
     {
       "description": "input eligibility: segwit version greater than 1 in transaction inputs with sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABZSFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g0w9eTlaTsy1vWnieNwu2RHFBjAHb48ufI2BmfBwTOaUBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIGHMBAAAAAAABBCJRIPGzmH+N0VjGTWFO/Otm7DX662b5nu+5arlL2tCh6dqAAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
@@ -417,6 +398,7 @@
     },
     {
       "description": "input eligibility: segwit version greater than 1 supplied via PSBT_IN_NON_WITNESS_UTXO with sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAFICAAAAAfTCEtWu0ef2/2M/LOCcZHxXvt2TAxTZjed1A9WOlAszAAAAAAD/////AfBJAgAAAAAAFlIUIppy00pkW9NJa7v1C7uByQY/T5QAAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiDh/4XEEQ/a9bWfgusG8FVcGc53XmlVhXM3mLq1uKH89AEPBAAAAAABEAT+////AAEDCJBfAQAAAAAAAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
@@ -436,6 +418,7 @@
     },
     {
       "description": "input eligibility: non-SIGHASH_ALL signature on input with sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIBPFqTZEIZKW+xTUTRI36/6YH/fcIohqc8e60zu00MXEAiB2tczAkZNbC0y0+V5LP92s8HP9EO5XcairRf4TXwm8dQIBAwQCAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwgYcwEAAAAAAAEEIlEgZG9JTKC7m86tFLjbfkxpRFYfryMufMzDa91YaV90kVkBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -455,7 +438,45 @@
       }
     },
     {
+      "description": "input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output",
+      "task": "fail_sign",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEBAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g907dH3W0uz5ddJwVv9tmNI9oBam01F/u4aLiAfUDu3EBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIGHMBAAAAAAABBCJRIGRvSUygu5vOrRS4235MaURWH68jLnzMw2vdWGlfdJFZAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
+            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
+            "prevout_txid": "71bb03f501e2a2e1ee5fd4b4a905688f3466dbbf159c745d3ebbb4751fdd4ef7",
+            "prevout_index": 0,
+            "amount": 100000,
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000ffffffff01a0860100000000001600141e2ad7872d329413a56df0968be338222783163b00000000",
+            "witness_utxo": "a0860100000000001600141e2ad7872d329413a56df0968be338222783163b",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe068",
+            "ecdh_share": "03eca4ff11b728e2e0f60ce6222943a6ff55b9d95f627bf9a99d084bc872d50a5b",
+            "dleq_proof": "8a13b3985545f72bd6e89714aeb909b3e354a842a9bb8b56cd0eded21df8a199598b31228a49e0bd7e95ce1053f7c5b28acb543a68707600e3ce89822ee32021",
+            "input_index": 0
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 95000,
+            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
+            "script": "5120646f494ca0bb9bcead14b8db7e4c6944561faf232e7cccc36bdd58695f749159"
+          }
+        ]
+      }
+    },
+    {
       "description": "output scripts: P2TR input with NUMS internal key cannot derive sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABASsQJwAAAAAAACJRICG+i0nY1uxr8GEwJe9oKFeYqXr2DtXaB7tet9ZpYewfAQMEAQAAAAEOIH+QX5ugy7b4HNdKHstiYMqtPm+AQQ5JLIv1XAj9zv6iAQ8EAAAAAAEQBP7///8BFyBQkpt0waBJVLeLS2A16XpeB4paDyjsltVHv+6azoA6wAEYIMsC1iyIbaqg6A/joocuiAsyxzUq0DqnEO9KKf0yXfA+Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghAm4w8ShPbGbAm3ZU73IN2M0+RUEpUQvGp9jwNFV8+IWiIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhALSLEJgdzB0pUmyzfewhQr2VRMuHIb12djTXH8g2q8ODua7McdrYjqJxie6BN6aGesgacQt2Yi3EKmm4KpRUGWAABAwgcJQAAAAAAAAEEIlEgOwB1kqKTFP8NUJ6d02uqJVLvwKsGsDO/0vYkCFfQAQcBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -492,6 +513,7 @@
     },
     {
       "description": "output scripts: PSBT_OUT_SCRIPT does not match derived sp output",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g907dH3W0uz5ddJwVv9tmNI9oBam01F/u4aLiAfUDu3EBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIGHMBAAAAAAABBCJRIM3jnYsFtJb48Y8gsn0K+aMjMwngRyIZ4IE/87XTeH4pAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
@@ -528,6 +550,7 @@
     },
     {
       "description": "output scripts: two sp outputs (same scan / different spend keys) not sorted lexicographically by spend key",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQIBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIExYL+wZvNCU5oIsqPD7MiK6sIG6J64r3IOIgwa67SNWAiAfxZx06/JBydKQqMxQ8qOYD8DANBNXtltjINXNPOpPBAEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwiQXwEAAAAAAAEEIlEgPajcATlIcUBND7sqMXcLxrF+r7rr33jiwy48KFZTJ1kBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgCi4D5lDNIleEbx2x1q254/iwluzMvIXshHEAXvx9nfYYAAQMIECcAAAAAAAABBCJRINcZ2dcurhCyj8MgCzL61dlJboWOixbkdXjXyMFEkzsEAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA6r4Yq7amM+SU5r33DN10dpfsGsSHvCh8DGp9zgv1T27AA==",
       "supplementary": {
         "inputs": [
@@ -570,6 +593,7 @@
     },
     {
       "description": "output scripts: k values assigned to wrong output indices with three sp outputs (same scan / spend keys)",
+      "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQMBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIBe90l7S24zaC2H7PRexnWPepFNqxUps2DvBUO3Xrxu5AiBuKeGJ8IZcU4HjYeUG361wmQN3pPNBZSq3Ch38duGjFwEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwj4JAEAAAAAAAEEIlEgZG9JTKC7m86tFLjbfkxpRFYfryMufMzDa91YaV90kVkBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkAAQMIECcAAAAAAAABBCJRIGc7djVqchAKRRXkFFGumsL7pqnR1+3tIgkQG9UvGutXAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AAEDCBAnAAAAAAAAAQQiUSClFWXajOh/lN34SuQO9pjFdJvyYuQT6vKNUNi9i1MnxQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -620,6 +644,7 @@
   "valid": [
     {
       "description": "can finalize: one P2PKH input single-signer",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAFUCAAAAAfTCEtWu0ef2/2M/LOCcZHxXvt2TAxTZjed1A9WOlAszAAAAAAD/////AaCGAQAAAAAAGXapFB4q14ctMpQTpW3wlovjOCIngxY7iKwAAAAAIgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIAmo4q6/JyO2/hvCLvVxWvlpreGNDQ6ZGL7yjMl9R28PAiBnvGS7+/zZe/QBC5e7xq0+bUGq7RlV1iCq8jBwJRHFOAEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiBSJ0jrF3ZNKMpJSBXsjUnn0w1SvHNCLHyG63TjlwVylAEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwgYcwEAAAAAAAEEIlEg4UDSh7RbRs1OqvpDdwYVcLq+g9G4vJUKdKn+oJIz16YBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -656,6 +681,7 @@
     },
     {
       "description": "can finalize: two inputs single-signer using global ECDH share",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAIgcCekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghAtMmJyM1JgfoT8r3ZR+NLWN+Agrqht+tgNMGzU9Iz8xiIggCekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAxlO3H5RoGKlb3DnwkYRFvJA6CHa3OAYOnl2x3Owwq99U4LXxeFc/URnecapjrRm0SeO8tlRjk2yLrupNkXOSuQH7BAIAAAAAAQEfoIYBAAAAAAAWABQeKteHLTKUE6Vt8JaL4zgiJ4MWOyICAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/RzBEAiB+z5GUReT6UKpbHx0o0J+26Y2u1HpKxMHucKXOJQMPEAIgYD960vJokWfotNGPLfqsq9A6Be1voDPb2Tgnv7dDy1IBIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////AAEBH6CGAQAAAAAAFgAUppJRHAeVdb83Vtq8Vq1x1ChKaQ4iAgL1tZ+l5JIiHr9VunitRCYFvq6VFmuh66MlDQu6rH4u3EcwRAIgD92Jdyyn/sGwgcwpZw08z5OY75XnZrM1HJZ+y0n41LkCICP73+WMvDTRalGCH2dZ6tPDTUKKvBMgfwxIpJ+ega9yASIGAvW1n6XkkiIev1W6eK1EJgW+rpUWa6HroyUNC7qsfi7cCAAAAIABAAAAAQ4gvNSFpwnLJdE0Y6GDLbIZTGydn+crlpn0/kLIK+2T0yYBDwQAAAAAARAE/v///wABAwgYcwEAAAAAAAEEIlEgmbvSmC8CgLzcJkMdaynPZ5EYpbu7YJFNb/rPq7xctFsBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -704,6 +730,7 @@
     },
     {
       "description": "can finalize: two inputs single-signer using per-input ECDH shares",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIH7PkZRF5PpQqlsfHSjQn7bpja7UekrEwe5wpc4lAw8QAiBgP3rS8miRZ+i00Y8t+qyr0DoF7W+gM9vZOCe/t0PLUgEiBgLIF7t1Ia/DXqlvO/snDm61Dd/6VWBie5Yf7ADymWUIvwgAAACAAAAAAAEOIPdO3R91tLs+XXScFb/bZjSPaAWptNRf7uGi4gH1A7txAQ8EAAAAAAEQBP7///8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCED7KT/Ebco4uD2DOYiKUOm/1W52V9ie/mpnQhLyHLVClsiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaECKE7OYVUX3K9bolxSuuQmz41SoQqm7i1bNDt7SHfihmVmLMSKKSeC9fpXOEFP3xbKKy1Q6aHB2AOPOiYIu4yAhAAEBH6CGAQAAAAAAFgAUppJRHAeVdb83Vtq8Vq1x1ChKaQ4iAgL1tZ+l5JIiHr9VunitRCYFvq6VFmuh66MlDQu6rH4u3EcwRAIgD92Jdyyn/sGwgcwpZw08z5OY75XnZrM1HJZ+y0n41LkCICP73+WMvDTRalGCH2dZ6tPDTUKKvBMgfwxIpJ+ega9yAQEDBAEAAAAiBgL1tZ+l5JIiHr9VunitRCYFvq6VFmuh66MlDQu6rH4u3AgAAACAAQAAAAEOILzUhacJyyXRNGOhgy2yGUxsnZ/nK5aZ9P5CyCvtk9MmAQ8EAAAAAAEQBP7///8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCEDNNLO907e1EZCJ2B/xZrB3oDBKiQzpWJxUo7cz1D6bCsiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaEA3wAwLQqBz9rZfDEtuVuBndLOAwd894otkCxIe4LO0z3hQ30VuC12OGXXd/yUmLIOB4g+FLNhwveP2qDKmMlvMAAEDCBhzAQAAAAAAAQQiUSCZu9KYLwKAvNwmQx1rKc9nkRilu7tgkU1v+s+rvFy0WwEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -759,6 +786,7 @@
     },
     {
       "description": "can finalize: two inputs / two sp outputs with mixed global and per-input ECDH shares",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQIBBgEAIgcDM2HT/3LzTmtOenvvluW4FR5mqXmtznU8OcWDy+V2bSghA2bPx/3OBuCO1JsbOVK40VGo9+B1/l9t1Y3Wj52t7sqUIggDM2HT/3LzTmtOenvvluW4FR5mqXmtznU8OcWDy+V2bShAXquLCG1IUP6dHJ+WGpH5l7YcqNCFCvwGp4vfPHSe9UBQ5pK1P7WwhuXnh5PwHnbTdH+J4xd6f+/2+MFhfxsG4wH7BAIAAAAAAQEfQA0DAAAAAAAWABQeKteHLTKUE6Vt8JaL4zgiJ4MWOyICAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/RzBEAiAKK+ZG0anqXBVNlCNCmskJl9/09NFCJp/mC8dvxE42HAIgCANa6s/ngmX6X6JTanzM6oXez4bcGYlSGOAMQI1gw7ABAQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g/S309Ytav5uR/xoeQ+LjUj9QxqoZ1cIjYBQexIyagCEBDwQAAAAAARAE/v///yIdAqnx+sLMRXaE8z3pAHP+INIslHySFjuGKxTQq6HfRxUQIQP70XPZxI1YxQIkJtBSeLyhe5qOIoJmaQGhsAueBLeZSSIeAqnx+sLMRXaE8z3pAHP+INIslHySFjuGKxTQq6HfRxUQQMBdpBBIfPrsN4/r5q9QBeOubIYjaBiw5VshQBfrUHPt70AXlXW13NqpBjSRrIuD/QYk1Bd6TS3UmUxGQNa4zN4AAQEfQA0DAAAAAAAWABSmklEcB5V1vzdW2rxWrXHUKEppDiICAvW1n6XkkiIev1W6eK1EJgW+rpUWa6HroyUNC7qsfi7cRzBEAiB0WWt2O7l69bcisOqLk7vVXHncZjwMI0zlNdlyuICoPAIgUIFQPrtQ11ykObl2fojwIrAtubX+6aUAbL2KAm82slYBAQMEAQAAACIGAvW1n6XkkiIev1W6eK1EJgW+rpUWa6HroyUNC7qsfi7cCAAAAIABAAAAAQ4ghNQvKb9bD0rIweBsigE0tTP4LAoB9+5OE1KkBMda+y4BDwQAAAAAARAE/v///yIdAqnx+sLMRXaE8z3pAHP+INIslHySFjuGKxTQq6HfRxUQIQOmqJsbmGqZVTPhe+1kUAtUG7DXOQce/irit++woMprzyIeAqnx+sLMRXaE8z3pAHP+INIslHySFjuGKxTQq6HfRxUQQMNKailAu+mnNWwcxv/jWN1EQdtYiXy6mcIS63UoXn2h7KEceSyXo4BJM0WrIk3p2UwrNu6FJq4jUoFxoyMd5zMAAQMIkF8BAAAAAAABBCJRILEoCb4RTlFjlJlTs774bjFtFwxnNmVN1GqRvb5EvFUQAQlCAzNh0/9y805rTnp775bluBUeZql5rc51PDnFg8vldm0oAxJmWB4+hBy7lN5i6nNVg6IyxMiI+m7e8uwvhweJ/B3UAAEDCJBfAQAAAAAAAQQiUSB7awJOhIlWnyC/ugH9vJiZ5xkwFVweIOh4kgaU+bGmCAEJQgKp8frCzEV2hPM96QBz/iDSLJR8khY7hisU0Kuh30cVEAJKSNduINQLz18uGlw//rPcKos7iNeaSG1UydnqqPoYjgA=",
       "supplementary": {
         "inputs": [
@@ -825,6 +853,7 @@
     },
     {
       "description": "can finalize: one input / one sp output with both global and per-input ECDH shares",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAIgcDM2HT/3LzTmtOenvvluW4FR5mqXmtznU8OcWDy+V2bSghAwoYubtBmbiTMOsX+O5ax4bghT3NLzzN8XRLl85O3gU+IggDM2HT/3LzTmtOenvvluW4FR5mqXmtznU8OcWDy+V2bShAJ/uQxdYceOMRUgD/0YPSjQq0g4BiyVQZNMZBbUJnzjG9QofpNZRSwIF68O9NUM/1eENrDSj57Y8ht5pEdkCAjgH7BAIAAAAAAQEfQA0DAAAAAAAWABQeKteHLTKUE6Vt8JaL4zgiJ4MWOyICAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/RzBEAiBUNhA13hE8raZTokzWIJ+AYUiOym/WARzHd+vlFeEdggIgO1caJfcetv1+CiZc7q5hekgHLzPccyNFaj+UyvNwf7sBAQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g/S309Ytav5uR/xoeQ+LjUj9QxqoZ1cIjYBQexIyagCEBDwQAAAAAARAE/v///yIdAzNh0/9y805rTnp775bluBUeZql5rc51PDnFg8vldm0oIQMKGLm7QZm4kzDrF/juWseG4IU9zS88zfF0S5fOTt4FPiIeAzNh0/9y805rTnp775bluBUeZql5rc51PDnFg8vldm0oQAATg9RmG+hyXvKQSPSMkR+J9fNDF9fAwKzGDvZfG1K//3qW2DObYl34Orq1eqJz7c2aNceU2suxyGEXG7JnB18AAQMIkF8BAAAAAAABBCJRICpwvgE9h6HoHqAfvfoM8f8I1Spo0YwTGozJYB+EpqCsAQlCAzNh0/9y805rTnp775bluBUeZql5rc51PDnFg8vldm0oAxJmWB4+hBy7lN5i6nNVg6IyxMiI+m7e8uwvhweJ/B3UAA==",
       "supplementary": {
         "inputs": [
@@ -861,6 +890,7 @@
     },
     {
       "description": "can finalize: three sp outputs (different scan keys) with multiple global ECDH shares",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQMBBgEAIgcCqfH6wsxFdoTzPekAc/4g0iyUfJIWO4YrFNCrod9HFRAhAsLZ32DuaaWoZgTdmmKCwi744sknbabllaVGPzcare4kIgcDM2HT/3LzTmtOenvvluW4FR5mqXmtznU8OcWDy+V2bSghAtx9LsrFaLARUXW6PNVJb/TEttkJQi28yuuPJS+lT4vQIgcDjtMiDnM0T5Hi0zOR4+FpHbOdrwbkI34ZftDQB78nKGwhAnC+9cBqmoVfxjv/K9C+LXADPIILYVNBPI1u2lHyWhspIggCqfH6wsxFdoTzPekAc/4g0iyUfJIWO4YrFNCrod9HFRBA7IJCv3tYgc7gYFZsfxPMR+RxDImiZFjCAwGzAx5IFzvAvqAWgNM3XrXoBhGrDVCLHkmrtXGxh4AyquSfCwL30iIIAzNh0/9y805rTnp775bluBUeZql5rc51PDnFg8vldm0oQOpDRw5eG+MpG0igvLU/VZUsZIYOdjXvulADzK3td90SjiFml7D1I74hfsaHUHeXzM68XNlDYq8bRtgDZCvV+UAiCAOO0yIOczRPkeLTM5Hj4Wkds52vBuQjfhl+0NAHvycobEAb3+VO1KKgb/+bAAmuTj2A/EdhZHWv3yEkTP48bRBN8kdBqHVRTXhlT7nKERjm0+VS84+Mq6NVLoMzxQG/DL0/AfsEAgAAAAABAR8goQcAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIFeMiGDEVnt2uY7OwXpGSaLjmihUWHqTRS46CUx3K2QTAiAVKBovZu1cnHyHcQLs68QBjn3r46afDHERu0maQBCJ1wEiBgLIF7t1Ia/DXqlvO/snDm61Dd/6VWBie5Yf7ADymWUIvwgAAACAAAAAAAEOINRA51r83VMaWR43q9JuSvK/D2/y4ZGDAjVh6PxXE49KAQ8EAAAAAAEQBP7///8AAQEfoIYBAAAAAAAWABQ3IfpzwjBcsviOhIkta9a5dyYeaiICAkOg1A6d4IgnlBYXUrrkK6kJUnhCCfBjQw8K8lY1SoW7RzBEAiAQ8ruSfOtusZgnpZfg+BUfcICmB33K1EIl/rljZWxydAIgL7QQrzEUzEAF5ouXoTQ76rv+43bIT+e56H9R2VXEh1kBIgYCQ6DUDp3giCeUFhdSuuQrqQlSeEIJ8GNDDwryVjVKhbsIAAAAgAEAAAABDiDnbAFxCDpMX7Sv4vbWHwCkcwG50B+NLkd4CrdULjd8CAEPBAAAAAABEAT+////AAEDCJBfAQAAAAAAAQQiUSBOilH90avVJPxS1pKJU4LubtzEjTd9tvHmUV8jQC5IJwEJQgMzYdP/cvNOa056e++W5bgVHmapea3OdTw5xYPL5XZtKAMSZlgePoQcu5TeYupzVYOiMsTIiPpu3vLsL4cHifwd1AABAwiQXwEAAAAAAAEEIlEgfjFfJFz5V18TQ8MXD/zuNq1G0ztWXwo4uZQ8fAKs12sBCUICqfH6wsxFdoTzPekAc/4g0iyUfJIWO4YrFNCrod9HFRACSkjXbiDUC89fLhpcP/6z3CqLO4jXmkhtVMnZ6qj6GI4AAQMIkF8BAAAAAAABBCJRIDytT51G4lEctogrr2Do7YBiILFBUT1pBNrNK+qhN8OVAQlCA47TIg5zNE+R4tMzkePhaR2zna8G5CN+GX7Q0Ae/JyhsA/gUc4RMnXTJIf8Xpa9BC2M3NI16+/9ziRvFywyyTLDAAA==",
       "supplementary": {
         "inputs": [
@@ -931,6 +961,7 @@
     },
     {
       "description": "can finalize: one P2TR input signed with SIGHASH_DEFAULT",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABASughgEAAAAAACJRIOr+wb8f+Gc4KaZp0ODVHmm4+HjCR3lPlLOIEAxKsoGoAQMEAAAAAAEOIBju6I1/yremcDAUdu9RuwYVT/2r7gE0V7N7s0GwUlsLAQ8EAAAAAAEQBP7///8BE0Dy/VdTtEk8Bo7qOC1qbZzruIxMcN5cnWn6zEfPWxL7fqzH/X2QFbNBLaXwlV/Jq1OFBE8Ha6ukSjA5QQgp3YtUARcgyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCECk3pXhhJkdtDAvHvJiFCBD2dK6sF9p/psij0ude8Q1H4iHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaEC7hR+N0QAzvYyyhCJd2xRdt7U9XefG6uFTgLQD82RsaBQF5qYVLY+hw+UEHqLlfuBkcjmxsDLKgfxdKrPZYBY+AAEDCBhzAQAAAAAAAQQiUSBh3waWykfLBeW4dLLG6ABA0uPZoqmtDn7azwlY9VVz6wEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -968,6 +999,7 @@
     },
     {
       "description": "can finalize: one P2WPKH input / two mixed outputs - labeled sp output and BIP 32 change",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQIBBgEAAfsEAgAAAAABAR8goQcAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIC8JqoNoi/gBn8o2JHc1a8hL0tFsAFqO9Gs9u4POGZPgAiBZY9NzmTp+KWhjqPZmwbHg+OCvZz5NZlvzYDOxjZH5+gEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiDUQOda/N1TGlkeN6vSbkryvw9v8uGRgwI1Yej8VxOPSgEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwighgEAAAAAAAEEIlEgstdQpg7E0FvSwiJx8I/iGwDicR04IwSLuWWiK8QXPS8BCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgD6o8ii+K3FtrN78soEAcodPAKR29cB70FGRcSbMZLPe8BCgQBAAAAACICA16V9Fce2ibg9jY+pcWUeUrU3SFeoSZi8TyamQbVqpOuDAAAAAAAAAAAAAAAAQEDCHDzBQAAAAAAAQQWABTXQ7NLhyjCo19qlMja9BGHRa2WmwA=",
       "supplementary": {
         "inputs": [
@@ -1011,6 +1043,7 @@
     },
     {
       "description": "can finalize: one input / two sp outputs - output 0 has no label / output 1 uses label=0 convention for sp change",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQIBBgEAAfsEAgAAAAABAR/gkwQAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIFB2CeL9erskEbcJ/ZjL+pgC0nxcDrLBEMLU8/EJ61yYAiBeYmSIxVqzZbFYt+8gUlTszHEFFvbNOzksUNGJgWmDsQEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiDXHS3QFsrGYSyer5hVH2eAhRu3czlByBTq+trO3jDcPQEPBAAAAAABEAT+////Ih0CXw7Bs42ZhKfrYvFb5AMCBBDxQu301p42P1YVr9Kmts0hA84eNnXZDZkmSfqd2xH5AlSbs7AvVvbonMCgTIuMN92UIh0Ci3kOCYf96fDRI5jra+MMc3Z5PGR4ZaKgLy78lg2WZWghAlWBv6pzMVb2uY5xom9w/XazZ4ZJ9isfxed7jpq45hBQIh4CXw7Bs42ZhKfrYvFb5AMCBBDxQu301p42P1YVr9Kmts1ADolhPR9rJTbbj6kkIA2zpvjvyhciVWTVaxEuUIZbTTAuBY+m9hwp4jZqSnJp1FVaXGHWVVnb+/rJ4urf5TY31SIeAot5DgmH/enw0SOY62vjDHN2eTxkeGWioC8u/JYNlmVoQHlAgZ626fJYwVg4fApkzBb1F8fvRAkSLM6qlPTi/1N2xCR7/BcNmyY7Dj0ga2aMh+lLNN7q+gCheSsEeteIdbsAAQMIoIYBAAAAAAABBCJRIBM/6m8cjln0UbKW1K2xPs7sf8M9vFNq5NY3WropOE+LAQlCAot5DgmH/enw0SOY62vjDHN2eTxkeGWioC8u/JYNlmVoA7RDRzNcY/UF5V4mirKA8xi0pqoUSS/zecNmih9U74ybAAEDCDDmAgAAAAAAAQQiUSBgK8NLBuQ1Rvh+VIKxETqr+cn+KSUJmpItXCPYS7zqxgEJQgJfDsGzjZmEp+ti8VvkAwIEEPFC7fTWnjY/VhWv0qa2zQLOCzIZpapd+PIc45PpYs3afVFUbaTTXDjtAYilludg8wEKBAAAAAAA",
       "supplementary": {
         "inputs": [
@@ -1061,6 +1094,7 @@
     },
     {
       "description": "can finalize: three sp outputs (same scan key) - output 0 uses label=1, outputs 1 and 2 uses label=2 (same spend key)",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQMBBgEAAfsEAgAAAAABAR+AGgYAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIATLXid+9L3/FiZksROrkuqJLkIsvTSFJXM1AGaP8B/NAiAVu0kEYWgx0lRG60HpuKETVxa0UUDuQYJ3kMu5/km+pQEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiBw4GuGVZXEwnMdM/WmrSgPuHA1VGZimIDKXc2OkAfhmgEPBAAAAAABEAT+////Ih0Ci3kOCYf96fDRI5jra+MMc3Z5PGR4ZaKgLy78lg2WZWghAlWBv6pzMVb2uY5xom9w/XazZ4ZJ9isfxed7jpq45hBQIh4Ci3kOCYf96fDRI5jra+MMc3Z5PGR4ZaKgLy78lg2WZWhAeUCBnrbp8ljBWDh8CmTMFvUXx+9ECRIszqqU9OL/U3bEJHv8Fw2bJjsOPSBrZoyH6Us03ur6AKF5KwR614h1uwABAwihhgEAAAAAAAEEIlEgk9peuSd5NiOBJVD4aZ1mO3GW8MydSIRYu2gf6ytv/LoBCUICi3kOCYf96fDRI5jra+MMc3Z5PGR4ZaKgLy78lg2WZWgD1DFYje5hqzo5clspnDdC3Gaghh3s9ZG0I7DlJwcPgjQBCgQBAAAAAAEDCDLmAgAAAAAAAQQiUSD9664oeLkkI9F9dPTMFA4emYAFl41xwYMTkoBAXjDkBgEJQgKLeQ4Jh/3p8NEjmOtr4wxzdnk8ZHhloqAvLvyWDZZlaAMhk60Mh1+sUkNzgCKQCnckxhdd2smUQWWqtFeq35xPPAEKBAIAAAAAAQMIooYBAAAAAAABBCJRIPTjBjbkj2p6/phPoLJUWyV+qujKoW7EgZPbNIkmlYdbAQlCAot5DgmH/enw0SOY62vjDHN2eTxkeGWioC8u/JYNlmVoAyGTrQyHX6xSQ3OAIpAKdyTGF13ayZRBZaq0V6rfnE88AQoEAgAAAAA=",
       "supplementary": {
         "inputs": [
@@ -1113,6 +1147,7 @@
     },
     {
       "description": "can finalize: two inputs using per-input ECDH shares - only eligible inputs contribute shares (P2SH excluded)",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIHX/+DN7oavaEJzJjnIcVUgz9mY0VLyglR21zhcuA3LjAiAFXY5F4lr2Gu+QPcbwd9LpuW0Ut5Op7+w5K5bqn1Hf7gEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAFMCAAAAAUDm+qYSaPF6EBAdYlU1gogq5IWL7hM2PbgP3ygfgl/8AAAAAAD/////AfBJAgAAAAAAF6kU9F+MyiaOwm5LvomRcPE4JQ189V6HAAAAAAEER1IhAod8oC8UQFm9gtAOGzma43T3ilLO96HKN/KNeIs0DS95IQNMh6RIcvXh8AbTTYigCVkoK9RTXnR3w9aMMWWZHqGzllKuAQ4g0iImLyaHKbt8hMVYEppdaYYYXO9TXsFJwN9g3UqSwgQBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQJii2i2RG5qhwJZc9k6+xlOQgoQ86HMs4rdgtRkqJSkKCIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMIkF8BAAAAAAABBCJRIBZV0TJCpxR530ke2cObPHWqWxzY0Ba/jLNUp013dB3eAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
@@ -1161,6 +1196,7 @@
     },
     {
       "description": "can finalize: two inputs using global ECDH share - only eligible inputs contribute shares (P2SH excluded)",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAIgcCekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIggCekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAJDBHnS2hMQoCTSqrjkx7Sdds1R9F7oEnwVmwOTpnW291xYHr49CBfdrzu1mM/XoCLxqH7UeWZPa5R6R9tZQcsgH7BAIAAAAAAQEfoIYBAAAAAAAWABQeKteHLTKUE6Vt8JaL4zgiJ4MWOyICAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/RzBEAiB1//gze6Gr2hCcyY5yHFVIM/ZmNFS8oJUdtc4XLgNy4wIgBV2OReJa9hrvkD3G8HfS6bltFLeTqe/sOSuW6p9R3+4BIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////AAEAUwIAAAABQOb6phJo8XoQEB1iVTWCiCrkhYvuEzY9uA/fKB+CX/wAAAAAAP////8B8EkCAAAAAAAXqRT0X4zKJo7Cbku+iZFw8TglDXz1XocAAAAAAQRHUiECh3ygLxRAWb2C0A4bOZrjdPeKUs73oco38o14izQNL3khA0yHpEhy9eHwBtNNiKAJWSgr1FNedHfD1owxZZkeobOWUq4BDiDSIiYvJocpu3yExVgSml1phhhc71NewUnA32DdSpLCBAEPBAAAAAABEAT+////AAEDCJBfAQAAAAAAAQQiUSAWVdEyQqcUed9JHtnDmzx1qlsc2NAWv4yzVKdNd3Qd3gEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -1208,6 +1244,7 @@
     },
     {
       "description": "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (NUMS internal key excluded)",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABASsQJwAAAAAAACJRICG+i0nY1uxr8GEwJe9oKFeYqXr2DtXaB7tet9ZpYewfAQ4gf5Bfm6DLtvgc10oey2Jgyq0+b4BBDkksi/VcCP3O/qIBDwQAAAAAARAE/v///wEXIFCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAARggywLWLIhtqqDoD+Oihy6ICzLHNSrQOqcQ70op/TJd8D4AAQEfoIYBAAAAAAAWABQ3IfpzwjBcsviOhIkta9a5dyYeaiICAkOg1A6d4IgnlBYXUrrkK6kJUnhCCfBjQw8K8lY1SoW7RzBEAiBL4LFduFEaUJtFZy/IjXr8u2zhZRD+5S/lCtDCFfgDtAIgDY/d5W8QN1pvNEvgGJUK2CFUxt9QN4+nfaaF861FNo8BAQMEAQAAACIGAkOg1A6d4IgnlBYXUrrkK6kJUnhCCfBjQw8K8lY1SoW7CAAAAIABAAAAAQ4g52wBcQg6TF+0r+L21h8ApHMBudAfjS5HeAq3VC43fAgBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQLlenrcsBjY+zFU6AwUuXpQmUtCNWhB6p/BMXBhRADmNyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQPf6OB3iCztFnG5CbGIT1BdTCPJIKkTjMoQjJiTU2v1XMpm/OvFqswLFYmNjo31Ehwf356Hr6gZHvM1IYgO7K6YAAQMIHCUAAAAAAAABBCJRIC6iHh59r7TUOzMptavROIoFPuzz2cDR4mpCRHhRNvOAAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
@@ -1257,6 +1294,7 @@
     },
     {
       "description": "can finalize: three sp outputs (same scan key) - each output has distinct k value",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQQBBgEAAfsEAgAAAAABAR+AGgYAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIH2bvrz6uqFt0Kqa+PjltDT3VIfbiiHm1QtEnjAT9WsrAiAlq8iYSKvhCgxaq6TPG5n553yKIkS2xy6zrFdRfncXuAEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiBw4GuGVZXEwnMdM/WmrSgPuHA1VGZimIDKXc2OkAfhmgEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwighgEAAAAAAAEEIlEgpL1hojWVPFX7Ib8SF+ZZlw+BcVUweVNwtqhuui4/buABCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkAAQMIoIYBAAAAAAABBCJRIEZ7FHQz3K03MqLFl4fZe6tlntq7U2+lo3EHQLVhS4t1AQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AAEDCKCGAQAAAAAAAQQiUSCkZ5TVNLTq9lSGWuFY2oR7xga4HYq3jhMySv5KWUnbhQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQABAwiQXwEAAAAAAAEEIlEgee9WiKP6f+/DkidFWx8cLwjHAIdCTWoA+EwxQhrKjaQA",
       "supplementary": {
         "inputs": [
@@ -1311,6 +1349,7 @@
     },
     {
       "description": "can finalize: three sp outputs (same scan key) / two regular outputs - k values assigned independently of output index",
+      "task": "finalize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQYBBgEAAfsEAgAAAAABAR8goQcAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCICcgzDtRc5g6XoCKbBZuU04tEOEjpGhrAqg+sdM9G3B6AiBdslMBO2N4nLRYrOIxjHkT9mvR6OIXHye1MrEw+uWDNQEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiDUQOda/N1TGlkeN6vSbkryvw9v8uGRgwI1Yej8VxOPSgEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwighgEAAAAAAAEEIlEgcjuJtcY4edW50HowRRu91I43rAOOZvcm83ykCrJkq3IBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkAAQMIUMMAAAAAAAABBCJRIJxqPSOBjoIO0dDP3rljZXyOwyd7fZuGXHjXVX9d7daiAAEDCKCGAQAAAAAAAQQiUSCvFHbuA/XpiJDsVJYDYaxJHFbjCpPrKYD8MiuYN6dYugEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQABAwhQwwAAAAAAAAEEIlEgee9WiKP6f+/DkidFWx8cLwjHAIdCTWoA+EwxQhrKjaQAAQMIoIYBAAAAAAABBCJRIJ5nNdGxGWsLGu/g5NEOytKTdJZLn1mSBdF8qrYcp4VFAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AAEDCMgsAQAAAAAAAQQiUSBvxQb4BSqfWoqpuZDV6ZT0ld3tbUe6xEyqza3Y2Jkc0AA=",
       "supplementary": {
         "inputs": [
@@ -1375,6 +1414,7 @@
     },
     {
       "description": "in progress: two P2TR inputs, neither is signed",
+      "task": "sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAStADQMAAAAAACJRIOr+wb8f+Gc4KaZp0ODVHmm4+HjCR3lPlLOIEAxKsoGoAQMEAQAAAAEOII8FdrO+JFR/LnHnx5E/usrGtDeRW7vskxyrz2lTxHduAQ8EAAAAAAEQBP7///8BFyDIF7t1Ia/DXqlvO/snDm61Dd/6VWBie5Yf7ADymWUIvyIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQKTeleGEmR20MC8e8mIUIEPZ0rqwX2n+myKPS517xDUfiIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQLuFH43RADO9jLKEIl3bFF23tT1d58bq4VOAtAPzZGxoFAXmphUtj6HD5QQeouV+4GRyObGwMsqB/F0qs9lgFj4AAQErECcAAAAAAAAiUSByxJhK7EuuS9mftctjf98L3uLqGESO1I7dm3QHV5emHQEDBAEAAAABDiBK7+9qIrqY39KfGZyZ5uRg6lkyVeZUs7+YLAU/Zl6MNAEPBAAAAAABEAT+////ARcgQ6DUDp3giCeUFhdSuuQrqQlSeEIJ8GNDDwryVjVKhbsiHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCEDqyW+QCj++wxirIYxCPsMh/4IwcZ7wf2zwvtouIX3yhUiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaEDmalcdRGkQ4vvQ2EKCAsY6u1QmOGRDP70nIxFZc2vFlkZhZSkeUq+TMI9trZUVvluEWN/MmPHV/1+iGC5Lo3TnAAEDCLj5AgAAAAAAAQQiUSDt0WY14OrJfJ2zc3tD6kg1WVtBWfEASCMpWHOUAeiILwEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -1430,6 +1470,7 @@
     },
     {
       "description": "in progress: one P2TR input / one sp output with no ECDH shares when PSBT_OUT_SCRIPT field is not set",
+      "task": "sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABASughgEAAAAAACJRIOr+wb8f+Gc4KaZp0ODVHmm4+HjCR3lPlLOIEAxKsoGoAQ4gGO7ojX/Kt6ZwMBR271G7BhVP/avuATRXs3uzQbBSWwsBDwQAAAAAARAE/v///wEXIMgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/AAEDCBhzAQAAAAAAAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
@@ -1459,6 +1500,7 @@
     },
     {
       "description": "in progress: two inputs / one sp output, input 1 missing ECDH share when PSBT_OUT_SCRIPT field is not set",
+      "task": "sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g907dH3W0uz5ddJwVv9tmNI9oBam01F/u4aLiAfUDu3EBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQEf8EkCAAAAAAAWABQ3IfpzwjBcsviOhIkta9a5dyYeaiIGAkOg1A6d4IgnlBYXUrrkK6kJUnhCCfBjQw8K8lY1SoW7CAAAAIABAAAAAQ4gSQv/chrf7ISJdgPfb7uyrbjEZTqaQrLW0VICyiQN4LEBDwQAAAAAARAE/v///wABAwhADQMAAAAAAAEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
       "supplementary": {
         "inputs": [
@@ -1507,6 +1549,7 @@
     },
     {
       "description": "in progress: one input / two sp outputs, input 0 missing ECDH share for output 0 when PSBT_OUT_SCRIPT field is not set",
+      "task": "sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQIBBgEAAfsEAgAAAAABAR9ADQMAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7AQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAAQ4g/S309Ytav5uR/xoeQ+LjUj9QxqoZ1cIjYBQexIyagCEBDwQAAAAAARAE/v///yIdA1LXjEE5ADKtkYFqaX/HQNjrkJzwTXCIUmSwUfI4XiXsIQMJH9SAORd/RNe3npYWiEnGLrP4eADEZ2fFCo84+Y79FSIeA1LXjEE5ADKtkYFqaX/HQNjrkJzwTXCIUmSwUfI4XiXsQL4acjrvVeiYG5lZmpvBKzj4froBWMxwZokPImnK3kY7dzQal9KScZZNAcAkHMMi/VOQwpuZFg+CbzKTZYmMvwIAAQMIkF8BAAAAAAABCUIDZR0sBz/LAqTYLdpT8dUB13oDUGZnmFRkc7ISa2zRp94D8nDgpWMhg7arAQdOh35oANsA9cfF0vr7to+cKNSFRSQAAQMIkF8BAAAAAAABBCJRIGMlBrk4zY0hMZ/eTlk5KyP5juuXb0OS1jPxg+Iut/qxAQlCA1LXjEE5ADKtkYFqaX/HQNjrkJzwTXCIUmSwUfI4XiXsAuDEwYe3IV+ZfISFp1tFkbbChHe5WhEjuZaSLTFUhgv4AA==",
       "supplementary": {
         "inputs": [
@@ -1549,6 +1592,7 @@
     },
     {
       "description": "in progress: two mixed input types - only eligible inputs contribute ECDH shares (bare OP_2 excluded, not a segwit v2 witness program)",
+      "task": "deserialize",
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIBSy+IcHY6e2PvAVl0Nn5/k33wSx/IHSeS9IBgdqhovMAiAaQaLb0ZFUbVChPrPpzNJlrAkTgwuuSsDLkr6rKWzMmQEBAwQBAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAD0CAAAAAc+Yjtd5Ul1URcuaoVBLXR9poD9LJFCgdgM11F8uiiWkAAAAAAD/////AfBJAgAAAAAAAVIAAAAAAQ4gVNtzmS5x6dVs2BAO0w7bVdDozw7SVKANTvg6yrRtoloBDwQAAAAAARAE/v///wABAwgIvQMAAAAAAAEEIlEgqSpj6dcCLqOvqZpw8ABEi7toRks0RksXO7Jvx2VRRJgBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
@@ -1597,6 +1641,7 @@
     },
     {
       "description": "in progress: large PSBT with nine mixed inputs / six outputs - some inputs signed",
+      "task": "sign",
       "psbt": "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",
       "supplementary": {
         "inputs": [

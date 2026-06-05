@@ -218,6 +218,7 @@ class TestScenario:
     """Complete specification for a test case"""
 
     description: str
+    task: str
     validation_result: ValidationResult
     inputs: List[InputSpec]
     outputs: List[OutputSpec]
@@ -1761,6 +1762,7 @@ class ConfigBasedTestGenerator:
 
         return TestScenario(
             description=config["description"],
+            task=config.get("task", "deserialize"),
             validation_result=ValidationResult(
                 config.get("validation_result", "valid")
             ),
@@ -1954,6 +1956,7 @@ class ConfigBasedTestGenerator:
         verify_no_empty_output_script_headers(serialized_psbt, scenario.description)
         test_dict = {
             "description": scenario.description,
+            "task": scenario.task,
             "psbt": base64.b64encode(serialized_psbt).decode(),
         }
         all_material = {
@@ -2029,9 +2032,13 @@ class TestVectorGenerator:
         return self.test_vectors
 
 
-    def save_test_vectors(self, filename: str = "test_vectors.json"):
+    def save_test_vectors(self, filename: str = "test_vectors.json", include_hex: bool = False):
         """Generate and save all test vectors"""
         all_vectors = self.generate_all_test_vectors()
+
+        if include_hex:
+            for vector in all_vectors["invalid"] + all_vectors["valid"]:
+                vector["supplementary"]["hex"] = base64.b64decode(vector["psbt"]).hex()
 
         with open(filename, "w") as f:
             json.dump(all_vectors, f, indent=2)
@@ -2047,6 +2054,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate BIP-375 test vectors")
     parser.add_argument(
+        "--hex",
+        action="store_true",
+        help="Add each serialized PSBT as supplementary.hex, for diagnostics",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path(__file__).parent / "bip375_test_vectors.json",
@@ -2061,4 +2073,4 @@ if __name__ == "__main__":
     (test_configs_dir / "valid").mkdir(exist_ok=True)
 
     generator = TestVectorGenerator()
-    generator.save_test_vectors(str(args.output))
+    generator.save_test_vectors(str(args.output), include_hex=args.hex)
