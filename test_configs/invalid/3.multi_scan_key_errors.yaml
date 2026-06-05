@@ -2,6 +2,7 @@ description: "Multi-scan-key validation errors"
 
 test_cases:
   - description: "ecdh coverage: output 1 missing ECDH share for scan key with one input / three sp outputs (different scan keys)"
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
@@ -29,6 +30,7 @@ test_cases:
       force_output_script: true
 
   - description: "ecdh coverage: input 1 missing ECDH share for output 1 with two inputs / two sp outputs (different scan keys)"
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
@@ -55,6 +57,7 @@ test_cases:
       force_partial_ecdh_output_script: true
 
   - description: "ecdh coverage: input 1 missing ECDH share for scan key with two inputs / one sp output"
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
