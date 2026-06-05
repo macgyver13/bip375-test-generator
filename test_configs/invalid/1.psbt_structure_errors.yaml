@@ -2,6 +2,7 @@ description: "PSBT structure validation errors"
 
 test_cases:
   - description: "psbt structure: missing PSBT_OUT_SP_V0_INFO field when PSBT_OUT_SP_V0_LABEL set"
+    task: "fail_deserialize"
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -18,6 +19,7 @@ test_cases:
       missing_sp_info_field: true
 
   - description: "psbt structure: incorrect byte length for PSBT_OUT_SP_V0_INFO field"
+    task: "fail_deserialize"
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -33,6 +35,7 @@ test_cases:
       wrong_sp_info_size: true
 
   - description: "psbt structure: incorrect byte length for PSBT_IN_SP_ECDH_SHARE field"
+    task: "fail_deserialize"
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -48,6 +51,7 @@ test_cases:
       wrong_ecdh_share_size: true
 
   - description: "psbt structure: incorrect byte length for PSBT_IN_SP_DLEQ field"
+    task: "fail_deserialize"
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -63,6 +67,7 @@ test_cases:
       wrong_dleq_proof_size: true
 
   - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output"
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -77,6 +82,7 @@ test_cases:
       set_tx_modifiable: true
 
   - description: "psbt structure: missing PSBT_OUT_SCRIPT field when sending to non-sp output"
+    task: "fail_deserialize"
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:

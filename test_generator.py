@@ -216,6 +216,7 @@ class TestScenario:
     """Complete specification for a test case"""
 
     description: str
+    task: str
     validation_result: ValidationResult
     inputs: List[InputSpec]
     outputs: List[OutputSpec]
@@ -1673,6 +1674,7 @@ class ConfigBasedTestGenerator:
 
         return TestScenario(
             description=config["description"],
+            task=config.get("task", "deserialize"),
             validation_result=ValidationResult(
                 config.get("validation_result", "valid")
             ),
@@ -1872,6 +1874,7 @@ class ConfigBasedTestGenerator:
             "inputs": input_keys,
             "sp_proofs": expected_ecdh_shares,
             "outputs": expected_outputs,
+            "task": scenario.task,
         }
         for key in scenario.exclude_material:
             all_material.pop(key, None)

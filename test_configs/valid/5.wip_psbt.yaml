@@ -2,6 +2,7 @@ description: "Valid in progress PSBT scenarios"
 
 test_cases:
   - description: "in progress: two P2TR inputs, neither is signed"
+    task: "sign_in_progress"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
@@ -18,6 +19,7 @@ test_cases:
       - key_id: "default"
 
   - description: "in progress: one P2TR input / one sp output with no ECDH shares when PSBT_OUT_SCRIPT field is not set"
+    task: "sign_in_progress"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
@@ -32,6 +34,7 @@ test_cases:
       missing_ecdh_for_input: 0
 
   - description: "in progress: two inputs / one sp output, input 1 missing ECDH share when PSBT_OUT_SCRIPT field is not set"
+    task: "sign_in_progress"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -48,6 +51,7 @@ test_cases:
       missing_ecdh_for_input: 1  # Input 1 will not have ECDH share
 
   - description: "in progress: one input / two sp outputs, input 0 missing ECDH share for output 0 when PSBT_OUT_SCRIPT field is not set"
+    task: "sign_in_progress"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"

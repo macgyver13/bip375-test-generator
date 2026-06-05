@@ -39,6 +39,11 @@ python test_generator.py
 
 Output: `bip375_test_vectors.json`
 
+### rust-psbt Format Helper
+```bash
+python convert_to_rust_bip375_format.py -o bip375.json
+```
+
 ### Vendored Bitcoin Core test_framework
 
 Bitcoin transaction, script, sighash, signing, and secp256k1 primitives are
@@ -65,6 +70,7 @@ description: "Human-readable description of this config file"
 
 test_cases:
   - description: "Specific scenario"
+    task: "sign"                 # operation or expected failure mode for the case
     checks: [] # psbt_structure, ecdh_coverage, input_eligibility, output_scripts
     validation_result: "valid"   # or "invalid"
     inputs: [...]
@@ -139,3 +145,11 @@ Optional section for injecting intentional faults into invalid test cases. Commo
 | `force_output_script: true` | Inject wrong output script |
 | `inject_ineligible_ecdh: true` | Add ECDH data to non-eligible inputs |
 | `strip_input_pubkeys_for_input: N` | Remove public keys from input N |
+
+## Diagnostics
+
+### Display supplementary data
+
+```sh
+jq -r '(.valid[], .invalid[]) | select(.supplementary.inputs != null) | .description, .supplementary.task, (.supplementary.inputs[] | "  input \(.input_index): signed=\(.signed)")' bip375_test_vectors.json
+```

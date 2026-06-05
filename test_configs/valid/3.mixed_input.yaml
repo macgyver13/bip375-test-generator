@@ -2,6 +2,7 @@ description: "Valid mixed-input scenarios"
 
 test_cases:
   - description: "can finalize: two inputs using per-input ECDH shares - only eligible inputs contribute shares (P2SH excluded)"
+    task: "sign"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -20,6 +21,7 @@ test_cases:
       inject_ineligible_ecdh: True
 
   - description: "can finalize: two inputs using global ECDH share - only eligible inputs contribute shares (P2SH excluded)"
+    task: "sign"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
@@ -38,6 +40,7 @@ test_cases:
       use_global_ecdh: true
 
   - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (NUMS internal key excluded)"
+    task: "sign"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
