@@ -54,6 +54,7 @@ from generator_utils import (
     sign_p2pkh_input,
     sign_p2tr_input,
     verify_receiver_detects_outputs,
+    verify_no_empty_output_script_headers,
 )
 
 
@@ -1854,9 +1855,11 @@ class ConfigBasedTestGenerator:
 
             expected_outputs.append(output)
 
+        serialized_psbt = psbt.serialize()
+        verify_no_empty_output_script_headers(serialized_psbt, scenario.description)
         test_dict = {
             "description": scenario.description,
-            "psbt": base64.b64encode(psbt.serialize()).decode(),
+            "psbt": base64.b64encode(serialized_psbt).decode(),
         }
         all_material = {
             "inputs": input_keys,
@@ -1913,6 +1916,8 @@ class TestVectorGenerator:
                         )
                     )
                     self.test_vectors["invalid"].append(test_vector)
+            except AssertionError:
+                raise
             except Exception as e:
                 print(f"Error loading {config_file}: {str(e)}")
                 import traceback
@@ -1933,6 +1938,8 @@ class TestVectorGenerator:
                         )
                     )
                     self.test_vectors["valid"].append(test_vector)
+            except AssertionError:
+                raise
             except Exception as e:
                 print(f"Error loading {config_file}: {str(e)}")
                 import traceback
