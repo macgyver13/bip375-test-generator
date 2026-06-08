@@ -15,6 +15,7 @@ txid handling: All txids in our data structures are in internal byte order
 
 from dataclasses import dataclass
 import hashlib
+from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
 import spdk_psbt
@@ -379,6 +380,28 @@ def verify_receiver_detects_outputs(
             f"output(s) {[o['output_index'] for o in remaining]} with contiguous k "
             f"from 0 (wrong script, wrong scan key, or non-contiguous k assignment)"
         )
+
+
+def verify_no_empty_output_script_headers(serialized_psbt: bytes, description: str) -> None:
+    """Assert no output carries a PSBT_OUT_SCRIPT header with an empty value.
+
+    An empty output script must be represented by the *absence* of the
+    PSBT_OUT_SCRIPT (0x04) key, not by a present-but-zero-length header
+    (which serializes as a malformed PSBT). Parses the serialized PSBT the
+    way a consumer would and inspects each output's key map.
+
+    Raises AssertionError if any output violates this.
+    """
+    psbt = _tf_psbt.PSBT().deserialize(BytesIO(serialized_psbt))
+    violations = [
+        idx
+        for idx, output_map in enumerate(psbt.o)
+        if output_map.map.get(_tf_psbt.PSBT_OUT_SCRIPT) == b""
+    ]
+    assert not violations, (
+        f"{description}: output(s) {violations} serialize a PSBT_OUT_SCRIPT "
+        f"header with an empty value; empty scripts must omit the field"
+    )
 
 
 # ============================================================================
