@@ -103,6 +103,7 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 100000
+        skip_signing: true
     outputs:
       - type: "silent_payment"
         amount: 95000
