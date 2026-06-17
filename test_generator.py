@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import json
 import hashlib
+from importlib.metadata import version
 import os
 from pathlib import Path
 import struct
@@ -41,6 +42,8 @@ from spdk_psbt import (
     SilentPaymentPsbt,
     PsbtOutput
 )
+
+print(f"Using spdk_psbt version {version('spdk_psbt')}")
 
 from generator_utils import (
     PSBTKeyType,
