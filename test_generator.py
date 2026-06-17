@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import json
 import hashlib
+from importlib.metadata import version
 import os
 from pathlib import Path
 import struct
@@ -1972,6 +1973,8 @@ class TestVectorGenerator:
 
 
 if __name__ == "__main__":
+    print(f"Using spdk_psbt version {version('spdk_psbt')}")
+
     # Create test configs directory structure if it doesn't exist
     test_configs_dir = Path(__file__).parent / "test_configs"
     test_configs_dir.mkdir(exist_ok=True)
