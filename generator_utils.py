@@ -430,8 +430,8 @@ def normalize_psbt_field_order(serialized_psbt: bytes) -> bytes:
     output script.
     """
     psbt = _tf_psbt.PSBT().deserialize(BytesIO(serialized_psbt))
-    # for field_map in [psbt.g, *psbt.i, *psbt.o]:
-    #     field_map.map = dict(sorted(field_map.map.items(), key=_field_sort_key))
+    for field_map in [psbt.g, *psbt.i, *psbt.o]:
+        field_map.map = dict(sorted(field_map.map.items(), key=_field_sort_key))
     for output_map in psbt.o:
         # An empty output script is the absence of PSBT_OUT_SCRIPT, never a
         # present-but-zero-length header. psbt-v2 only omits the field for silent
