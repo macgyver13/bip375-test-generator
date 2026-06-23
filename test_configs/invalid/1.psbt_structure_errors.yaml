@@ -64,7 +64,6 @@ test_cases:
 
   - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
-    exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
