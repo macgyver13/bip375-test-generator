@@ -62,9 +62,14 @@ test_cases:
     control_override:
       wrong_dleq_proof_size: true
 
+  # TODO: revisit as a workflow case rather than invalid by structure. BIP-375
+  # only obliges a Signer to clear the Inputs/Outputs Modifiable flags when it
+  # sets a missing PSBT_OUT_SCRIPT. It never declares such a PSBT invalid, and
+  # the PSBT does not record who set PSBT_OUT_SCRIPT, so the violation is not
+  # observable here. Either assert the Signer obligation as a workflow step or
+  # drop the case and raise the receiver-side check against the BIP.
   - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output"
     validation_result: "invalid"
-    exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
       - type: "p2wpkh"
         amount: 100000
