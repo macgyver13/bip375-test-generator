@@ -59,6 +59,7 @@ from generator_utils import (
     sign_p2tr_input,
     verify_receiver_detects_outputs,
     verify_no_empty_output_script_headers,
+    normalize_psbt_field_order,
 )
 
 
@@ -1860,6 +1861,7 @@ class ConfigBasedTestGenerator:
             expected_outputs.append(output)
 
         serialized_psbt = psbt.serialize()
+        serialized_psbt = normalize_psbt_field_order(serialized_psbt)
         verify_no_empty_output_script_headers(serialized_psbt, scenario.description)
         test_dict = {
             "description": scenario.description,
