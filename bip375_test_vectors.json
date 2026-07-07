@@ -2422,13 +2422,36 @@
     },
     {
       "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8EAAAAAAEOIPdO3R91tLs+XXScFb/bZjSPaAWptNRf7uGi4gH1A7txAQ8EAAAAAAEQBP7///8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCED7KT/Ebco4uD2DOYiKUOm/1W52V9ie/mpnQhLyHLVClsiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaECKE7OYVUX3K9bolxSuuQmz41SoQqm7i1bNDt7SHfihmVmLMSKKSeC9fpXOEFP3xbKKy1Q6aHB2AOPOiYIu4yAhAAEBH6CGAQAAAAAAFgAUppJRHAeVdb83Vtq8Vq1x1ChKaQ4iBgL1tZ+l5JIiHr9VunitRCYFvq6VFmuh66MlDQu6rH4u3AQAAAAAAQ4gvNSFpwnLJdE0Y6GDLbIZTGydn+crlpn0/kLIK+2T0yYBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQM00s73Tt7URkInYH/FmsHegMEqJDOlYnFSjtzPUPpsKyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQDfADAtCoHP2tl8MS25W4Gd0s4DB3z3ii2QLEh7gs7TPeFDfRW4LXY4Zdd3/JSYsg4HiD4Us2HC94/aoMqYyW8wAAQMIMOYCAAAAAAABBCJRIJm70pgvAoC83CZDHWspz2eRGKW7u2CRTW/6z6u8XLRbAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
-      "description": "Two-input P2WPKH to silent payment workflow (per-input-share): Signer signs the eligible inputs",
+      "description": "Two-input P2WPKH to silent payment workflow (per-input-share): Signer signs the eligible inputs (signer 1 of 2)",
       "supplementary": {
         "inputs": [
           {
             "input_index": 0,
             "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
             "signed": true
+          },
+          {
+            "input_index": 1,
+            "private_key": "",
+            "signed": false
+          }
+        ],
+        "task": "sign"
+      },
+      "expected": {
+        "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9IMEUCIQCfetqsTkKw9GZkiMqZ26PUoDEWXN1Q7oX2MZzjZNsurQIgctYOTZ5kP6lh1c4+MmiOAp+oKltTvCpXtC845ccWf8ABIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8EAAAAAAEOIPdO3R91tLs+XXScFb/bZjSPaAWptNRf7uGi4gH1A7txAQ8EAAAAAAEQBP7///8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCED7KT/Ebco4uD2DOYiKUOm/1W52V9ie/mpnQhLyHLVClsiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaECKE7OYVUX3K9bolxSuuQmz41SoQqm7i1bNDt7SHfihmVmLMSKKSeC9fpXOEFP3xbKKy1Q6aHB2AOPOiYIu4yAhAAEBH6CGAQAAAAAAFgAUppJRHAeVdb83Vtq8Vq1x1ChKaQ4iBgL1tZ+l5JIiHr9VunitRCYFvq6VFmuh66MlDQu6rH4u3AQAAAAAAQ4gvNSFpwnLJdE0Y6GDLbIZTGydn+crlpn0/kLIK+2T0yYBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQM00s73Tt7URkInYH/FmsHegMEqJDOlYnFSjtzPUPpsKyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQDfADAtCoHP2tl8MS25W4Gd0s4DB3z3ii2QLEh7gs7TPeFDfRW4LXY4Zdd3/JSYsg4HiD4Us2HC94/aoMqYyW8wAAQMIMOYCAAAAAAABBCJRIJm70pgvAoC83CZDHWspz2eRGKW7u2CRTW/6z6u8XLRbAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
+        "unique_id": "29b18471f7e65606a519a7b2154c5d875ba3e24a6234a76483d66eeaf99ed090"
+      }
+    },
+    {
+      "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9IMEUCIQCfetqsTkKw9GZkiMqZ26PUoDEWXN1Q7oX2MZzjZNsurQIgctYOTZ5kP6lh1c4+MmiOAp+oKltTvCpXtC845ccWf8ABIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8EAAAAAAEOIPdO3R91tLs+XXScFb/bZjSPaAWptNRf7uGi4gH1A7txAQ8EAAAAAAEQBP7///8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCED7KT/Ebco4uD2DOYiKUOm/1W52V9ie/mpnQhLyHLVClsiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaECKE7OYVUX3K9bolxSuuQmz41SoQqm7i1bNDt7SHfihmVmLMSKKSeC9fpXOEFP3xbKKy1Q6aHB2AOPOiYIu4yAhAAEBH6CGAQAAAAAAFgAUppJRHAeVdb83Vtq8Vq1x1ChKaQ4iBgL1tZ+l5JIiHr9VunitRCYFvq6VFmuh66MlDQu6rH4u3AQAAAAAAQ4gvNSFpwnLJdE0Y6GDLbIZTGydn+crlpn0/kLIK+2T0yYBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQM00s73Tt7URkInYH/FmsHegMEqJDOlYnFSjtzPUPpsKyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQDfADAtCoHP2tl8MS25W4Gd0s4DB3z3ii2QLEh7gs7TPeFDfRW4LXY4Zdd3/JSYsg4HiD4Us2HC94/aoMqYyW8wAAQMIMOYCAAAAAAABBCJRIJm70pgvAoC83CZDHWspz2eRGKW7u2CRTW/6z6u8XLRbAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
+      "description": "Two-input P2WPKH to silent payment workflow (per-input-share): Signer signs the eligible inputs (signer 2 of 2)",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "",
+            "signed": false
           },
           {
             "input_index": 1,

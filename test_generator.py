@@ -1948,6 +1948,10 @@ class WorkflowVectorGenerator:
                 for row in supplementary.get("inputs", []):
                     if row.get("input_index") in redact_priv_keys:
                         row["private_key"] = ""
+                        # A party that hasn't revealed its key hasn't acted, so its
+                        # input can't be signed yet in this segmented step.
+                        if "signed" in row:
+                            row["signed"] = False
             steps.append(
                 {
                     "psbt": psbt_in,
@@ -2025,9 +2029,24 @@ class WorkflowVectorGenerator:
         emit("sp_finalize", p, psbt_in=psbt_in)
 
         psbt_in = snapshot(p)
-        for inp in input_data:
-            p.sign_input(inp["input_index"], inp["private_key"].bytes)
-        emit("sign", p, psbt_in=psbt_in)
+        if scenario.use_global_ecdh:
+            # One signer owns every input, so a single step signs all of them.
+            for inp in input_data:
+                p.sign_input(inp["input_index"], inp["private_key"].bytes)
+            emit("sign", p, psbt_in=psbt_in)
+        else:
+            # Each signer only holds the private key for their own input, so the
+            # signing phase is segmented by party: a signer signs when their key is
+            # present, otherwise signing is deferred to the party that holds it. Each
+            # step reveals only the acting signer's key.
+            n = len(input_data)
+            for k, inp in enumerate(input_data):
+                idx = inp["input_index"]
+                p.sign_input(idx, inp["private_key"].bytes)
+                redact = {other["input_index"] for other in input_data if other["input_index"] != idx}
+                suffix = f" (signer {k + 1} of {n})" if n > 1 else ""
+                emit("sign", p, psbt_in=psbt_in, redact_priv_keys=redact, desc_suffix=suffix)
+                psbt_in = snapshot(p)
 
         psbt_in = snapshot(p)
         p.finalize()
