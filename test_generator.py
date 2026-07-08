@@ -57,9 +57,11 @@ from generator_utils import (
     compute_bip352_output_script,
     compute_transaction_id,
     normalize_psbt_field_order,
+    psbt_disclosure_state,
     sign_p2wpkh_input,
     sign_p2pkh_input,
     sign_p2tr_input,
+    compute_transaction_id,
     verify_receiver_detects_outputs,
     verify_no_empty_output_script_headers,
 )
@@ -1833,28 +1835,56 @@ class WorkflowVectorGenerator:
     material that becomes meaningful at that step.
     """
 
-    _DESC = {
-        "create": "Creator produces an empty PSBT v2",
-        "construct": "Constructor adds inputs and SP outputs (no ECDH yet)",
-        "update": "Updater adds UTXO/pubkey data plus ECDH shares and DLEQ proofs",
-        "sp_finalize": "SP Output Finalizer computes the silent payment output scripts",
-        "sign": "Signer signs the eligible inputs",
-        "finalize": "Input Finalizer builds the final scriptwitness",
-        "transaction": "Extractor produces the raw transaction",
+    # Internal stage -> BIP-375 role. The Signer spans several stages because it acts
+    # once per party and its duties differ depending on whether every eligible input
+    # already carries an ECDH share.
+    _ROLE = {
+        "create": "create",
+        "construct": "construct",
+        "update": "update",
+        "sign_all": "sign",
+        "sign_share": "sign",
+        "sign_scripts": "sign",
+        "sign_sig": "sign",
+        "finalize": "finalize",
+        "extract": "extract",
     }
 
-    # Stage -> supplementary fields kept (progressive disclosure). A section absent
-    # for a stage is omitted entirely.
+    _DESC = {
+        "create": "Creator produces an empty PSBT v2",
+        "construct": "Constructor adds inputs and SP outputs",
+        "update": "Updater adds UTXO and BIP32 derivation data",
+        "sign_all": (
+            "Signer adds the ECDH shares and DLEQ proofs, computes the silent payment output "
+            "scripts, signs every eligible input"
+        ),
+        "sign_share": (
+            "Signer adds its ECDH share and DLEQ proof, wait for every eligible input to have a share before signing"
+        ),
+        "sign_scripts": (
+            "Signer adds its ECDH share and DLEQ proof, verifies other DLEQ proofs, computes the silent payment output scripts, signs its input"
+        ),
+        "sign_sig": "Signer verifies the DLEQ proofs and the output scripts, signs its input",
+        "finalize": "Input Finalizer builds the final scriptwitness",
+        "extract": "Extractor produces the raw transaction",
+    }
+
+    _SP_PROOF_FIELDS = ["scan_key", "ecdh_share", "dleq_proof", "input_index"]
+
+    # Role -> which supplementary columns exist at all. Which of those columns hold a
+    # value *yet* is not a property of the role: it is read back off the emitted PSBT,
+    # so the supplementary can never contradict the bytes it ships with.
     _SCOPE = {
         "create": {},
         "construct": {
             "inputs": ["input_index", "prevout_txid", "prevout_index", "sequence"],
             "outputs": ["output_index", "amount", "sp_v0_info"],
         },
+        # The Updater is not assumed to hold private keys, and the ECDH shares it once
+        # carried here are Signer material.
         "update": {
             "inputs": [
                 "input_index",
-                "private_key",
                 "public_key",
                 "prevout_txid",
                 "prevout_index",
@@ -1862,15 +1892,22 @@ class WorkflowVectorGenerator:
                 "witness_utxo",
                 "sequence",
             ],
-            "sp_proofs": ["scan_key", "ecdh_share", "dleq_proof", "input_index"],
             "outputs": ["output_index", "amount", "sp_v0_info"],
         },
-        "sp_finalize": {
+        "sign": {
+            "inputs": ["input_index", "private_key", "signed"],
+            "sp_proofs": _SP_PROOF_FIELDS,
             "outputs": ["output_index", "amount", "sp_v0_info", "script"],
         },
-        "sign": {"inputs": ["input_index", "private_key", "signed"]},
         "finalize": {"inputs": ["input_index", "signed"]},
-        "transaction": {},
+        # finalize() retains the ECDH shares and DLEQ proofs, so the Extractor can recompute
+        # each output script and verify it. Surface the material the validator checks against:
+        # public_key is A for BIP374 VerifyProof, script is the expected recomputed output.
+        "extract": {
+            "inputs": ["input_index", "public_key", "signed"],
+            "sp_proofs": _SP_PROOF_FIELDS,
+            "outputs": ["output_index", "amount", "sp_v0_info", "script"],
+        },
     }
 
     def __init__(self, seed: str = "bip375_deterministic_seed"):
@@ -1886,11 +1923,13 @@ class WorkflowVectorGenerator:
         return workflows
 
     def _generate_scenario_steps(self, scenario: TestScenario) -> List[Dict[str, Any]]:
-        """Replay a single scenario through the 7 role steps, one vector per step.
+        """Replay a single scenario through the BIP-375 roles, one vector per step.
 
-        Shares come from the spdk role methods (single_signer for global, multi_signer
-        for per-input); DLEQ proofs are overwritten with the builder's deterministic
-        proofs from full_supp so vectors are reproducible.
+        A global-share scenario has one Signer step; a per-input-share scenario has one
+        Signer step per party per round. Shares come from the spdk role methods
+        (single_signer for global, multi_signer for per-input); DLEQ proofs are
+        overwritten with the builder's deterministic proofs from full_supp so vectors
+        are reproducible.
         """
         steps: List[Dict[str, Any]] = []
 
@@ -1898,7 +1937,7 @@ class WorkflowVectorGenerator:
         psbt_data = self.cfg.builder.build_psbt(scenario)
         serialized_psbt = normalize_psbt_field_order(psbt_data["psbt"].serialize())
         full_supp = self.cfg._build_supplementary(psbt_data, scenario, serialized_psbt)
-        unique_id = compute_transaction_id(psbt_data["input_data"], psbt_data["output_data"])
+        tx_id = compute_transaction_id(psbt_data["input_data"], psbt_data["output_data"])
 
         input_data = psbt_data["input_data"]
         num_inputs = len(input_data)
@@ -1931,31 +1970,54 @@ class WorkflowVectorGenerator:
             return base64.b64encode(serialized).decode()
 
         def emit(
-            step: str,
+            stage: str,
             p: SilentPaymentPsbt,
             tx: Optional[str] = None,
             psbt_in: Optional[str] = "",
-            redact_priv_keys: Optional[set] = None,
+            acting: Optional[int] = None,
             desc_suffix: str = "",
         ):
-            expected = {"psbt": snapshot(p)}
-            if step != "create":
-                expected["unique_id"] = unique_id
+            """Emit one step vector.
+
+            Everything the supplementary says about state -- which inputs are signed, which
+            ECDH shares exist, whether the output scripts are set -- is read back off the PSBT
+            being emitted, so the two can never disagree. The one fact the bytes cannot supply
+            is which party is acting: `acting` names the input whose private key that party
+            holds, and every other key is withheld. None means the party holds them all.
+            """
+            serialized = normalize_psbt_field_order(p.serialize())
+            verify_no_empty_output_script_headers(serialized, f"{scenario.description} [{stage}]")
+            state = psbt_disclosure_state(serialized)
+
+            expected = {"psbt": base64.b64encode(serialized).decode()}
+            if stage != "create":
+                expected["transaction_id"] = tx_id
             if tx is not None:
                 expected["tx"] = tx
-            supplementary = self._scope(full_supp, step)
-            if redact_priv_keys:
-                for row in supplementary.get("inputs", []):
-                    if row.get("input_index") in redact_priv_keys:
-                        row["private_key"] = ""
-                        # A party that hasn't revealed its key hasn't acted, so its
-                        # input can't be signed yet in this segmented step.
-                        if "signed" in row:
-                            row["signed"] = False
+
+            supplementary = self._scope(full_supp, stage)
+            for row in supplementary.get("inputs", []):
+                idx = row["input_index"]
+                if acting is not None and idx != acting and "private_key" in row:
+                    row["private_key"] = ""
+                if "signed" in row:
+                    row["signed"] = idx in state.signed
+            if "sp_proofs" in supplementary:
+                # A per-input proof surfaces once its share is in the PSBT; a global proof
+                # once the global share is.
+                supplementary["sp_proofs"] = [
+                    proof
+                    for proof in supplementary["sp_proofs"]
+                    if (proof["input_index"] in state.shares if "input_index" in proof else state.global_share)
+                ]
+            for row in supplementary.get("outputs", []):
+                if row["output_index"] not in state.scripts:
+                    row.pop("script", None)
+
             steps.append(
                 {
                     "psbt": psbt_in,
-                    "description": f"{scenario.description}: {self._DESC[step]}{desc_suffix}",
+                    "description": f"{scenario.description}: {self._DESC[stage]}{desc_suffix}",
                     "supplementary": supplementary,
                     "expected": expected,
                 }
@@ -1977,8 +2039,8 @@ class WorkflowVectorGenerator:
         # counts at create() time, so the empty stage uses its own create(0, 0) while
         # the remaining stages build on a create(num_inputs, num_outputs) instance.
         # TX_MODIFIABLE = 0x03 (Inputs + Outputs Modifiable): the Creator leaves both
-        # flags set so the Constructor/Updater can add inputs and SP outputs. The SP
-        # Output Finalizer clears them once the output scripts are computed.
+        # flags set so the Constructor/Updater can add inputs and SP outputs. The Signer
+        # clears them once it sets the output scripts.
         empty = SilentPaymentPsbt.create(0, 0)
         empty.set_tx_modifiable(0x03)
         emit("create", empty)
@@ -1996,73 +2058,85 @@ class WorkflowVectorGenerator:
         builder_proofs = {proof["input_index"]: proof for proof in full_supp["sp_proofs"] if "input_index" in proof}
         global_proofs = [proof for proof in full_supp["sp_proofs"] if "input_index" not in proof]
 
+        # The Updater only adds UTXO and derivation data; it is not assumed to hold any
+        # private key. spdk requires every input's UTXO data present before share generation.
         psbt_in = snapshot(p)
-        # spdk requires every input's UTXO data present before any share generation.
         p.update_inputs(utxos)
+        emit("update", p, psbt_in=psbt_in)
+
+        # BIP-375 gives the Signer the ECDH shares, the DLEQ proofs and the output scripts.
+        # It may only set PSBT_OUT_SCRIPT once every eligible input carries a share, and it
+        # must not sign before the scripts are set.
+        psbt_in = snapshot(p)
         if scenario.use_global_ecdh:
-            # One signer owns every input (shared-key flag), so a single update adds the
-            # global share (N*a*B) and reveals all (identical) keys.
+            # One signer owns every input (shared-key flag), so the global share (N*a*B),
+            # the output scripts and every signature all land in a single step.
             p.generate_single_signer_ecdh_shares(input_data[0]["private_key"].bytes)
             for proof in global_proofs:
                 inject_deterministic_dleq(proof)
-            emit("update", p, psbt_in=psbt_in)
+            p.compute_sp_output_scripts()
+            p.set_tx_modifiable(0x00)
+            for inp in input_data:
+                p.sign_input(inp["input_index"], inp["private_key"].bytes)
+            emit("sign_all", p, psbt_in=psbt_in)
         else:
-            # Each signer updates their own input, so the update step repeats once per
-            # signer and the PSBT grows one ECDH share at a time. Each step reveals only
-            # the acting signer's key.
             n = len(input_data)
+            # Round 1: each signer contributes its share. The last to do so is the first
+            # party to see a share on every eligible input, so it computes the output
+            # scripts, clears the modifiable flags, and may then sign its own input.
             for k, inp in enumerate(input_data):
                 idx = inp["input_index"]
                 p.generate_multi_signer_ecdh_shares(inp["private_key"].bytes)
                 if idx in builder_proofs:
                     inject_deterministic_dleq(builder_proofs[idx])
-                redact = {other["input_index"] for other in input_data if other["input_index"] != idx}
+                last = k == n - 1
+                if last:
+                    p.compute_sp_output_scripts()
+                    p.set_tx_modifiable(0x00)
+                    p.sign_input(idx, inp["private_key"].bytes)
                 suffix = f" (signer {k + 1} of {n})" if n > 1 else ""
-                emit("update", p, psbt_in=psbt_in, redact_priv_keys=redact, desc_suffix=suffix)
+                emit(
+                    "sign_scripts" if last else "sign_share",
+                    p,
+                    psbt_in=psbt_in,
+                    acting=idx,
+                    desc_suffix=suffix,
+                )
                 psbt_in = snapshot(p)
 
-        psbt_in = snapshot(p)
-        p.compute_sp_output_scripts()
-        # BIP-375: once the SP output scripts are set, the Inputs Modifiable and
-        # Outputs Modifiable flags must be cleared to False.
-        p.set_tx_modifiable(0x00)
-        emit("sp_finalize", p, psbt_in=psbt_in)
-
-        psbt_in = snapshot(p)
-        if scenario.use_global_ecdh:
-            # One signer owns every input, so a single step signs all of them.
-            for inp in input_data:
-                p.sign_input(inp["input_index"], inp["private_key"].bytes)
-            emit("sign", p, psbt_in=psbt_in)
-        else:
-            # Each signer only holds the private key for their own input, so the
-            # signing phase is segmented by party: a signer signs when their key is
-            # present, otherwise signing is deferred to the party that holds it. Each
-            # step reveals only the acting signer's key.
-            n = len(input_data)
-            for k, inp in enumerate(input_data):
+            # Round 2: the output scripts are set, so the signers that had to defer can sign.
+            for k, inp in enumerate(input_data[:-1]):
                 idx = inp["input_index"]
                 p.sign_input(idx, inp["private_key"].bytes)
-                redact = {other["input_index"] for other in input_data if other["input_index"] != idx}
-                suffix = f" (signer {k + 1} of {n})" if n > 1 else ""
-                emit("sign", p, psbt_in=psbt_in, redact_priv_keys=redact, desc_suffix=suffix)
+                emit("sign_sig", p, psbt_in=psbt_in, acting=idx, desc_suffix=f" (signer {k + 1} of {n})")
                 psbt_in = snapshot(p)
 
         psbt_in = snapshot(p)
         p.finalize()
         emit("finalize", p, psbt_in=psbt_in)
 
+        # BIP-375 requires the Transaction Extractor to recompute every silent payment output
+        # script from the ECDH shares and DLEQ proofs and fail if they disagree. spdk's
+        # finalize() retains PSBT_IN_SP_ECDH_SHARE/PSBT_IN_SP_DLEQ and extract_transaction()
+        # does not mutate the PSBT, so the extract vector carries the shares + proofs and the
+        # workflow validator performs the recompute-and-verify (spdk's extractor does not).
         psbt_in = snapshot(p)
-        emit("transaction", p, tx=p.extract_transaction().hex(), psbt_in=psbt_in)
+        emit("extract", p, tx=p.extract_transaction().hex(), psbt_in=psbt_in)
 
         return steps
 
-    def _scope(self, full_supp: Dict[str, Any], step: str) -> Dict[str, Any]:
-        """Project the full supplementary down to the fields kept for this step."""
+    def _scope(self, full_supp: Dict[str, Any], stage: str) -> Dict[str, Any]:
+        """Project the full supplementary down to the fields kept for this stage.
+
+        Sets `task` to the BIP-375 role that acted (from the internal stage id). The same
+        `task` key carries an expected outcome ("sign", "fail_sign", ...) in the
+        valid/invalid vectors; here it names a role instead.
+        """
+        role = self._ROLE[stage]
         scoped: Dict[str, Any] = {}
-        for section, keep in self._SCOPE[step].items():
+        for section, keep in self._SCOPE[role].items():
             scoped[section] = [{k: row[k] for k in keep if k in row} for row in full_supp.get(section, [])]
-        scoped["task"] = step
+        scoped["task"] = role
         return scoped
 
 
