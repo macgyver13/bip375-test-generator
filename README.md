@@ -32,6 +32,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | | Vectors gained a top-level `task`, the operation or expected failure for each vector. Invalid “psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output” is renamed “input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output”. PSBT maps are equivalent. |
 | | Workflows | Added the generated `out/bip375_test_vectors_extended.json`: the standard vectors plus `workflows`, step vectors for a single-input global-share, a two-input global-share and a two-input per-input-share scenario, each step with `expected.psbt` and supplementary scoped to that step. `bip375_test_vectors.json` stays the standard set with no workflow steps. Both files report version 1.2.0. Standard: 21 valid, 24 invalid. Extended: 21 valid, 24 invalid, 17 workflow steps. |
 | | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Three PSBT maps changed. |
+| | rust-psbt | Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
 
 ---
 
