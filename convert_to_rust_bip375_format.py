@@ -6,6 +6,7 @@ Transformation rules:
 - Combine 'valid' and 'invalid' arrays (valid first) into a flat 'cases' array
 - Each entry gets: description (prefixed "valid: " or "invalid: "), version (hardcoded 2), task, supplementary.psbts
 - The PSBT base64 string moves from the top-level 'psbt' field into supplementary.psbts[0].base64
+- Source expected.psbt, when present, moves to top-level expected.base64/expected.hex
 - task is carried through from the source's top-level task
 - supplementary.psbts[0].hex is derived from the base64
 - All other supplementary data (inputs, outputs, sp_proofs) is dropped
@@ -52,16 +53,21 @@ def convert(src: dict) -> dict:
     entries = [("valid", e) for e in src.get("valid", [])]
     entries += [("invalid", e) for e in src.get("invalid", [])]
     for section, entry in entries:
-        cases.append(
-            {
-                "description": f"{section.capitalize()}: {entry['description']}",
-                "version": 2,
-                "task": entry["task"],
-                "supplementary": {
-                    "psbts": [{"base64": entry["psbt"], "hex": base64.b64decode(entry["psbt"]).hex()}],
-                },
+        case = {
+            "description": f"{section.capitalize()}: {entry['description']}",
+            "version": 2,
+            "task": entry["task"],
+            "supplementary": {
+                "psbts": [{"base64": entry["psbt"], "hex": base64.b64decode(entry["psbt"]).hex()}],
+            },
+        }
+        if "expected" in entry and "psbt" in entry["expected"]:
+            expected_base64 = entry["expected"]["psbt"]
+            case["expected"] = {
+                "base64": expected_base64,
+                "hex": base64.b64decode(expected_base64).hex(),
             }
-        )
+        cases.append(case)
     cases.extend(SYNTHESIZED_CASES)
     return {"cases": cases}
 
