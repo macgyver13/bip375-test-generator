@@ -2043,6 +2043,7 @@ class WorkflowVectorGenerator:
                 "prevout_index",
                 "amount",
                 "witness_utxo",
+                "non_witness_utxo",
                 "sequence",
             ],
             "outputs": ["output_index", "amount", "sp_v0_info"],

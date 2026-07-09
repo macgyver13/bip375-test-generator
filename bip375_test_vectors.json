@@ -716,8 +716,7 @@
             "signed": true
           }
         ],
-        "task": "deserialize",
-        "unique_id": "4850c2b95ee66f7efc3369c4ace01ee4f11786f44725dc3899b6d356f3746cfc"
+        "task": "deserialize"
       },
       "checks": [
         "input_eligibility"
@@ -2085,6 +2084,7 @@
             "prevout_index": 0,
             "amount": 100000,
             "witness_utxo": "a0860100000000001600141e2ad7872d329413a56df0968be338222783163b",
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000ffffffff01a0860100000000001600141e2ad7872d329413a56df0968be338222783163b00000000",
             "sequence": 4294967294
           }
         ],
@@ -2229,6 +2229,7 @@
             "prevout_index": 0,
             "amount": 100000,
             "witness_utxo": "a0860100000000001600147d9d0b2a960148f30818e0675642e2d980c25848",
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000ffffffff01a0860100000000001600147d9d0b2a960148f30818e0675642e2d980c2584800000000",
             "sequence": 4294967294
           },
           {
@@ -2238,6 +2239,7 @@
             "prevout_index": 0,
             "amount": 100000,
             "witness_utxo": "a0860100000000001600147d9d0b2a960148f30818e0675642e2d980c25848",
+            "non_witness_utxo": "0200000001be9d65c83915fb09248abbdfca8ca3eee6ce350c554f65e8d526e5df527ab5220000000000ffffffff01a0860100000000001600147d9d0b2a960148f30818e0675642e2d980c2584800000000",
             "sequence": 4294967294
           }
         ],
@@ -2396,6 +2398,7 @@
             "prevout_index": 0,
             "amount": 100000,
             "witness_utxo": "a0860100000000001600141e2ad7872d329413a56df0968be338222783163b",
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000ffffffff01a0860100000000001600141e2ad7872d329413a56df0968be338222783163b00000000",
             "sequence": 4294967294
           },
           {
@@ -2405,6 +2408,7 @@
             "prevout_index": 0,
             "amount": 100000,
             "witness_utxo": "a086010000000000160014a692511c079575bf3756dabc56ad71d4284a690e",
+            "non_witness_utxo": "0200000001be9d65c83915fb09248abbdfca8ca3eee6ce350c554f65e8d526e5df527ab5220000000000ffffffff01a086010000000000160014a692511c079575bf3756dabc56ad71d4284a690e00000000",
             "sequence": 4294967294
           }
         ],
