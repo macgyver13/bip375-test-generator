@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through bookmark `v1.2.1`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through bookmark `v1.3.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -21,6 +21,15 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Signatures use the declared sighash type. The invalid non-`SIGHASH_ALL` PSBT map changed. |
 | | | P2TR inputs derived from the tweaked output key. Four PSBT maps changed. |
 | 1.2.1 | SIGHASH_DEFAULT | Added valid “can finalize: one P2TR input signed with SIGHASH_DEFAULT”. 21 valid, 22 invalid. |
+| | | Supplementary gained `hex`, the serialized PSBT. PSBT maps are equivalent. |
+| | | Supplementary gained `task`, the operation or expected failure for each vector. PSBT maps are equivalent. |
+| | Workflows | Added `workflows`: step vectors for one global-share and two per-input-share scenarios, each step with `expected.psbt` and supplementary scoped to that step. 22 steps. |
+| | | Per-input-share workflows sign one input per step. 23 steps. |
+| | | Workflow steps aligned with BIP-375 roles. The Signer computes output scripts, `transaction` is renamed `extract`, and `expected.unique_id` is renamed `transaction_id`. 20 steps. |
+| | | Create and construct workflow steps consolidated. 17 steps across three scenarios. |
+| | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Four PSBT maps changed. |
+| | | NUMS inputs carry `PSBT_IN_TAP_MERKLE_ROOT`. Two PSBT maps changed. Added invalid “ecdh coverage: P2TR input with NUMS internal key claim not matching prevout missing ECDH share”. 21 valid, 23 invalid. |
+| 1.3.0 | rust-psbt | Supplementary `unique_id` removed. Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
 
 ---
 
