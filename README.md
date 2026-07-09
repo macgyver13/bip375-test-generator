@@ -30,6 +30,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | `--hex` adds `supplementary.hex`, the serialized PSBT, for diagnostics. Default output is unchanged. |
 | | | Vectors gained a top-level `task`, the operation or expected failure for each vector. Invalid “psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output” is renamed “input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output”. PSBT maps are equivalent. |
 | | Workflows | Added `workflows`: step vectors for a single-input global-share, a two-input global-share and a two-input per-input-share scenario, each step with `expected.psbt` and supplementary scoped to that step. 21 valid, 24 invalid, 17 workflow steps. |
+| | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Three PSBT maps changed. |
 
 ---
 
@@ -165,6 +166,13 @@ is **scoped to the material that has become meaningful at that step** — `sp_pr
 only the shares already present in `expected.psbt`, output `script` appears only once the
 Signer has computed it, and `private_key` is shown only for the party acting in that step.
 It is diagnostic only. `expected.psbt` is the base64 PSBT after that role runs.
+
+Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenario PSBT.
+Successful one-shot vectors include `expected.psbt`: for `sign`, it is the PSBT after
+the signer has added every signature it can from the supplied key material.
+For `finalize`, `psbt` is signed and `expected.psbt` is finalized. Failure tasks such
+as `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
+`supplementary.inputs[].signed` describes the input/current `psbt` state.
 
 ---
 
