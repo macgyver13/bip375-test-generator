@@ -129,6 +129,13 @@ only the shares already present in `expected.psbt`, output `script` appears only
 Signer has computed it, and `private_key` is shown only for the party acting in that step.
 It is diagnostic only. `expected.psbt` is the base64 PSBT after that role runs.
 
+Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenario PSBT.
+Successful one-shot vectors include `expected.psbt`: for `sign`, it is the PSBT after
+the signer has added every signature it can from the supplied key material.
+For `finalize`, `psbt` is signed and `expected.psbt` is finalized. Failure tasks such
+as `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
+`supplementary.inputs[].signed` describes the input/current `psbt` state.
+
 ---
 
 ## YAML Test Configuration
