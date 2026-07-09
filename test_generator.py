@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from test_framework.crypto.secp256k1 import GE, G
 from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut, hash256, uint256_from_str
 from test_framework.script import SIGHASH_ALL, SIGHASH_DEFAULT, SIGHASH_NONE, hash160
-from test_framework.script import taproot_construct
+from test_framework.script import CScript, OP_CHECKSIG, hash160, taproot_construct
 from test_framework.key import tweak_add_privkey
 from test_framework.script_util import (
     key_to_p2pkh_script,
@@ -429,6 +429,7 @@ class InputFactory:
             "private_keys": [priv for priv, _ in keys],
             "public_keys": [pub for _, pub in keys],
             "public_key": keys[0][1] if keys else None,
+            "multisig_threshold": spec.multisig_threshold or 2,
             "prevout_index": 0,
             "amount": spec.amount,
             "sequence": spec.sequence,
@@ -486,7 +487,7 @@ class InputFactory:
         return result
 
     def _create_p2tr_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
-        """Create P2TR key-path input (unsigned/WIP — no taptweak applied)."""
+        """Create P2TR input material."""
         key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
         input_priv, input_pub = self.wallet.create_key_pair("input", _deterministic_hash(key_suffix))
 
@@ -498,9 +499,15 @@ class InputFactory:
             input_pub = PublicKey(int(input_priv) * G)
 
         if spec.use_nums_tap_internal_key:
-            # NUMS point as taproot internal key: no private key exists, input is ineligible
-            # for Silent Payments (cannot contribute an ECDH share).
-            script_pubkey = bytes(output_key_to_p2tr_script(NUMS_H))
+            # NUMS point as taproot internal key: no key-path private key exists,
+            # but a known script path makes the input spendable while keeping it
+            # ineligible for Silent Payments.
+            script_priv, script_pub = self.wallet.create_key_pair("tap_script", _deterministic_hash(key_suffix))
+            leaf_script = bytes(CScript([script_pub.bytes_xonly, OP_CHECKSIG]))
+            taproot_info = taproot_construct(NUMS_H, [("spend", leaf_script)])
+            taproot_leaf = taproot_info.leaves["spend"]
+            control_block = bytes([taproot_leaf.version | taproot_info.negflag]) + NUMS_H + taproot_leaf.merklebranch
+            script_pubkey = bytes(taproot_info.scriptPubKey)
             prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
             previous_txid = hash256(prev_tx)
 
@@ -508,9 +515,13 @@ class InputFactory:
             return {
                 "input_index": input_index,
                 "input_type": InputType.P2TR,
-                "private_key": input_priv,
-                "public_key": input_pub,
+                "private_key": script_priv,
+                "public_key": script_pub,
                 "tap_internal_key": NUMS_H,
+                "tap_leaf_script": leaf_script,
+                "tap_leaf_hash": taproot_leaf.leaf_hash,
+                "tap_leaf_version": taproot_leaf.version,
+                "tap_control_block": control_block,
                 "previous_txid": previous_txid,
                 "prevout_index": 0,
                 "script_pubkey": script_pubkey,
@@ -703,7 +714,7 @@ class PSBTBuilder:
         # Auto-sign all eligible inputs when output scripts are complete
         if self._should_auto_sign(scenario):
             for input_info in input_data:
-                if input_info.get("is_eligible", False) and not input_info.get("skip_signing", False):
+                if self._should_sign_input(input_info):
                     self._sign_single_input(
                         psbt, input_info, input_data, finalized_outputs, input_info["input_index"],
                         sighash_type=(
@@ -727,6 +738,7 @@ class PSBTBuilder:
             "output_data": output_data,
             "scan_keys": scan_keys,
             "ecdh_data": ecdh_data,
+            "finalized_outputs": finalized_outputs,
             "scenario": scenario,
             "signed_input_indices": signed_input_indices,
         }
@@ -1100,6 +1112,42 @@ class PSBTBuilder:
             ]
         )
 
+    def _should_sign_input(self, input_info: Dict[str, Any], *, honor_skip_signing: bool = True) -> bool:
+        """Return True when this input has spend material the generator can sign."""
+        if honor_skip_signing and input_info.get("skip_signing", False):
+            return False
+        return (
+            input_info.get("is_eligible", False)
+            or input_info.get("input_type") == InputType.P2SH_MULTISIG
+            or "tap_leaf_script" in input_info
+        )
+
+    def add_expected_signatures(self, psbt_data: Dict[str, Any]) -> Tuple[bytes, set]:
+        """Return the post-signer PSBT, ignoring incoming-state skip_signing flags."""
+        scenario = psbt_data["scenario"]
+        if not self._should_auto_sign(scenario):
+            return normalize_psbt_field_order(psbt_data["psbt"].serialize()), set(psbt_data["signed_input_indices"])
+
+        psbt = SilentPaymentPsbt.deserialize(psbt_data["psbt"].serialize())
+        signed_input_indices = set(psbt_data["signed_input_indices"])
+        for input_info in psbt_data["input_data"]:
+            input_index = input_info["input_index"]
+            if input_index in signed_input_indices:
+                continue
+            if self._should_sign_input(input_info, honor_skip_signing=False):
+                self._sign_single_input(
+                    psbt,
+                    input_info,
+                    psbt_data["input_data"],
+                    psbt_data["finalized_outputs"],
+                    input_index,
+                )
+                signed_input_indices.add(input_index)
+
+        if not scenario.set_tx_modifiable:
+            psbt.set_tx_modifiable(0x00)
+        return normalize_psbt_field_order(psbt.serialize()), signed_input_indices
+
     def _sign_single_input(
         self,
         psbt: SilentPaymentPsbt,
@@ -1181,6 +1229,13 @@ class PSBTBuilder:
                 PSBTKeyType.PSBT_IN_TAP_SCRIPT_SIG,
                 input_info["public_key"].bytes_xonly + input_info["tap_leaf_hash"],
                 signature,
+            )
+            add_raw_input_field(
+                psbt,
+                input_idx,
+                PSBTKeyType.PSBT_IN_TAP_LEAF_SCRIPT,
+                input_info["tap_control_block"],
+                input_info["tap_leaf_script"] + bytes([input_info["tap_leaf_version"]]),
             )
             return
 
@@ -1709,9 +1764,32 @@ class ConfigBasedTestGenerator:
             empty_regular_output_script=control_override.get("empty_regular_output_script", False),
         )
 
-    def _finalized_psbt_bytes(self, psbt_data: Dict[str, Any], scenario: TestScenario) -> bytes:
-        """Serialize the PSBT with scenario fixups applied and field order normalized."""
-        return normalize_psbt_field_order(self._serialized_psbt_for_scenario(psbt_data, scenario))
+    def _input_psbt_bytes(self, serialized_psbt: bytes) -> bytes:
+        """Return the PSBT bytes the task consumer receives."""
+        return serialized_psbt
+
+    def _finalized_psbt_bytes(self, signed_psbt: bytes, psbt_data: Dict[str, Any], scenario: TestScenario) -> bytes:
+        """Return the PSBT after the finalizer acts on a fully signed one-shot vector."""
+        if len(psbt_data["signed_input_indices"]) != len(psbt_data["input_data"]):
+            raise AssertionError(f"finalize vector did not sign every input: {scenario.description}")
+
+        psbt = SilentPaymentPsbt.deserialize(signed_psbt)
+        psbt.finalize()
+        return normalize_psbt_field_order(psbt.serialize())
+
+    def _expected_psbt_bytes(
+        self, input_psbt: bytes, serialized_psbt: bytes, psbt_data: Dict[str, Any], scenario: TestScenario
+    ) -> Optional[bytes]:
+        """Return the expected post-task PSBT bytes for successful one-shot tasks."""
+        if scenario.task == "sign_in_progress":
+            return input_psbt
+        if scenario.task == "finalize":
+            return self._finalized_psbt_bytes(serialized_psbt, psbt_data, scenario)
+        if scenario.task == "sign":
+            expected_psbt, _ = self.builder.add_expected_signatures(psbt_data)
+            return expected_psbt
+
+        return None
 
     # Generate test vector for a given scenario
     def generate_test_vector_from_scenario(self, scenario: TestScenario) -> Dict[str, Any]:
@@ -1720,26 +1798,43 @@ class ConfigBasedTestGenerator:
         psbt_data = self.builder.build_psbt(scenario)
         psbt = psbt_data["psbt"]
         serialized_psbt = normalize_psbt_field_order(psbt.serialize())
+        input_psbt = self._input_psbt_bytes(serialized_psbt)
 
         # Convert to GenTestVector format for compatibility
         test_dict = {
             "description": scenario.description,
-            "psbt": base64.b64encode(serialized_psbt).decode(),
+            "psbt": base64.b64encode(input_psbt).decode(),
         }
-        test_dict["supplementary"] = self._build_supplementary(psbt_data, scenario, serialized_psbt)
+        expected_psbt = self._expected_psbt_bytes(input_psbt, serialized_psbt, psbt_data, scenario)
+        if expected_psbt is not None:
+            test_dict["expected"] = {"psbt": base64.b64encode(expected_psbt).decode()}
+        test_dict["supplementary"] = self._build_supplementary(
+            psbt_data,
+            scenario,
+            input_psbt,
+        )
         if scenario.checks:
             test_dict["checks"] = scenario.checks
         return test_dict
 
     def _build_supplementary(
-        self, psbt_data: Dict[str, Any], scenario: TestScenario, serialized_psbt: Optional[bytes] = None
+        self,
+        psbt_data: Dict[str, Any],
+        scenario: TestScenario,
+        serialized_psbt: Optional[bytes] = None,
+        *,
+        signed_input_indices: Optional[set] = None,
     ) -> Dict[str, Any]:
         """Build the diagnostic supplementary material (inputs, sp_proofs, outputs).
 
         Shared by config-driven vectors and workflow step vectors so both describe
         input material identically.
         """
-        signed_input_indices = psbt_data["signed_input_indices"]
+        if signed_input_indices is None:
+            if serialized_psbt is not None:
+                signed_input_indices = psbt_disclosure_state(serialized_psbt).signed
+            else:
+                signed_input_indices = psbt_data["signed_input_indices"]
         input_keys = []
         for inp in psbt_data["input_data"]:
             private_key = ""
@@ -1969,7 +2064,7 @@ class WorkflowVectorGenerator:
         psbt_data = self.cfg.builder.build_psbt(scenario)
         serialized_psbt = normalize_psbt_field_order(psbt_data["psbt"].serialize())
         full_supp = self.cfg._build_supplementary(psbt_data, scenario, serialized_psbt)
-        tx_id = compute_transaction_id(psbt_data["input_data"], psbt_data["output_data"])
+        transaction_id = compute_transaction_id(psbt_data["input_data"], psbt_data["output_data"])
 
         input_data = psbt_data["input_data"]
         num_inputs = len(input_data)
@@ -2023,7 +2118,7 @@ class WorkflowVectorGenerator:
 
             expected = {"psbt": base64.b64encode(serialized).decode()}
             if stage != "create":
-                expected["transaction_id"] = tx_id
+                expected["transaction_id"] = transaction_id
             if tx is not None:
                 expected["tx"] = tx
 
