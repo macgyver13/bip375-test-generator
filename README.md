@@ -17,6 +17,10 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Missing `BIP32_DERIVATION` validation vector is no longer signed. One invalid PSBT map changed. |
 | | bips#2253 | Added valid “input eligibility: bare OP_2 script is not a segwit v2 witness program”. 20 valid, 22 invalid. |
 | 1.2.0 | Deterministic order | Fields serialized lexicographically. PSBT maps are equivalent; serialization order changed. |
+| | bips#2286 | Added invalid “psbt structure: incorrect byte length for PSBT_OUT_SP_V0_LABEL field”. 20 valid, 23 invalid. |
+| | bips#2310 | Added invalid “input eligibility: segwit version greater than 1 supplied via PSBT_IN_NON_WITNESS_UTXO with sp output”. 20 valid, 24 invalid. |
+| | bips#2315 | Valid “input eligibility: bare OP_2 script is not a segwit v2 witness program” replaced by “in progress: two mixed input types - only eligible inputs contribute ECDH shares (bare OP_2 excluded, not a segwit v2 witness program)”. 20 valid, 24 invalid. |
+| | | Change `scriptPubKey` matches `PSBT_OUT_BIP32_DERIVATION`. Three PSBT maps changed. |
 
 ---
 
