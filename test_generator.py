@@ -628,6 +628,11 @@ class OutputFactory:
         self, spec: OutputSpec, output_index: int
     ) -> Dict[str, Any]:
         """Create regular P2TR output"""
+        if spec.add_bip32_derivation:
+            raise ValueError(
+                "add_bip32_derivation is not supported for p2tr outputs: taproot "
+                "requires PSBT_OUT_TAP_BIP32_DERIVATION (0x07), which is not implemented"
+            )
         # Simple P2TR output for testing
         output_script = bytes(output_key_to_p2tr_script(
             hashlib.sha256(f"regular_p2tr_{output_index}".encode()).digest()
@@ -638,24 +643,23 @@ class OutputFactory:
             "output_type": OutputType.REGULAR_P2TR,
             "amount": spec.amount,
             "script": output_script,
-            "add_bip32_derivation": spec.add_bip32_derivation, # FIXME: this should error for p2tr outputs
         }
 
     def _create_regular_p2wpkh_output(
         self, spec: OutputSpec, output_index: int
     ) -> Dict[str, Any]:
         """Create regular P2WPKH output"""
-        # Simple P2WPKH output for testing
-        pubkey_hash = hashlib.sha256(
-            f"regular_p2wpkh_{output_index}".encode()
-        ).digest()[:20]
-        output_script = bytes(program_to_witness_script(0, pubkey_hash))
+        # Derive a real key so the scriptPubKey and any PSBT_OUT_BIP32_DERIVATION
+        # describe the same output (hash160(change_pub) == witness program).
+        _, change_pub = self.wallet.create_key_pair("change_p2wpkh", output_index)
+        output_script = bytes(program_to_witness_script(0, hash160(change_pub.bytes)))
 
         return {
             "output_index": output_index,
             "output_type": OutputType.REGULAR_P2WPKH,
             "amount": spec.amount,
             "script": output_script,
+            "change_pubkey": change_pub,
             "add_bip32_derivation": spec.add_bip32_derivation,
         }
 
@@ -1420,7 +1424,7 @@ class PSBTBuilder:
 
                 # Add BIP32_DERIVATION if requested (for change identification)
                 if output_info.get("add_bip32_derivation", False):
-                    self._add_output_bip32_derivation(psbt, idx, input_data)
+                    self._add_output_bip32_derivation(psbt, idx, output_info)
 
         return finalized_outputs
 
@@ -1548,26 +1552,26 @@ class PSBTBuilder:
         return PublicKey(apply_label_to_spend_key(spend_pub, scan_priv_bytes, label))
 
     def _add_output_bip32_derivation(
-        self, psbt: SilentPaymentPsbt, output_idx: int, input_data: List[Dict]
+        self, psbt: SilentPaymentPsbt, output_idx: int, output_info: Dict
     ):
         """Add PSBT_OUT_BIP32_DERIVATION for change identification"""
-        # Use the first input's public key for the derivation (common pattern)
-        if input_data and "public_key" in input_data[0]:
-            pubkey = input_data[0]["public_key"]
+        # Use the output's own change key so hash160(pubkey) == the witness program.
+        pubkey = output_info["change_pubkey"]
 
-            # Create BIP32 derivation path (master_fingerprint + path)
-            # Format: 4-byte fingerprint + 8-byte path (m/0/1 for change)
-            master_fingerprint = struct.pack(">I", 0)  # Dummy fingerprint
-            derivation_path = struct.pack(">I", 0) + struct.pack(">I", 1)  # m/0/1
-            bip32_derivation_value = master_fingerprint + derivation_path
+        # Format: 4-byte master fingerprint + path (4 bytes per level, m/0/1).
+        # The origin is a fixed test-vector placeholder (no HD master exists); no
+        # BIP-375 role reads it. The pubkey above is the field's factual part.
+        master_fingerprint = struct.pack(">I", 0)  # placeholder fingerprint
+        derivation_path = struct.pack(">I", 0) + struct.pack(">I", 1)  # m/0/1
+        bip32_derivation_value = master_fingerprint + derivation_path
 
-            add_raw_output_field(
-                psbt,
-                output_idx,
-                PSBTKeyType.PSBT_OUT_BIP32_DERIVATION,
-                pubkey.bytes,
-                bip32_derivation_value,
-            )
+        add_raw_output_field(
+            psbt,
+            output_idx,
+            PSBTKeyType.PSBT_OUT_BIP32_DERIVATION,
+            pubkey.bytes,
+            bip32_derivation_value,
+        )
 
 
 # ============================================================================
