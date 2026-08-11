@@ -21,6 +21,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | bips#2310 | Added invalid “input eligibility: segwit version greater than 1 supplied via PSBT_IN_NON_WITNESS_UTXO with sp output”. 20 valid, 24 invalid. |
 | | bips#2315 | Valid “input eligibility: bare OP_2 script is not a segwit v2 witness program” replaced by “in progress: two mixed input types - only eligible inputs contribute ECDH shares (bare OP_2 excluded, not a segwit v2 witness program)”. 20 valid, 24 invalid. |
 | | | Change `scriptPubKey` matches `PSBT_OUT_BIP32_DERIVATION`. Three PSBT maps changed. |
+| | | Signatures use the declared sighash type. The invalid non-`SIGHASH_ALL` and segwit version greater than 1 PSBT maps changed. |
 
 ---
 
