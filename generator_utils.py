@@ -485,13 +485,14 @@ def sign_p2wpkh_input(
     input_index: int,
     pubkey_hash: bytes,
     amount: int,
+    sighash_type: int = SIGHASH_ALL,
 ) -> bytes:
-    """Sign a P2WPKH input (BIP-143). Returns DER signature + SIGHASH_ALL byte."""
+    """Sign a P2WPKH input (BIP-143). Returns DER signature + sighash byte."""
     tx = _build_tx(inputs, outputs)
     script_code = keyhash_to_p2pkh_script(pubkey_hash)
-    sighash = SegwitV0SignatureHash(script_code, tx, input_index, SIGHASH_ALL, amount)
+    sighash = SegwitV0SignatureHash(script_code, tx, input_index, sighash_type, amount)
     sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
-    return sig + bytes([SIGHASH_ALL])
+    return sig + bytes([sighash_type])
 
 
 def sign_p2pkh_input(
@@ -500,14 +501,15 @@ def sign_p2pkh_input(
     outputs: List[dict],
     input_index: int,
     pubkey_hash: bytes,
+    sighash_type: int = SIGHASH_ALL,
 ) -> bytes:
-    """Sign a P2PKH input (legacy). Returns DER signature + SIGHASH_ALL byte."""
+    """Sign a P2PKH input (legacy). Returns DER signature + sighash byte."""
     tx = _build_tx(inputs, outputs)
     script = keyhash_to_p2pkh_script(pubkey_hash)
-    sighash, err = LegacySignatureHash(script, tx, input_index, SIGHASH_ALL)
+    sighash, err = LegacySignatureHash(script, tx, input_index, sighash_type)
     assert err is None
     sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
-    return sig + bytes([SIGHASH_ALL])
+    return sig + bytes([sighash_type])
 
 
 def sign_p2tr_input(
@@ -515,18 +517,19 @@ def sign_p2tr_input(
     inputs: List[UTXO],
     outputs: List[dict],
     input_index: int,
+    sighash_type: int = SIGHASH_ALL,
 ) -> bytes:
     """Sign a P2TR key-path input (BIP-341).
 
     Applies the key-path tweak with an empty script tree and produces a
-    64-byte Schnorr signature with an explicit SIGHASH_ALL trailing byte.
+    64-byte Schnorr signature with an explicit sighash trailing byte.
     """
     tx = _build_tx(inputs, outputs)
     spent_utxos = [
         CTxOut(inp.amount, bytes.fromhex(inp.script_pubkey)) for inp in inputs
     ]
     sighash = TaprootSignatureHash(
-        tx, spent_utxos, SIGHASH_ALL, input_index=input_index
+        tx, spent_utxos, sighash_type, input_index=input_index
     )
 
     priv_bytes = int(private_key).to_bytes(32, "big")
@@ -534,7 +537,7 @@ def sign_p2tr_input(
     tweak = TaggedHash("TapTweak", xonly)
     tweaked = tweak_add_privkey(priv_bytes, tweak)
     sig = sign_schnorr(tweaked, sighash)
-    return sig + bytes([SIGHASH_ALL])
+    return sig + bytes([sighash_type])
 
 
 # ============================================================================

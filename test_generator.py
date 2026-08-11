@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test_framework.crypto.secp256k1 import GE, G
 from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut, hash256, uint256_from_str
-from test_framework.script import hash160
+from test_framework.script import SIGHASH_ALL, SIGHASH_NONE, hash160
 from test_framework.script_util import (
     key_to_p2pkh_script,
     keys_to_multisig_script,
@@ -1079,7 +1079,9 @@ class PSBTBuilder:
             # Add sighash type only once per input
             if input_idx not in processed_inputs:
                 sighash_type = (
-                    0x02 if scenario.wrong_sighash_for_input == input_idx else 0x01
+                    SIGHASH_NONE
+                    if scenario.wrong_sighash_for_input == input_idx
+                    else SIGHASH_ALL
                 )
                 if scenario.no_sighash_for_input == input_idx:
                     sighash_type = None  # Don't add sighash type at all
@@ -1093,11 +1095,22 @@ class PSBTBuilder:
                     or scenario.use_segwit_v2_input
                 ):
                     # Partially sign to support correct detection at signed stage.
-                    # Empty outputs: signature validity doesn't matter here.
+                    # SIGHASH_NONE does not commit to the intentionally empty outputs.
+                    # For segwit v2 tests, only the signature's presence matters.
+                    if scenario.wrong_sighash_for_input == input_idx:
+                        assert sighash_type == SIGHASH_NONE, (
+                            "empty output_data is only valid for SIGHASH_NONE; "
+                            "SIGHASH_SINGLE commits to the output at this index"
+                        )
                     input_info = self._find_input_info_by_index(input_data, input_idx)
                     if input_info and input_info.get("is_eligible", False):
                         self._sign_single_input(
-                            psbt, input_info, input_data, [], input_idx
+                            psbt,
+                            input_info,
+                            input_data,
+                            [],
+                            input_idx,
+                            sighash_type=sighash_type,
                         )
                         if signed_input_indices is not None:
                             signed_input_indices.add(input_idx)
@@ -1140,11 +1153,13 @@ class PSBTBuilder:
         input_data: List[Dict],
         output_data: List[Dict],
         input_idx: int,
+        sighash_type: int = SIGHASH_ALL,
     ):
         """Sign a single input and add the appropriate PSBT signature field.
 
-        For error-injection tests (wrong sighash, segwit v2), output_data may be
-        empty — signature correctness doesn't matter, only its presence.
+        For SIGHASH_NONE error-injection tests, output_data may be empty because
+        the signature does not commit to outputs. For segwit v2 tests, only the
+        signature's presence matters.
         For valid test vectors, pass the real output_data so the sighash commits
         to the correct outputs.
         """
@@ -1180,6 +1195,7 @@ class PSBTBuilder:
                 inputs=utxos,
                 outputs=outputs,
                 input_index=input_idx,
+                sighash_type=sighash_type,
             )
             add_raw_input_field(
                 psbt,
@@ -1207,6 +1223,7 @@ class PSBTBuilder:
                 outputs=outputs,
                 input_index=input_idx,
                 pubkey_hash=pubkey_hash,
+                sighash_type=sighash_type,
             )
         else:
             signature = sign_p2wpkh_input(
@@ -1216,6 +1233,7 @@ class PSBTBuilder:
                 input_index=input_idx,
                 pubkey_hash=pubkey_hash,
                 amount=input_info["amount"],
+                sighash_type=sighash_type,
             )
 
         compressed_pubkey = input_info["public_key"].to_bytes_compressed()
