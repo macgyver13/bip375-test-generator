@@ -15,6 +15,8 @@ txid handling: All txids in our data structures are in internal byte order
 
 from dataclasses import dataclass
 import hashlib
+import hmac
+import unicodedata
 from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
@@ -24,7 +26,10 @@ from test_framework import psbt as _tf_psbt
 from test_framework.crypto.secp256k1 import GE, G
 from test_framework.key import (
     ECKey,
+    TaggedHash,
+    compute_xonly_pubkey,
     sign_schnorr,
+    tweak_add_privkey,
 )
 from test_framework.messages import (
     COutPoint,
@@ -81,6 +86,7 @@ class PSBTKeyType:
     PSBT_IN_TAP_MERKLE_ROOT = _tf_psbt.PSBT_IN_TAP_MERKLE_ROOT
     PSBT_IN_FINAL_SCRIPTSIG = _tf_psbt.PSBT_IN_FINAL_SCRIPTSIG
     PSBT_IN_FINAL_SCRIPTWITNESS = _tf_psbt.PSBT_IN_FINAL_SCRIPTWITNESS
+    PSBT_IN_TAP_BIP32_DERIVATION = 0x16
 
     PSBT_OUT_BIP32_DERIVATION = _tf_psbt.PSBT_OUT_BIP32_DERIVATION
     PSBT_OUT_AMOUNT = _tf_psbt.PSBT_OUT_AMOUNT
@@ -233,6 +239,92 @@ class Wallet:
     def random_bytes(salt: int = 0) -> bytes:
         hash_result = hashlib.sha256(f"{salt}".encode()).digest()
         return (int.from_bytes(hash_result, "big") % GE.ORDER).to_bytes(32)
+
+
+@dataclass(frozen=True)
+class DerivedKeyMaterial:
+    """A key plus the factual PSBT origin that produced it."""
+
+    private_key: PrivateKey
+    public_key: PublicKey
+    fingerprint: bytes
+    path: tuple[int, ...]
+    derivation_private_key: PrivateKey
+    derivation_public_key: PublicKey
+
+
+class JadeKeyProfile:
+    """The fixed test wallet loaded by Jade's single-signature tests."""
+
+    MNEMONIC = "paddle puppy easily actor poet apart screen drastic city front predict damp"
+    FINGERPRINT = bytes.fromhex("59d1f3b0")
+    COIN_TYPE = 0x80000001
+    FOREIGN_PRIVATE_KEY = PrivateKey(int.from_bytes(b"\x77" * 32, "big"))
+    FOREIGN_FINGERPRINT = bytes.fromhex("deadbeef")
+
+    def __init__(self):
+        mnemonic = unicodedata.normalize("NFKD", self.MNEMONIC).encode()
+        salt = unicodedata.normalize("NFKD", "mnemonic").encode()
+        self.seed = hashlib.pbkdf2_hmac("sha512", mnemonic, salt, 2048)
+        self.master_private_key, self.master_chain_code = self._master_key(self.seed)
+        master_public_key = PublicKey(self.master_private_key * G)
+        fingerprint = hashlib.new("ripemd160", hashlib.sha256(master_public_key.bytes).digest()).digest()[:4]
+        if fingerprint != self.FINGERPRINT:
+            raise AssertionError(f"Unexpected {type(self).__name__} fingerprint: {fingerprint.hex()}")
+
+    @staticmethod
+    def _master_key(seed: bytes) -> tuple[PrivateKey, bytes]:
+        digest = hmac.new(b"Bitcoin seed", seed, hashlib.sha512).digest()
+        private_key = int.from_bytes(digest[:32], "big")
+        if not 0 < private_key < GE.ORDER:
+            raise ValueError("Invalid BIP32 master private key")
+        return PrivateKey(private_key), digest[32:]
+
+    @staticmethod
+    def _derive_child(private_key: PrivateKey, chain_code: bytes, child: int) -> tuple[PrivateKey, bytes]:
+        if not 0 <= child <= 0xFFFFFFFF:
+            raise ValueError("Invalid BIP32 child number")
+        if child & 0x80000000:
+            data = b"\x00" + private_key.bytes + child.to_bytes(4, "big")
+        else:
+            data = PublicKey(private_key * G).bytes + child.to_bytes(4, "big")
+        digest = hmac.new(chain_code, data, hashlib.sha512).digest()
+        child_private_key = (int.from_bytes(digest[:32], "big") + int(private_key)) % GE.ORDER
+        if child_private_key == 0:
+            raise ValueError("Invalid BIP32 child private key")
+        return PrivateKey(child_private_key), digest[32:]
+
+    def derive(self, purpose: int, branch: int, index: int, *, foreign: bool = False) -> DerivedKeyMaterial:
+        path = (purpose | 0x80000000, self.COIN_TYPE, 0x80000000, branch, index)
+        if foreign:
+            private_key = self.FOREIGN_PRIVATE_KEY
+            public_key = PublicKey(private_key * G)
+            return DerivedKeyMaterial(
+                private_key, public_key, self.FOREIGN_FINGERPRINT, path, private_key, public_key
+            )
+
+        private_key, chain_code = self.master_private_key, self.master_chain_code
+        for child in path:
+            private_key, chain_code = self._derive_child(private_key, chain_code, child)
+        public_key = PublicKey(private_key * G)
+        return DerivedKeyMaterial(
+            private_key, public_key, self.FINGERPRINT, path, private_key, public_key
+        )
+
+    def derive_taproot(self, branch: int, index: int, *, foreign: bool = False) -> DerivedKeyMaterial:
+        material = self.derive(86, branch, index, foreign=foreign)
+        xonly, _ = compute_xonly_pubkey(material.derivation_private_key.bytes)
+        tweak = TaggedHash("TapTweak", xonly)
+        effective_private_key = PrivateKey(int.from_bytes(tweak_add_privkey(material.derivation_private_key.bytes, tweak), "big"))
+        effective_public_key = PublicKey(effective_private_key * G)
+        return DerivedKeyMaterial(
+            effective_private_key,
+            effective_public_key,
+            material.fingerprint,
+            material.path,
+            material.derivation_private_key,
+            material.derivation_public_key,
+        )
 
 
 # ============================================================================

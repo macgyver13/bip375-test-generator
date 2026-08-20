@@ -33,6 +33,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Three PSBT maps changed. |
 | 1.3.0 | rust-psbt | Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
 | | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. PSBT maps are equivalent. |
+| | | The single-input workflow's output amount changed. Four workflow steps changed. One-shot PSBT maps are equivalent. |
 
 ---
 
