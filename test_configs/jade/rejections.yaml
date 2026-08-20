@@ -1,0 +1,174 @@
+description: "Jade BIP-375 malformed and ownership vectors"
+
+test_cases:
+  - description: "Only foreign eligible inputs are not owned by Jade"
+    id: foreign_inputs_only
+    task: fail_sign
+    validation_result: invalid
+    input_stage: unresolved
+    inputs:
+      - type: p2wpkh
+        amount: 100000
+        owner: foreign
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "P2SH-only input is not silent-payment eligible"
+    id: ineligible_p2sh
+    task: fail_sign
+    validation_result: invalid
+    inputs:
+      - type: p2sh_multisig
+        amount: 100000
+        multisig_threshold: 2
+        multisig_pubkey_count: 2
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "NUMS taproot input is not silent-payment eligible"
+    id: ineligible_nums_taproot
+    task: fail_sign
+    validation_result: invalid
+    inputs:
+      - type: p2tr
+        amount: 100000
+        use_nums_tap_internal_key: true
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "Silent payment requires SIGHASH_ALL"
+    id: sighash_not_all
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 100000}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+    control_override: {wrong_sighash_for_input: 0}
+
+  - description: "Segwit v2 input is rejected for silent payments"
+    id: segwit_v2_input
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 100000}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+    control_override: {use_segwit_v2_input: true}
+
+  - description: "Resolved silent-payment output cannot remain modifiable"
+    id: resolved_output_modifiable
+    task: fail_deserialize
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 100000}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+    control_override: {set_tx_modifiable: true}
+
+  - description: "Resolved output without shares or proofs is invalid"
+    id: resolved_without_shares
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 100000}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+    control_override: {strip_sp_proofs_after_resolution: true}
+
+  - description: "Silent payment output amount is required"
+    id: output_amount_missing
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 100000}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+    control_override: {omit_output_amount: true}
+
+  - description: "Silent payment input UTXO is required"
+    id: input_utxo_missing
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 100000, omit_utxo: true}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+
+  - description: "A Jade origin must match its P2WPKH UTXO script"
+    id: origin_script_mismatch_p2wpkh
+    task: fail_sign
+    validation_result: invalid
+    input_stage: unresolved
+    inputs: [{type: p2wpkh, amount: 100000, mismatch_utxo_script: true}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+
+  - description: "A Jade origin must match its P2PKH UTXO script"
+    id: origin_script_mismatch_p2pkh
+    task: fail_sign
+    validation_result: invalid
+    input_stage: unresolved
+    inputs: [{type: p2pkh, amount: 100000, mismatch_utxo_script: true}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+
+  - description: "A Jade origin must match its P2SH-P2WPKH UTXO script"
+    id: origin_script_mismatch_p2sh_p2wpkh
+    task: fail_sign
+    validation_result: invalid
+    input_stage: unresolved
+    inputs: [{type: p2sh_p2wpkh, amount: 100000, mismatch_utxo_script: true}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+
+  - description: "A Jade origin must match its P2TR UTXO script"
+    id: origin_script_mismatch_p2tr
+    task: fail_sign
+    validation_result: invalid
+    input_stage: unresolved
+    inputs: [{type: p2tr, amount: 100000, mismatch_utxo_script: true}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+
+  - description: "A matching P2WPKH script with a foreign origin is not Jade-owned"
+    id: foreign_origin
+    task: fail_sign
+    validation_result: invalid
+    input_stage: unresolved
+    inputs: [{type: p2wpkh, amount: 100000, foreign_origin: true}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+
+  - description: "Invalid DLEQ proof is rejected"
+    id: invalid_dleq_proof
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 100000}]
+    outputs: [{type: silent_payment, amount: 95000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+    control_override: {invalid_dleq_for_input: 0}
+
+  - description: "Same-scan-key output with wrong k is rejected"
+    id: wrong_k_assignment
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 200000}]
+    outputs:
+      - {type: silent_payment, amount: 90000, scan_key_id: default, spend_derivation_suffix: a}
+      - {type: silent_payment, amount: 90000, scan_key_id: default, spend_derivation_suffix: b, force_k_index: 0}
+    scan_keys: [{key_id: default}]
+
+  - description: "Multiple outputs require ECDH coverage for every scan key"
+    id: scan_key_coverage_gap
+    task: fail_sign
+    validation_result: invalid
+    inputs: [{type: p2wpkh, amount: 200000}]
+    outputs:
+      - {type: silent_payment, amount: 90000, scan_key_id: a}
+      - {type: silent_payment, amount: 90000, scan_key_id: b}
+    scan_keys: [{key_id: a}, {key_id: b}]
+    control_override: {missing_ecdh_for_scan_key: b}

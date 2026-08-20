@@ -7,6 +7,7 @@ bips_dir := home + "/src/bips/bip-0375"
 rust_psbt_dir := home + "/src/rust-psbt"
 spdk_dir := home + "/src/spdk/psbt/tests"
 jade_dir := home + "/src/Jade/components/libwally-core/upstream/src/data"
+jade_fixtures_dir := home + "/src/Jade/test_data"
 convert_script := project_root + "/convert_to_rust_bip375_format.py"
 
 _default:
@@ -15,6 +16,10 @@ _default:
 gen:
   @echo "Generating {{vectors_file}}"
   python {{project_root}}/test_generator.py
+
+gen-jade:
+  @echo "Generating Jade fixtures in {{out_dir}}/jade"
+  python {{project_root}}/test_generator.py --key-profile jade
 
 gen-rust:
   @mkdir -p {{out_dir}}
@@ -54,6 +59,15 @@ sync-jade:
   @if [ ! -d {{jade_dir}} ]; then echo "Missing destination directory: {{jade_dir}}" >&2; exit 1; fi
   @echo "Copying {{project_root}}/{{vectors_file}} -> {{jade_dir}}/{{vectors_file}}"
   cp {{project_root}}/{{vectors_file}} {{jade_dir}}/{{vectors_file}}
+
+sync-jade-fixtures:
+  @if [ ! -d {{jade_fixtures_dir}} ]; then echo "Missing destination directory: {{jade_fixtures_dir}}" >&2; exit 1; fi
+  @just gen-jade
+  @if [ ! -d {{out_dir}}/jade ]; then echo "Missing generated directory: {{out_dir}}/jade" >&2; exit 1; fi
+  @echo "Removing stale psbt_sp_375_*.json in {{jade_fixtures_dir}}"
+  rm -f {{jade_fixtures_dir}}/psbt_sp_375_*.json
+  @echo "Copying {{out_dir}}/jade/psbt_sp_375_*.json -> {{jade_fixtures_dir}}/"
+  cp {{out_dir}}/jade/psbt_sp_375_*.json {{jade_fixtures_dir}}/
 
 sync-all:
   @just sync-bip

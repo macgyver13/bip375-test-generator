@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import struct
 import sys
+import argparse
 from typing import Dict, List, Optional, Any, Tuple
 import yaml
 
@@ -52,6 +53,7 @@ from generator_utils import (
     PrivateKey,
     PublicKey,
     Wallet,
+    JadeKeyProfile,
     UTXO,
     apply_label_to_spend_key,
     compute_bip352_output_script,
@@ -165,6 +167,7 @@ class OutputType(Enum):
     SILENT_PAYMENT = "silent_payment"
     REGULAR_P2TR = "regular_p2tr"
     REGULAR_P2WPKH = "regular_p2wpkh"
+    REGULAR_P2PKH = "regular_p2pkh"
 
 
 class ValidationResult(Enum):
@@ -189,6 +192,12 @@ class InputSpec:
     eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
     skip_signing: bool = False  # Force input to remain unsigned even if eligible
     script_pubkey_override: Optional[bytes] = None  # Replace the P2WPKH prevout scriptPubKey
+    owner: str = "wallet"  # wallet | foreign
+    derivation_branch: int = 0
+    derivation_index: Optional[int] = None
+    mismatch_utxo_script: bool = False
+    foreign_origin: bool = False
+    omit_utxo: bool = False
 
 
 @dataclass
@@ -206,6 +215,7 @@ class OutputSpec:
     spend_derivation_suffix: Optional[str] = None  # Override spend key per output
     # Regular output specific
     add_bip32_derivation: bool = False  # Add PSBT_OUT_BIP32_DERIVATION for change identification
+    derivation_index: Optional[int] = None
 
 
 @dataclass
@@ -229,6 +239,9 @@ class TestScenario:
     #  (e.g. ["psbt_structure", "ecdh_coverage", "input_eligibility", "output_scripts"])
     checks: List[str]
     task: str = None
+    # Stable slug naming what this case is, which consumers map to their own
+    # expected behaviour - so their wording never has to live in the vectors
+    id: Optional[str] = None
     exclude_material: List[str] = field(
         default_factory=list
     )  # List of material fields to exclude from test vector (e.g. ["inputs", "sp_proofs", "outputs"])
@@ -262,6 +275,9 @@ class TestScenario:
     force_partial_ecdh_output_script: bool = False
     skip_regular_output_script: bool = False
     empty_regular_output_script: bool = False
+    input_stage: str = "resolved"  # unresolved | contributed | resolved | malformed
+    omit_output_amount: bool = False
+    strip_sp_proofs_after_resolution: bool = False
 
 
 # ============================================================================
@@ -272,9 +288,27 @@ class TestScenario:
 class InputFactory:
     """Creates PSBT inputs based on specifications"""
 
-    def __init__(self, wallet: Wallet, base_seed: str = "deterministic_test"):
+    def __init__(self, wallet: Wallet, base_seed: str = "deterministic_test", jade_profile: Optional[JadeKeyProfile] = None):
         self.wallet = wallet
         self.base_seed = base_seed
+        self.jade_profile = jade_profile
+
+    def _input_key(
+        self, spec: InputSpec, input_index: int, purpose: int, shared_key: bool = False
+    ):
+        if self.jade_profile is None:
+            key_suffix = (
+                "shared"
+                if shared_key
+                else f"{spec.key_derivation_suffix}_{input_index}"
+            )
+            private_key, public_key = self.wallet.create_key_pair("input", _deterministic_hash(key_suffix))
+            return private_key, public_key, None
+        index = spec.derivation_index if spec.derivation_index is not None else input_index
+        material = self.jade_profile.derive(
+            purpose, spec.derivation_branch, index, foreign=spec.owner == "foreign"
+        )
+        return material.private_key, material.public_key, material
 
     def create_input(
         self,
@@ -308,14 +342,48 @@ class InputFactory:
         if spec.skip_signing:
             result["skip_signing"] = True
 
+        if spec.foreign_origin and result.get("key_material") is not None:
+            result["origin_fingerprint"] = JadeKeyProfile.FOREIGN_FINGERPRINT
+        if spec.omit_utxo:
+            result["omit_utxo"] = True
+        if spec.mismatch_utxo_script:
+            self._replace_utxo_script(result, input_index)
+
         return result
 
-    def _create_p2wpkh_input(self, spec: InputSpec, input_index: int, shared_key: bool = False) -> Dict[str, Any]:
+    def _replace_utxo_script(self, result: Dict[str, Any], input_index: int):
+        """Commit the UTXO to a decoy key while retaining the PSBT origin key."""
+        _, decoy_pub = self.wallet.create_key_pair("jade_utxo_decoy", input_index)
+        input_type = result["input_type"]
+        if input_type == InputType.P2PKH:
+            script = bytes(key_to_p2pkh_script(decoy_pub.bytes))
+        elif input_type == InputType.P2WPKH:
+            script = bytes(program_to_witness_script(0, hash160(decoy_pub.bytes)))
+        elif input_type == InputType.P2SH_P2WPKH:
+            redeem_script = bytes(program_to_witness_script(0, hash160(decoy_pub.bytes)))
+            result["redeem_script"] = redeem_script
+            script = bytes(script_to_p2sh_script(redeem_script))
+        elif input_type == InputType.P2TR:
+            script = bytes(output_key_to_p2tr_script(decoy_pub.bytes_xonly))
+        else:
+            return
+        prev_tx = self._create_prev_tx(
+            hashlib.sha256(f"{self.base_seed}_mismatch_{input_index}".encode()).digest(),
+            result["amount"], script,
+        )
+        result["script_pubkey"] = script
+        result["non_witness_utxo"] = prev_tx
+        result["previous_txid"] = hash256(prev_tx)
+        if "witness_utxo" in result:
+            result["witness_utxo"] = CTxOut(result["amount"], script).serialize()
+
+    def _create_p2wpkh_input(
+        self, spec: InputSpec, input_index: int, shared_key: bool = False
+    ) -> Dict[str, Any]:
         """Create P2WPKH input"""
-        # Deterministic key generation. With shared_key every input derives the same
-        # key (single signer) while prevouts stay per-index, so outpoints differ.
-        key_suffix = "shared" if shared_key else f"{spec.key_derivation_suffix}_{input_index}"
-        input_priv, input_pub = self.wallet.create_key_pair("input", _deterministic_hash(key_suffix))
+        input_priv, input_pub, material = self._input_key(
+            spec, input_index, 84, shared_key
+        )
 
         # Create prevout
         prev_input_txid = hashlib.sha256(f"{self.base_seed}_prevout_{input_index}".encode()).digest()
@@ -330,7 +398,7 @@ class InputFactory:
 
         witness_utxo = CTxOut(spec.amount, script_pubkey).serialize()
 
-        return {
+        result = {
             "input_index": input_index,
             "input_type": InputType.P2WPKH,
             "private_key": input_priv,
@@ -344,11 +412,14 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": True,
         }
+        if material:
+            result["key_material"] = material
+            result["owner"] = spec.owner
+        return result
 
     def _create_p2pkh_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
         """Create P2PKH input (BIP-352 eligible; public key exposed via BIP32_DERIVATION)"""
-        key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
-        input_priv, input_pub = self.wallet.create_key_pair("input", _deterministic_hash(key_suffix))
+        input_priv, input_pub, material = self._input_key(spec, input_index, 44)
 
         script_pubkey = bytes(key_to_p2pkh_script(input_pub.bytes))
 
@@ -356,7 +427,7 @@ class InputFactory:
         prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
         previous_txid = hash256(prev_tx)
 
-        return {
+        result = {
             "input_index": input_index,
             "input_type": InputType.P2PKH,
             "private_key": input_priv,
@@ -369,11 +440,14 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": True,
         }
+        if material:
+            result["key_material"] = material
+            result["owner"] = spec.owner
+        return result
 
     def _create_p2sh_p2wpkh_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
         """Create P2SH-P2WPKH input (BIP-352 eligible wrapped segwit)"""
-        key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
-        input_priv, input_pub = self.wallet.create_key_pair("input", _deterministic_hash(key_suffix))
+        input_priv, input_pub, material = self._input_key(spec, input_index, 49)
 
         # Redeem script is the inner P2WPKH witness program: OP_0 <20-byte hash>
         redeem_script = bytes(program_to_witness_script(0, hash160(input_pub.bytes)))
@@ -387,7 +461,7 @@ class InputFactory:
         # PSBT_IN_WITNESS_UTXO for P2SH-P2WPKH uses the P2SH scriptPubKey
         witness_utxo = CTxOut(spec.amount, script_pubkey).serialize()
 
-        return {
+        result = {
             "input_index": input_index,
             "input_type": InputType.P2SH_P2WPKH,
             "private_key": input_priv,
@@ -402,6 +476,10 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": True,
         }
+        if material:
+            result["key_material"] = material
+            result["owner"] = spec.owner
+        return result
 
     def _generate_multisig_keys_and_script(self, spec: InputSpec, input_index: int, purpose: str) -> Tuple[list, bytes]:
         """Generate multisig keys and build OP_CHECKMULTISIG script.
@@ -487,14 +565,25 @@ class InputFactory:
         return result
 
     def _create_p2tr_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
-        """Create P2TR input material."""
+        """Create BIP341-tweaked P2TR input material."""
         key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
-        input_priv, input_pub = self.wallet.create_key_pair("input", _deterministic_hash(key_suffix))
+        if self.jade_profile is not None:
+            index = spec.derivation_index if spec.derivation_index is not None else input_index
+            material = self.jade_profile.derive_taproot(
+                spec.derivation_branch, index, foreign=spec.owner == "foreign"
+            )
+            input_priv, input_pub = material.private_key, material.public_key
+        else:
+            material = None
+            key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
+            input_priv, input_pub = self.wallet.create_key_pair(
+                "input", _deterministic_hash(key_suffix)
+            )
 
         prev_input_txid = hashlib.sha256(f"{self.base_seed}_p2tr_prevout_{input_index}".encode()).digest()
 
         # Negate private key if pubkey has odd y (BIP340 even-y requirement for lift_x)
-        if int(input_pub.y) % 2 != 0:
+        if material is None and int(input_pub.y) % 2 != 0:
             input_priv = PrivateKey(GE.ORDER - int(input_priv))
             input_pub = PublicKey(int(input_priv) * G)
 
@@ -533,23 +622,25 @@ class InputFactory:
                 "is_eligible": False,
             }
 
-        # BIP-341 key-path tweak: fund, sign, and derive with the tweaked output
-        # keypair (Q, d') so the scriptPubKey key matches the signing key, the summed
-        # SP input pubkey, and the DLEQ proof (A = d'*G = Q). BIP-352 uses the even-y
-        # output key, so normalize d' to the even-y key. The raw internal key P is
-        # retained only as the PSBT's TAP_INTERNAL_KEY.
-        taproot_info = taproot_construct(input_pub.bytes_xonly)
-        output_priv_int = int.from_bytes(
-            tweak_add_privkey(input_priv.bytes, taproot_info.tweak), "big"
-        )
-        if int((output_priv_int * G).y) % 2 != 0:
-            output_priv_int = GE.ORDER - output_priv_int
-        tap_internal_xonly = input_pub.bytes_xonly
-        output_priv = PrivateKey(output_priv_int)
-        output_pub = PublicKey(output_priv_int * G)
-
-        # P2TR scriptPubKey: OP_1 + 32-byte tweaked output key
-        script_pubkey = bytes(taproot_info.scriptPubKey)
+        if material is not None:
+            # JadeKeyProfile already exposes the parity-normalized BIP341 output key
+            # as the directly usable key while retaining the raw child key as origin.
+            output_priv = input_priv
+            output_pub = input_pub
+            tap_internal_xonly = material.derivation_public_key.bytes_xonly
+            script_pubkey = bytes(output_key_to_p2tr_script(output_pub.bytes_xonly))
+        else:
+            # Preserve PW's BIP341 treatment for synthetic workflow inputs.
+            taproot_info = taproot_construct(input_pub.bytes_xonly)
+            output_priv_int = int.from_bytes(
+                tweak_add_privkey(input_priv.bytes, taproot_info.tweak), "big"
+            )
+            if int((output_priv_int * G).y) % 2 != 0:
+                output_priv_int = GE.ORDER - output_priv_int
+            tap_internal_xonly = input_pub.bytes_xonly
+            output_priv = PrivateKey(output_priv_int)
+            output_pub = PublicKey(output_priv_int * G)
+            script_pubkey = bytes(taproot_info.scriptPubKey)
         prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
         previous_txid = hash256(prev_tx)
         witness_utxo = CTxOut(spec.amount, script_pubkey).serialize()
@@ -567,7 +658,7 @@ class InputFactory:
             tap_merkle_root = hashlib.sha256(f"{key_suffix}_false_nums_merkle_root".encode()).digest()
             is_eligible = False
 
-        return {
+        result = {
             "input_index": input_index,
             "input_type": InputType.P2TR,
             "private_key": output_priv,
@@ -583,6 +674,10 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": is_eligible,
         }
+        if material:
+            result["key_material"] = material
+            result["owner"] = spec.owner
+        return result
 
     def _create_prev_tx(self, prev_input_txid: bytes, amount: int, script_pubkey: bytes) -> bytes:
         """Create a previous transaction for non-witness UTXOs"""
@@ -602,8 +697,9 @@ class InputFactory:
 class OutputFactory:
     """Creates PSBT outputs based on specifications"""
 
-    def __init__(self, wallet: Wallet):
+    def __init__(self, wallet: Wallet, jade_profile: Optional[JadeKeyProfile] = None):
         self.wallet = wallet
+        self.jade_profile = jade_profile
 
     def create_output(self, spec: OutputSpec, output_index: int, scan_keys: Dict[str, tuple]) -> Dict[str, Any]:
         """Create output based on specification"""
@@ -613,6 +709,8 @@ class OutputFactory:
             return self._create_regular_p2tr_output(spec, output_index)
         elif spec.output_type == OutputType.REGULAR_P2WPKH:
             return self._create_regular_p2wpkh_output(spec, output_index)
+        elif spec.output_type == OutputType.REGULAR_P2PKH:
+            return self._create_regular_p2pkh_output(spec, output_index)
         else:
             raise ValueError(f"Unknown output type: {spec.output_type}")
 
@@ -675,6 +773,26 @@ class OutputFactory:
             "add_bip32_derivation": spec.add_bip32_derivation,
         }
 
+    def _create_regular_p2pkh_output(self, spec: OutputSpec, output_index: int) -> Dict[str, Any]:
+        if self.jade_profile is None:
+            _, change_pub = self.wallet.create_key_pair("change_p2pkh", output_index)
+            material = None
+        else:
+            index = spec.derivation_index if spec.derivation_index is not None else 1
+            material = self.jade_profile.derive(44, 1, index)
+            change_pub = material.public_key
+        result = {
+            "output_index": output_index,
+            "output_type": OutputType.REGULAR_P2PKH,
+            "amount": spec.amount,
+            "script": bytes(key_to_p2pkh_script(change_pub.bytes)),
+            "change_pubkey": change_pub,
+            "add_bip32_derivation": spec.add_bip32_derivation,
+        }
+        if material is not None:
+            result["key_material"] = material
+        return result
+
 
 # ============================================================================
 # PSBT Builder
@@ -684,11 +802,11 @@ class OutputFactory:
 class PSBTBuilder:
     """Builds PSBTs from test scenarios"""
 
-    def __init__(self, wallet: Wallet, base_seed: str = "deterministic_test"):
+    def __init__(self, wallet: Wallet, base_seed: str = "deterministic_test", jade_profile: Optional[JadeKeyProfile] = None):
         self.wallet = wallet
         self.base_seed = base_seed
-        self.input_factory = InputFactory(wallet, base_seed)
-        self.output_factory = OutputFactory(wallet)
+        self.input_factory = InputFactory(wallet, base_seed, jade_profile)
+        self.output_factory = OutputFactory(wallet, jade_profile)
 
     def build_psbt(self, scenario: TestScenario) -> Dict[str, Any]:
         """Build a complete PSBT from a test scenario"""
@@ -712,7 +830,10 @@ class PSBTBuilder:
             output_data.append(output_info)
 
         # Compute ECDH shares for silent payment outputs
-        ecdh_data = self._compute_ecdh_shares(input_data, scan_keys, scenario)
+        ecdh_data = (
+            {} if scenario.input_stage == "unresolved"
+            else self._compute_ecdh_shares(input_data, scan_keys, scenario)
+        )
 
         # Add ECDH shares to PSBT (with error injection); track which inputs get signed
         signed_input_indices: set = set()
@@ -725,6 +846,12 @@ class PSBTBuilder:
 
         # Compute and add outputs to PSBT; collect finalized scripts for signing
         finalized_outputs = self._add_outputs_to_psbt(psbt, output_data, input_data, ecdh_data, scenario, scan_keys)
+
+        if scenario.strip_sp_proofs_after_resolution:
+            for input_info in input_data:
+                idx = input_info["input_index"]
+                remove_raw_input_fields_by_type(psbt, idx, PSBTKeyType.PSBT_IN_SP_ECDH_SHARE)
+                remove_raw_input_fields_by_type(psbt, idx, PSBTKeyType.PSBT_IN_SP_DLEQ)
 
         # Auto-sign all eligible inputs when output scripts are complete
         if self._should_auto_sign(scenario):
@@ -793,6 +920,30 @@ class PSBTBuilder:
 
         return scan_keys
 
+    @staticmethod
+    def _input_origin_value(input_info: Dict[str, Any], *, taproot: bool = False) -> bytes:
+        material = input_info.get("key_material")
+        if material is None:
+            return struct.pack("<I", 0x80000000) + struct.pack("<I", input_info["input_index"])
+        path = b"".join(child.to_bytes(4, "little") for child in material.path)
+        fingerprint = input_info.get("origin_fingerprint", material.fingerprint)
+        return (b"\x00" if taproot else b"") + fingerprint + path
+
+    def _add_input_derivation(self, psbt: SilentPaymentPsbt, idx: int, input_info: Dict[str, Any]):
+        material = input_info.get("key_material")
+        if input_info["input_type"] == InputType.P2TR and material is not None:
+            add_raw_input_field(
+                psbt, idx, PSBTKeyType.PSBT_IN_TAP_BIP32_DERIVATION,
+                material.derivation_public_key.bytes_xonly,
+                self._input_origin_value(input_info, taproot=True),
+            )
+            return
+        add_raw_input_field(
+            psbt, idx, PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+            input_info["public_key"].bytes,
+            self._input_origin_value(input_info),
+        )
+
     def _add_input_to_psbt(self, psbt: SilentPaymentPsbt, input_info: Dict[str, Any]):
         """Add input fields to PSBT based on input type"""
         idx = input_info["input_index"]
@@ -824,15 +975,7 @@ class PSBTBuilder:
                 b"",
                 input_info["witness_utxo"],
             )
-            # Add BIP32 derivation for pubkey exposure
-            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)  # m/0'/idx'
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-                input_info["public_key"].bytes,
-                fake_derivation,
-            )
+            self._add_input_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2PKH:
             # Non-witness UTXO (full prev tx) + BIP32 derivation to expose public key
@@ -843,14 +986,7 @@ class PSBTBuilder:
                 b"",
                 input_info["non_witness_utxo"],
             )
-            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-                input_info["public_key"].bytes,
-                fake_derivation,
-            )
+            self._add_input_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2SH_P2WPKH:
             # Both non-witness UTXO (full prev tx) and witness UTXO (P2SH scriptPubKey),
@@ -876,14 +1012,7 @@ class PSBTBuilder:
                 b"",
                 input_info["redeem_script"],
             )
-            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-                input_info["public_key"].bytes,
-                fake_derivation,
-            )
+            self._add_input_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2SH_MULTISIG:
             # Add non-witness UTXO and redeem script
@@ -928,7 +1057,11 @@ class PSBTBuilder:
                 b"",
                 input_info["witness_utxo"],
             )
-            tap_key = input_info.get("tap_internal_key", input_info["public_key"].bytes_xonly)
+            material = input_info.get("key_material")
+            tap_key = input_info.get(
+                "tap_internal_key",
+                material.derivation_public_key.bytes_xonly if material else input_info["public_key"].bytes_xonly,
+            )
             add_raw_input_field(
                 psbt,
                 idx,
@@ -944,6 +1077,12 @@ class PSBTBuilder:
                     b"",
                     input_info["tap_merkle_root"],
                 )
+            if input_info.get("key_material") is not None:
+                self._add_input_derivation(psbt, idx, input_info)
+
+        if input_info.get("omit_utxo"):
+            remove_raw_input_fields_by_type(psbt, idx, PSBTKeyType.PSBT_IN_WITNESS_UTXO)
+            remove_raw_input_fields_by_type(psbt, idx, PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO)
 
     def _compute_ecdh_shares(
         self,
@@ -954,7 +1093,10 @@ class PSBTBuilder:
         """Compute ECDH shares for eligible inputs"""
         ecdh_shares = {}  # (input_idx, scan_key_id) -> (ecdh_result, dleq_proof)
 
-        eligible_inputs = [inp for inp in input_data if inp["is_eligible"]]
+        eligible_inputs = [
+            inp for inp in input_data
+            if inp["is_eligible"] and inp.get("owner", "wallet") == "wallet"
+        ]
 
         for input_info in eligible_inputs:
             input_idx = input_info["input_index"]
@@ -1124,6 +1266,7 @@ class PSBTBuilder:
         """
         return not any(
             [
+                scenario.input_stage != "resolved",
                 scenario.force_output_script,
                 scenario.force_partial_ecdh_output_script,
                 scenario.wrong_sighash_for_input is not None,
@@ -1138,6 +1281,8 @@ class PSBTBuilder:
     def _should_sign_input(self, input_info: Dict[str, Any], *, honor_skip_signing: bool = True) -> bool:
         """Return True when this input has spend material the generator can sign."""
         if honor_skip_signing and input_info.get("skip_signing", False):
+            return False
+        if input_info.get("owner", "wallet") != "wallet":
             return False
         return (
             input_info.get("is_eligible", False)
@@ -1460,13 +1605,14 @@ class PSBTBuilder:
             output_type = output_info["output_type"]
 
             # Add amount
-            add_raw_output_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_OUT_AMOUNT,
-                b"",
-                struct.pack("<Q", output_info["amount"]),
-            )
+            if not scenario.omit_output_amount:
+                add_raw_output_field(
+                    psbt,
+                    idx,
+                    PSBTKeyType.PSBT_OUT_AMOUNT,
+                    b"",
+                    struct.pack("<Q", output_info["amount"]),
+                )
 
             if output_type == OutputType.SILENT_PAYMENT:
                 script = self._add_silent_payment_output(
@@ -1614,12 +1760,14 @@ class PSBTBuilder:
         # Use the output's own change key so hash160(pubkey) == the witness program.
         pubkey = output_info["change_pubkey"]
 
-        # Format: 4-byte master fingerprint + path (4 bytes per level, m/0/1).
-        # The origin is a fixed test-vector placeholder (no HD master exists); no
-        # BIP-375 role reads it. The pubkey above is the field's factual part.
-        master_fingerprint = struct.pack(">I", 0)  # placeholder fingerprint
-        derivation_path = struct.pack(">I", 0) + struct.pack(">I", 1)  # m/0/1
-        bip32_derivation_value = master_fingerprint + derivation_path
+        material = output_info.get("key_material")
+        if material is None:
+            # Preserve the existing synthetic vector bytes.
+            bip32_derivation_value = struct.pack(">I", 0) + struct.pack(">I", 0) + struct.pack(">I", 1)
+        else:
+            bip32_derivation_value = material.fingerprint + b"".join(
+                child.to_bytes(4, "little") for child in material.path
+            )
 
         add_raw_output_field(
             psbt,
@@ -1638,10 +1786,16 @@ class PSBTBuilder:
 class ConfigBasedTestGenerator:
     """Generates test vectors from YAML configurations"""
 
-    def __init__(self, base_seed: str = "bip375_deterministic_seed"):
+    def __init__(self, base_seed: str = "bip375_deterministic_seed", key_profile: str = "current"):
+        profiles = {"current": None, "jade": JadeKeyProfile}
+        if key_profile not in profiles:
+            raise ValueError(f"Unknown key profile: {key_profile}")
         self.wallet = Wallet(base_seed)
         self.base_seed = base_seed
-        self.builder = PSBTBuilder(self.wallet, base_seed)
+        self.key_profile = key_profile
+        self.builder = PSBTBuilder(
+            self.wallet, base_seed, profiles[key_profile]() if profiles[key_profile] else None
+        )
 
     def load_test_scenarios_from_config(self, config_path: str) -> List[TestScenario]:
         """Load test scenarios from YAML configuration"""
@@ -1676,6 +1830,12 @@ class ConfigBasedTestGenerator:
                     if "script_pubkey" in input_config
                     else None
                 ),
+                owner=input_config.get("owner", "wallet"),
+                derivation_branch=input_config.get("derivation_branch", 0),
+                derivation_index=input_config.get("derivation_index"),
+                mismatch_utxo_script=input_config.get("mismatch_utxo_script", False),
+                foreign_origin=input_config.get("foreign_origin", False),
+                omit_utxo=input_config.get("omit_utxo", False),
             )
 
             # Handle batch creation
@@ -1694,6 +1854,15 @@ class ConfigBasedTestGenerator:
                     eligible_override=input_spec.eligible_override,
                     skip_signing=input_spec.skip_signing,
                     script_pubkey_override=input_spec.script_pubkey_override,
+                    owner=input_spec.owner,
+                    derivation_branch=input_spec.derivation_branch,
+                    derivation_index=(
+                        input_spec.derivation_index + i
+                        if input_spec.derivation_index is not None else None
+                    ),
+                    mismatch_utxo_script=input_spec.mismatch_utxo_script,
+                    foreign_origin=input_spec.foreign_origin,
+                    omit_utxo=input_spec.omit_utxo,
                 )
                 inputs.append(batch_spec)
 
@@ -1710,6 +1879,7 @@ class ConfigBasedTestGenerator:
                 force_k_index=output_config.get("force_k_index", None),
                 spend_derivation_suffix=output_config.get("spend_derivation_suffix"),
                 add_bip32_derivation=output_config.get("add_bip32_derivation", False),
+                derivation_index=output_config.get("derivation_index"),
             )
 
             # Handle batch creation
@@ -1741,6 +1911,7 @@ class ConfigBasedTestGenerator:
         return TestScenario(
             description=config["description"],
             task=config.get("task", "deserialize"),
+            id=config.get("id"),
             validation_result=ValidationResult(config.get("validation_result", "valid")),
             checks=config.get("checks", []),
             inputs=inputs,
@@ -1788,9 +1959,20 @@ class ConfigBasedTestGenerator:
                 if control_override.get("force_ecdh_for_input_scan_key")
                 else None
             ),
-            force_partial_ecdh_output_script=control_override.get("force_partial_ecdh_output_script", False),
-            skip_regular_output_script=control_override.get("skip_regular_output_script", False),
-            empty_regular_output_script=control_override.get("empty_regular_output_script", False),
+            force_partial_ecdh_output_script=control_override.get(
+                "force_partial_ecdh_output_script", False
+            ),
+            skip_regular_output_script=control_override.get(
+                "skip_regular_output_script", False
+            ),
+            empty_regular_output_script=control_override.get(
+                "empty_regular_output_script", False
+            ),
+            input_stage=config.get("input_stage", "resolved"),
+            omit_output_amount=control_override.get("omit_output_amount", False),
+            strip_sp_proofs_after_resolution=control_override.get(
+                "strip_sp_proofs_after_resolution", False
+            ),
         )
 
     def _input_psbt_bytes(self, serialized_psbt: bytes) -> bytes:
@@ -1888,6 +2070,15 @@ class ConfigBasedTestGenerator:
                 "sequence": inp["sequence"],
                 "signed": inp["input_index"] in signed_input_indices,
             }
+            material = inp.get("key_material")
+            if material is not None:
+                input_key.update({
+                    "owner": inp.get("owner", "wallet"),
+                    "master_fingerprint": material.fingerprint.hex(),
+                    "derivation_path": list(material.path),
+                    "derivation_private_key": material.derivation_private_key.hex,
+                    "derivation_public_key": material.derivation_public_key.hex,
+                })
             input_keys.append(input_key)
 
         scan_keys = []
@@ -1963,6 +2154,14 @@ class ConfigBasedTestGenerator:
                     output["script"] = out["script"].hex()
             else:
                 output["script"] = out["script"].hex()
+                material = out.get("key_material")
+                if material is not None:
+                    output.update({
+                        "master_fingerprint": material.fingerprint.hex(),
+                        "derivation_path": list(material.path),
+                        "private_key": material.private_key.hex,
+                        "public_key": material.public_key.hex,
+                    })
 
             expected_outputs.append(output)
 
@@ -2067,8 +2266,9 @@ class WorkflowVectorGenerator:
         },
     }
 
-    def __init__(self, seed: str = "bip375_deterministic_seed"):
-        self.cfg = ConfigBasedTestGenerator(seed)
+    def __init__(self, seed: str = "bip375_deterministic_seed", key_profile: str = "current"):
+        self.cfg = ConfigBasedTestGenerator(seed, key_profile)
+        self.key_profile = key_profile
 
     def generate(self) -> List[Dict[str, Any]]:
         """Build workflow vectors from the data-driven test_configs/workflows configs."""
@@ -2107,8 +2307,8 @@ class WorkflowVectorGenerator:
                 script_pubkey=inp["script_pubkey"],
                 sequence=inp["sequence"],
                 public_key=inp["public_key"].bytes,
-                master_fingerprint=None,
-                derivation_path=None,
+                master_fingerprint=inp["origin_fingerprint"] if "origin_fingerprint" in inp else (inp["key_material"].fingerprint if inp.get("key_material") else None),
+                derivation_path=list(inp["key_material"].path) if inp.get("key_material") else None,
             )
             for inp in input_data
         ]
@@ -2220,7 +2420,11 @@ class WorkflowVectorGenerator:
         if scenario.use_global_ecdh:
             # One signer owns every input (shared-key flag), so the global share (N*a*B),
             # the output scripts and every signature all land in a single step.
-            p.generate_single_signer_ecdh_shares(input_data[0]["private_key"].bytes)
+            if self.cfg.builder.input_factory.jade_profile is None:
+                p.generate_single_signer_ecdh_shares(input_data[0]["private_key"].bytes)
+            else:
+                # Profile keys are distinct per input, so the signer holds one key for each
+                p.generate_single_signer_ecdh_shares_with_keys([inp["private_key"].bytes for inp in input_data])
             for proof in global_proofs:
                 inject_deterministic_dleq(proof)
             p.compute_sp_output_scripts()
@@ -2238,6 +2442,15 @@ class WorkflowVectorGenerator:
                 p.generate_multi_signer_ecdh_shares(inp["private_key"].bytes)
                 if idx in builder_proofs:
                     inject_deterministic_dleq(builder_proofs[idx])
+                elif inp.get("owner") == "foreign":
+                    # The builder only proves for wallet inputs; pin the cosigner's proof too so the
+                    # vectors are reproducible
+                    for scan_pub, _ in psbt_data["scan_keys"].values():
+                        aux = hashlib.sha256(
+                            f"{self.cfg.builder.input_factory.base_seed}_foreign_dleq_{idx}".encode()
+                        ).digest()
+                        dleq = spdk_psbt.dleq_generate_proof(inp["private_key"].bytes, scan_pub.bytes, aux)
+                        add_raw_input_field(p, idx, PSBTKeyType.PSBT_IN_SP_DLEQ, scan_pub.bytes, dleq)
                 last = k == n - 1
                 if last:
                     p.compute_sp_output_scripts()
@@ -2294,11 +2507,91 @@ class WorkflowVectorGenerator:
 # ============================================================================
 
 
+class JadeVectorGenerator:
+    """Emit Jade-oriented, one-case-per-file silent-payment fixtures."""
+
+    def __init__(self, seed: str = "bip375_deterministic_seed"):
+        self.config_generator = ConfigBasedTestGenerator(seed, key_profile="jade")
+
+    @staticmethod
+    def _expected_scripts(psbt_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        input_data = psbt_data["input_data"]
+        eligible = [inp for inp in input_data if inp.get("is_eligible", False)]
+        if not eligible:
+            return []
+
+        outpoints, outpoint_to_input = _sorted_outpoints_and_input_map(input_data, eligible)
+        summed_pubkey = _sum_pubkeys_in_outpoint_order(outpoints, outpoint_to_input)
+        scripts = []
+        k_map = psbt_data["scenario"] and psbt_data.get("k_map")
+        if k_map is None:
+            k_map = psbt_data["builder"]._canonical_k_map(psbt_data["output_data"])
+        for output in psbt_data["output_data"]:
+            if output["output_type"] != OutputType.SILENT_PAYMENT:
+                continue
+            summed_private_key = None
+            for inp in eligible:
+                private_key = inp["private_key"]
+                summed_private_key = private_key if summed_private_key is None else summed_private_key + private_key
+            scan_pub = output["scan_pubkey"]
+            ecdh_share = summed_private_key * scan_pub
+            spend_pub = output["base_spend_pubkey"]
+            if output.get("label") is not None:
+                spend_pub = psbt_data["builder"]._compute_labeled_spend_key(
+                    scan_pub, spend_pub, output["label"]
+                )
+            scripts.append({
+                "output_index": output["output_index"],
+                "script": compute_bip352_output_script(
+                    outpoints,
+                    summed_pubkey.bytes,
+                    ecdh_share.bytes,
+                    spend_pub.bytes,
+                    k_map[output["output_index"]],
+                ).hex(),
+            })
+        return scripts
+
+    def generate(self, output_dir: Path) -> List[Path]:
+        config_dir = Path(__file__).parent / "test_configs" / "jade"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        written = []
+        for config_file in sorted(config_dir.glob("*.yaml")):
+            for number, scenario in enumerate(self.config_generator.load_test_scenarios_from_config(str(config_file))):
+                psbt_data = self.config_generator.builder.build_psbt(scenario)
+                psbt_data["builder"] = self.config_generator.builder
+                serialized = normalize_psbt_field_order(psbt_data["psbt"].serialize())
+                fixture = {
+                    "id": scenario.id,
+                    "description": scenario.description,
+                    "input": {"network": "localtest", "psbt": base64.b64encode(serialized).decode()},
+                    "validation_result": scenario.validation_result.value,
+                }
+                if scenario.validation_result == ValidationResult.VALID:
+                    if scenario.input_stage == "contributed":
+                        owned = [inp["input_index"] for inp in psbt_data["input_data"] if inp.get("owner") == "wallet"]
+                        fixture["expected_contribution"] = {
+                            "share_input_indices": owned,
+                            "unresolved_output_indices": [
+                                out["output_index"] for out in psbt_data["output_data"]
+                                if out["output_type"] == OutputType.SILENT_PAYMENT
+                            ],
+                        }
+                    else:
+                        fixture["expected_scripts"] = self._expected_scripts(psbt_data)
+                filename = output_dir / f"psbt_sp_375_{config_file.stem}_{number:02d}.json"
+                with open(filename, "w") as f:
+                    json.dump(fixture, f, indent=2)
+                    f.write("\n")
+                written.append(filename)
+        return written
+
+
 class TestVectorGenerator:
     """Main class to generate test vectors from configurations and code based scenarios"""
 
-    def __init__(self, seed: str = "bip375_deterministic_seed"):
-        self.config_generator = ConfigBasedTestGenerator(seed)
+    def __init__(self, seed: str = "bip375_deterministic_seed", key_profile: str = "current"):
+        self.config_generator = ConfigBasedTestGenerator(seed, key_profile)
         self.workflow_generator = WorkflowVectorGenerator(seed)
         self.test_vectors = {
             "description": "BIP-375 Test Vectors",
@@ -2357,6 +2650,11 @@ class TestVectorGenerator:
 if __name__ == "__main__":
     print(f"Using spdk_psbt version {version('spdk_psbt')}")
 
+    parser = argparse.ArgumentParser(description="Generate BIP-375 test vectors")
+    parser.add_argument("--key-profile", choices=("current", "jade"), default="current")
+    parser.add_argument("--jade-output-dir", type=Path, default=Path(__file__).parent / "out" / "jade")
+    args = parser.parse_args()
+
     # Create test configs directory structure if it doesn't exist
     test_configs_dir = Path(__file__).parent / "test_configs"
     test_configs_dir.mkdir(exist_ok=True)
@@ -2366,5 +2664,9 @@ if __name__ == "__main__":
     # Default: save to parent directory
     default_output = Path(__file__).parent / "bip375_test_vectors.json"
 
-    generator = TestVectorGenerator()
-    generator.save_test_vectors(str(default_output))
+    if args.key_profile == "jade":
+        paths = JadeVectorGenerator().generate(args.jade_output_dir)
+        print(f"Generated {len(paths)} Jade fixtures in {args.jade_output_dir}")
+    else:
+        generator = TestVectorGenerator(key_profile=args.key_profile)
+        generator.save_test_vectors(str(default_output))
