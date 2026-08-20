@@ -1029,6 +1029,8 @@ class ComplianceTest(unittest.TestCase):
         for name, vectors in self.files.items():
             for section in ("valid", "workflows"):
                 for vector in vectors.get(section, []):
+                    if "jade" in vector:  # Jade device cases, some of them device policy
+                        continue
                     for label, blob in _psbts(vector):
                         if not blob:
                             continue
@@ -1043,6 +1045,8 @@ class ComplianceTest(unittest.TestCase):
         for name, vectors in self.files.items():
             for section in ("valid", "workflows"):
                 for vector in vectors.get(section, []):
+                    if "jade" in vector:  # Jade device cases, some of them device policy
+                        continue
                     expected = vector.get("expected") or {}
                     claims = [
                         ("supplementary", (vector.get("supplementary") or {}).get("psbt_unique_id"), vector["psbt"]),
@@ -1061,6 +1065,8 @@ class ComplianceTest(unittest.TestCase):
         failures = []
         for name, vectors in self.files.items():
             for vector in vectors["invalid"]:
+                if "jade" in vector:  # Jade device cases, some of them device policy
+                    continue
                 declared = self.violates.get(vector["description"])
                 failed = _failed(evaluate(vector["psbt"]))
                 if declared is None:

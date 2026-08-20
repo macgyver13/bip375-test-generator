@@ -1,0 +1,86 @@
+description: "Jade-owned BIP-375 input vectors"
+
+test_cases:
+  - description: "Jade resolves an owned P2PKH input at m/44h/1h/0h/0/0"
+    id: owned_p2pkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2pkh
+        amount: 100000
+        derivation_index: 0
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+      - type: regular_p2pkh
+        amount: 4000
+        add_bip32_derivation: true
+        derivation_index: 1
+    scan_keys: [{key_id: default}]
+
+  - description: "Jade resolves an owned P2SH-P2WPKH input"
+    id: owned_p2sh_p2wpkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2sh_p2wpkh
+        amount: 100000
+        derivation_index: 0
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "Jade resolves an owned P2WPKH input"
+    id: owned_p2wpkh
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2wpkh
+        amount: 100000
+        derivation_index: 0
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "Jade resolves an owned BIP86 P2TR input"
+    id: owned_p2tr
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2tr
+        amount: 100000
+        derivation_index: 0
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]
+
+  - description: "Jade contributes only its owned input to a mixed-input payment"
+    id: mixed_owned_foreign_contribution
+    task: sign
+    validation_result: valid
+    input_stage: contributed
+    inputs:
+      - type: p2wpkh
+        amount: 100000
+        owner: wallet
+        derivation_index: 0
+      - type: p2wpkh
+        amount: 100000
+        owner: foreign
+        derivation_index: 1
+    outputs:
+      - type: silent_payment
+        amount: 190000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]

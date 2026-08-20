@@ -128,6 +128,20 @@ Writes `out/bip375.json` from the extended file. Generated artifacts other than
 `bip375_test_vectors.json` live in the untracked `out/` directory and can be
 regenerated at any revision.
 
+### Jade device fixtures
+```bash
+just gen-jade
+```
+
+Generates the vectors with `--key-profile jade`, whose primary wallet is the single-sig
+test wallet Jade's device test loads, and with `--include jade`, the device cases in
+`test_configs/jade/`. Every vector from that set is labeled `jade`. Some are device
+policy rather than BIP-375 violations, so they carry no `violates` list and the
+compliance suite skips them. `convert_to_jade_fixtures.py` then writes one
+`out/jade/psbt_sp_375_*.json` per `jade` vector, the format Jade's device test reads.
+`just sync-jade-fixtures` copies them into Jade's `test_data`. The standard vectors keep
+their own wallets.
+
 ### Regenerating vectors across a jj stack
 
 ```bash

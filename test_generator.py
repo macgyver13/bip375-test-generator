@@ -54,6 +54,7 @@ from generator_utils import (
     Wallet,
     WorkflowKeyProfile,
     JadeKeyProfile,
+    JadeWalletKeyProfile,
     UTXO,
     apply_label_to_spend_key,
     compute_bip352_output_script,
@@ -1942,7 +1943,7 @@ class ConfigBasedTestGenerator:
     """Generates test vectors from YAML configurations"""
 
     def __init__(self, base_seed: str = "bip375_deterministic_seed", key_profile: str = "current"):
-        profiles = {"current": None, "workflow": WorkflowKeyProfile}
+        profiles = {"current": None, "jade": JadeWalletKeyProfile, "workflow": WorkflowKeyProfile}
         if key_profile not in profiles:
             raise ValueError(f"Unknown key profile: {key_profile}")
         self.wallet = Wallet(base_seed)
@@ -1952,21 +1953,21 @@ class ConfigBasedTestGenerator:
             self.wallet, base_seed, profiles[key_profile]() if profiles[key_profile] else None
         )
 
-    def load_test_scenarios_from_config(self, config_path: str) -> List[TestScenario]:
+    def load_test_scenarios_from_config(self, config_path: str, require_violates: bool = True) -> List[TestScenario]:
         """Load test scenarios from YAML configuration"""
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
 
         scenarios = []
         for test_config in config.get("test_cases", []):
-            scenario = self._parse_test_config(test_config)
+            scenario = self._parse_test_config(test_config, require_violates)
             scenarios.append(scenario)
 
         return scenarios
 
-    def _parse_test_config(self, config: Dict[str, Any]) -> TestScenario:
+    def _parse_test_config(self, config: Dict[str, Any], require_violates: bool = True) -> TestScenario:
         """Parse a single test configuration into TestScenario"""
-        if config.get("validation_result") == "invalid" and not config.get("violates"):
+        if require_violates and config.get("validation_result") == "invalid" and not config.get("violates"):
             raise ValueError(f"{config['description']}: invalid case needs a non-empty violates list")
 
         # Parse inputs
@@ -2705,8 +2706,67 @@ class WorkflowVectorGenerator:
 # ============================================================================
 
 
+def _jade_expected_scripts(psbt_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The output scripts Jade should produce when it resolves an accepted case."""
+    input_data = psbt_data["input_data"]
+    eligible = [inp for inp in input_data if inp.get("is_eligible", False)]
+    if not eligible:
+        return []
+
+    outpoints, outpoint_to_input = _sorted_outpoints_and_input_map(input_data, eligible)
+    summed_pubkey = _sum_pubkeys_in_outpoint_order(outpoints, outpoint_to_input)
+    scripts = []
+    k_map = psbt_data["scenario"] and psbt_data.get("k_map")
+    if k_map is None:
+        k_map = psbt_data["builder"]._canonical_k_map(psbt_data["output_data"])
+    for output in psbt_data["output_data"]:
+        if output["output_type"] != OutputType.SILENT_PAYMENT:
+            continue
+        summed_private_key = None
+        for inp in eligible:
+            private_key = inp["private_key"]
+            summed_private_key = private_key if summed_private_key is None else summed_private_key + private_key
+        scan_pub = output["scan_pubkey"]
+        ecdh_share = summed_private_key * scan_pub
+        spend_pub = output["base_spend_pubkey"]
+        if output.get("label") is not None:
+            spend_pub = psbt_data["builder"]._compute_labeled_spend_key(
+                scan_pub, spend_pub, output["label"]
+            )
+        scripts.append({
+            "output_index": output["output_index"],
+            "script": compute_bip352_output_script(
+                outpoints,
+                summed_pubkey.bytes,
+                ecdh_share.bytes,
+                spend_pub.bytes,
+                k_map[output["output_index"]],
+            ).hex(),
+        })
+    return scripts
+
+
+def _jade_expectation(psbt_data: Dict[str, Any], scenario: TestScenario, fixture: str) -> Dict[str, Any]:
+    """What a Jade fixture needs beyond the vector: its id, file name and expected result."""
+    jade = {"id": scenario.id, "fixture": fixture}
+    if scenario.validation_result != ValidationResult.VALID:
+        return jade
+    if scenario.input_stage == "contributed":
+        owned = [inp["input_index"] for inp in psbt_data["input_data"] if inp.get("owner") == "wallet"]
+        jade["expected_contribution"] = {
+            "share_input_indices": owned,
+            "unresolved_output_indices": [
+                out["output_index"] for out in psbt_data["output_data"]
+                if out["output_type"] == OutputType.SILENT_PAYMENT
+            ],
+        }
+    else:
+        jade["expected_scripts"] = _jade_expected_scripts(psbt_data)
+    return jade
+
+
 # Optional vector sets, added with --include.
-INCLUDE_CHOICES = ("workflows",)
+INCLUDE_CHOICES = ("workflows", "jade")
 # The sets every file includes. When workflow vectors become standard, add
 # "workflows" here and bump VECTOR_VERSION.
 STANDARD_INCLUDES: Tuple[str, ...] = ()
@@ -2764,11 +2824,24 @@ class TestVectorGenerator:
                 test_vector = self.config_generator.generate_test_vector_from_scenario(scenario)
                 self.test_vectors["valid"].append(test_vector)
 
+        # Jade device cases. Some are device policy rather than BIP-375 violations, so they
+        # carry no violates list, and every vector in the set is labeled jade
+        if "jade" in self.includes:
+            for config_file in sorted(test_configs_dir.glob("jade/*.yaml")):
+                scenarios = self.config_generator.load_test_scenarios_from_config(str(config_file), require_violates=False)
+                for number, scenario in enumerate(scenarios):
+                    test_vector = self.config_generator.generate_test_vector_from_scenario(scenario)
+                    psbt_data = self.config_generator.builder.build_psbt(scenario)
+                    psbt_data["builder"] = self.config_generator.builder
+                    test_vector["jade"] = _jade_expectation(psbt_data, scenario, f"{config_file.stem}_{number:02d}")
+                    self.test_vectors[scenario.validation_result.value].append(test_vector)
+
         # Generate workflow (step-by-step) vectors
         if "workflows" in self.includes:
             self.test_vectors["workflows"] = self.workflow_generator.generate()
         # The seeded wallets behind every input key, so any implementer can load them
-        self.test_vectors["wallets"] = WorkflowKeyProfile().wallets
+        profile = self.config_generator.builder.input_factory.jade_profile
+        self.test_vectors["wallets"] = (profile if isinstance(profile, WorkflowKeyProfile) else WorkflowKeyProfile()).wallets
 
         return self.test_vectors
 
@@ -2795,6 +2868,7 @@ if __name__ == "__main__":
     print(f"Using PSBT backend {spdk_psbt.BACKEND_LABEL}")
 
     parser = argparse.ArgumentParser(description="Generate BIP-375 test vectors")
+    parser.add_argument("--key-profile", choices=("current", "jade", "workflow"), default="workflow")
     parser.add_argument(
         "--include",
         type=lambda value: tuple(item for item in value.split(",") if item),
@@ -2823,5 +2897,5 @@ if __name__ == "__main__":
     (test_configs_dir / "invalid").mkdir(exist_ok=True)
     (test_configs_dir / "valid").mkdir(exist_ok=True)
 
-    generator = TestVectorGenerator(include=args.include)
+    generator = TestVectorGenerator(key_profile=args.key_profile, include=args.include)
     generator.save_test_vectors(str(args.output), include_hex=args.hex)
