@@ -12,6 +12,7 @@ bips_dir := home + "/src/bips/bip-0375"
 rust_psbt_dir := home + "/src/rust-psbt"
 spdk_dir := home + "/src/spdk/psbt/tests"
 jade_dir := home + "/src/Jade/components/libwally-core/upstream/src/data"
+jade_fixtures_dir := home + "/src/Jade/test_data"
 convert_script := project_root + "/convert_to_rust_bip375_format.py"
 # PSBT backend for every recipe: python (default) or spdk. Override with `just backend=spdk gen`.
 backend := env_var_or_default("BIP375_PSBT_BACKEND", "py")
@@ -32,6 +33,13 @@ gen-extended:
 gen-all:
   @just gen
   @just gen-extended
+
+# Jade's keys and the jade set, then one fixture file per case for Jade's device test.
+gen-jade:
+  @mkdir -p {{out_dir}}/jade
+  rm -f {{out_dir}}/jade/psbt_sp_375_*.json
+  python {{project_root}}/test_generator.py --key-profile jade --include jade --output {{out_dir}}/jade/bip375_test_vectors_jade.json
+  python {{project_root}}/convert_to_jade_fixtures.py {{out_dir}}/jade/bip375_test_vectors_jade.json -o {{out_dir}}/jade
 
 gen-rust: gen-extended
   @mkdir -p {{out_dir}}
@@ -74,6 +82,15 @@ sync-jade: gen-extended
   @echo "Copying {{extended_path}} -> {{jade_dir}}/{{vectors_file}}"
   cp {{extended_path}} {{jade_dir}}/{{vectors_file}}
 
+sync-jade-fixtures:
+  @if [ ! -d {{jade_fixtures_dir}} ]; then echo "Missing destination directory: {{jade_fixtures_dir}}" >&2; exit 1; fi
+  @just gen-jade
+  @if [ ! -d {{out_dir}}/jade ]; then echo "Missing generated directory: {{out_dir}}/jade" >&2; exit 1; fi
+  @echo "Removing stale psbt_sp_375_*.json in {{jade_fixtures_dir}}"
+  rm -f {{jade_fixtures_dir}}/psbt_sp_375_*.json
+  @echo "Copying {{out_dir}}/jade/psbt_sp_375_*.json -> {{jade_fixtures_dir}}/"
+  cp {{out_dir}}/jade/psbt_sp_375_*.json {{jade_fixtures_dir}}/
+
 sync-all:
   @just sync-bip
   @just sync-rust
@@ -94,13 +111,14 @@ regen-stack revs="@::":
 diff-vectors from="@-" to="@" verbosity="":
   python {{project_root}}/psbt_diff.py {{verbosity}} --jj "{{from}}" "{{to}}"
 
-# Regenerate the standard file and require the committed copy to match, generate the extended file, export it for rust-psbt, and check every PSBT.
+# Regenerate the standard file and require the committed copy to match, generate the extended file, export it for rust-psbt, generate the jade fixtures, and check every PSBT.
 test:
   mkdir -p {{out_dir}}/test
   python {{project_root}}/test_generator.py --output {{out_dir}}/test/{{vectors_file}}
   cmp {{out_dir}}/test/{{vectors_file}} {{project_root}}/{{vectors_file}}
   @just gen-extended
   python {{convert_script}} {{extended_path}} -o {{out_dir}}/test/{{rust_vectors_file}}
+  @just gen-jade
   python -m unittest discover -s {{project_root}}/tests
 
 # Generate with the Python and Rust (spdk_psbt) backends into out/parity and require identical output.

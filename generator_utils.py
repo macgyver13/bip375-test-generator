@@ -408,6 +408,16 @@ class WorkflowKeyProfile(JadeKeyProfile):
         )
 
 
+class JadeWalletKeyProfile(WorkflowKeyProfile):
+    """The workflow wallets with Jade's single-sig test wallet as the primary.
+
+    Jade's BIP-375 device test loads that wallet, so fixtures generated with this
+    profile use keys the device owns. The cosigner wallet stays foreign to it.
+    """
+
+    MNEMONIC = JadeKeyProfile.MNEMONIC
+
+
 # ============================================================================
 # BIP-352 Cryptographic Functions (PSBT backend wrappers)
 # ============================================================================
