@@ -95,3 +95,23 @@ test_cases:
         amount: 95000
         scan_key_id: default
     scan_keys: [{key_id: default}]
+
+  # Taproot names its extra keys the same way, but tells them apart by leaf hash
+  # rather than by counting: the key-path key is the one belonging to no leaf.
+  # With no leaf script and no merkle root the input is key-path spendable, so
+  # the second derivation must not stop Jade signing it.
+  - description: "Jade resolves a P2TR input carrying a script-path derivation"
+    id: decoy_tap_leaf_p2tr
+    task: sign
+    validation_result: valid
+    input_stage: unresolved
+    inputs:
+      - type: p2tr
+        amount: 100000
+        derivation_index: 0
+        decoy_first_derivation: true
+    outputs:
+      - type: silent_payment
+        amount: 95000
+        scan_key_id: default
+    scan_keys: [{key_id: default}]

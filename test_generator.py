@@ -377,8 +377,18 @@ class InputFactory:
             # keydata, so pick a decoy whose compressed pubkey sorts before the real key
             # to guarantee it appears first.
             key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
-            real_pubkey_bytes = result["public_key"].bytes
             material = result.get("key_material")
+            # A taproot derivation names the x-only internal key, not the tweaked
+            # output key, and sorts on those 32 bytes
+            is_taproot = spec.input_type == InputType.P2TR and material is not None
+            real_pubkey_bytes = (
+                material.derivation_public_key.bytes_xonly if is_taproot else result["public_key"].bytes
+            )
+            if is_taproot:
+                # Mark the decoy as a script-path key by giving it a leaf hash.
+                # The key-path key is the one with none, which is what tells the
+                # two apart - the number of derivations does not.
+                result["decoy_leaf_hash"] = hashlib.sha256(f"{key_suffix}_decoy_leaf".encode()).digest()
             if spec.decoy_same_origin and material is not None:
                 # A decoy under our own fingerprint, on a path we genuinely derive, so
                 # it survives keypath validation and reaches the signer as a candidate.
@@ -403,8 +413,9 @@ class InputFactory:
                     _, decoy_pub = self.wallet.create_key_pair(
                         "input", _deterministic_hash(f"{key_suffix}_decoy_deriv_{n}")
                     )
-                    if decoy_pub.bytes < real_pubkey_bytes:
-                        result["decoy_derivation_pubkey"] = decoy_pub.bytes
+                    decoy_bytes = decoy_pub.bytes_xonly if is_taproot else decoy_pub.bytes
+                    if decoy_bytes < real_pubkey_bytes:
+                        result["decoy_derivation_pubkey"] = decoy_bytes
                         break
                     n += 1
 
@@ -991,6 +1002,20 @@ class PSBTBuilder:
     def _add_input_derivation(self, psbt: SilentPaymentPsbt, idx: int, input_info: Dict[str, Any]):
         material = input_info.get("key_material")
         if input_info["input_type"] == InputType.P2TR and material is not None:
+            decoy = input_info.get("decoy_derivation_pubkey")
+            if decoy is not None:
+                # A script-path key, named by the leaf it belongs to. The input
+                # is still key-path spendable: no leaf script and no merkle root
+                # are present, and the key-path key is the one with no leaf hash.
+                add_raw_input_field(
+                    psbt, idx, PSBTKeyType.PSBT_IN_TAP_BIP32_DERIVATION,
+                    decoy,
+                    b"\x01" + input_info["decoy_leaf_hash"]
+                    + input_info.get(
+                        "decoy_derivation_origin",
+                        struct.pack("<I", 0x80000000) + struct.pack("<I", 0xFF),
+                    ),
+                )
             add_raw_input_field(
                 psbt, idx, PSBTKeyType.PSBT_IN_TAP_BIP32_DERIVATION,
                 material.derivation_public_key.bytes_xonly,
