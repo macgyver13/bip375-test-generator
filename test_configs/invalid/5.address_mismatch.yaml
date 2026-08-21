@@ -58,7 +58,6 @@ test_cases:
       - type: "silent_payment"
         amount: 90000
         scan_key_id: "default"
-        force_k_index: 0
       - type: "silent_payment"
         amount: 10000
         scan_key_id: "default"

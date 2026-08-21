@@ -1015,6 +1015,17 @@ class PSBTBuilder:
             self._input_origin_value(input_info),
         )
 
+    def _add_input_utxo(self, psbt, idx: int, input_info: Dict[str, Any], key_type, value: bytes):
+        """Add a UTXO field, unless the scenario omits the input's UTXO.
+
+        Skipping the add is the only way to leave it out: spdk_psbt keeps known
+        field types structurally, so removing the raw field afterwards does not
+        take it out of the serialized psbt.
+        """
+        if input_info.get("omit_utxo"):
+            return
+        add_raw_input_field(psbt, idx, key_type, b"", value)
+
     def _add_input_to_psbt(self, psbt: SilentPaymentPsbt, input_info: Dict[str, Any]):
         """Add input fields to PSBT based on input type"""
         idx = input_info["input_index"]
@@ -1039,22 +1050,22 @@ class PSBTBuilder:
 
         if input_type == InputType.P2WPKH:
             # Add witness UTXO and BIP32 derivation
-            add_raw_input_field(
+            self._add_input_utxo(
                 psbt,
                 idx,
+                input_info,
                 PSBTKeyType.PSBT_IN_WITNESS_UTXO,
-                b"",
                 input_info["witness_utxo"],
             )
             self._add_input_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2PKH:
             # Non-witness UTXO (full prev tx) + BIP32 derivation to expose public key
-            add_raw_input_field(
+            self._add_input_utxo(
                 psbt,
                 idx,
+                input_info,
                 PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO,
-                b"",
                 input_info["non_witness_utxo"],
             )
             self._add_input_derivation(psbt, idx, input_info)
@@ -1062,18 +1073,18 @@ class PSBTBuilder:
         elif input_type == InputType.P2SH_P2WPKH:
             # Both non-witness UTXO (full prev tx) and witness UTXO (P2SH scriptPubKey),
             # plus the redeem script and BIP32 derivation to expose the public key
-            add_raw_input_field(
+            self._add_input_utxo(
                 psbt,
                 idx,
+                input_info,
                 PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO,
-                b"",
                 input_info["non_witness_utxo"],
             )
-            add_raw_input_field(
+            self._add_input_utxo(
                 psbt,
                 idx,
+                input_info,
                 PSBTKeyType.PSBT_IN_WITNESS_UTXO,
-                b"",
                 input_info["witness_utxo"],
             )
             add_raw_input_field(
@@ -1087,11 +1098,11 @@ class PSBTBuilder:
 
         elif input_type == InputType.P2SH_MULTISIG:
             # Add non-witness UTXO and redeem script
-            add_raw_input_field(
+            self._add_input_utxo(
                 psbt,
                 idx,
+                input_info,
                 PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO,
-                b"",
                 input_info["non_witness_utxo"],
             )
             add_raw_input_field(
@@ -1104,11 +1115,11 @@ class PSBTBuilder:
 
         elif input_type == InputType.P2WSH_MULTISIG:
             # Add witness UTXO and witness script
-            add_raw_input_field(
+            self._add_input_utxo(
                 psbt,
                 idx,
+                input_info,
                 PSBTKeyType.PSBT_IN_WITNESS_UTXO,
-                b"",
                 input_info["witness_utxo"],
             )
             add_raw_input_field(
@@ -1121,11 +1132,11 @@ class PSBTBuilder:
 
         elif input_type == InputType.P2TR:
             # Add witness UTXO and taproot internal key
-            add_raw_input_field(
+            self._add_input_utxo(
                 psbt,
                 idx,
+                input_info,
                 PSBTKeyType.PSBT_IN_WITNESS_UTXO,
-                b"",
                 input_info["witness_utxo"],
             )
             material = input_info.get("key_material")
@@ -1151,9 +1162,6 @@ class PSBTBuilder:
             if input_info.get("key_material") is not None:
                 self._add_input_derivation(psbt, idx, input_info)
 
-        if input_info.get("omit_utxo"):
-            remove_raw_input_fields_by_type(psbt, idx, PSBTKeyType.PSBT_IN_WITNESS_UTXO)
-            remove_raw_input_fields_by_type(psbt, idx, PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO)
 
     def _compute_ecdh_shares(
         self,
@@ -1782,6 +1790,16 @@ class PSBTBuilder:
                         k_index = k
                         if output_info["force_k_index"] is not None:
                             k_index = output_info["force_k_index"]
+                            if k_index == k:
+                                # Forcing the value the output would get anyway
+                                # yields a correct script, so the vector silently
+                                # stops testing anything. Which k is canonical
+                                # depends on how the spend keys sort, so this is
+                                # easy to get wrong by accident.
+                                raise ValueError(
+                                    f"force_k_index={k_index} on output "
+                                    f"{idx} is already its canonical k"
+                                )
                         # Compute BIP-352 output script
                         output_script = compute_bip352_output_script(
                             outpoints=outpoints,

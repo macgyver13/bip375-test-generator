@@ -157,18 +157,39 @@ test_cases:
     task: fail_sign
     validation_result: invalid
     inputs: [{type: p2wpkh, amount: 200000}]
+    # Both outputs share a scan key, so BIP-375 gives them k=0 and k=1 ordered by
+    # spend key. Suffix b sorts first and so is canonically k=0; forcing the same
+    # k onto suffix a collides them, and only one of the two scripts can be right.
     outputs:
-      - {type: silent_payment, amount: 90000, scan_key_id: default, spend_derivation_suffix: a}
-      - {type: silent_payment, amount: 90000, scan_key_id: default, spend_derivation_suffix: b, force_k_index: 0}
+      - {type: silent_payment, amount: 90000, scan_key_id: default, spend_derivation_suffix: a, force_k_index: 0}
+      - {type: silent_payment, amount: 90000, scan_key_id: default, spend_derivation_suffix: b}
     scan_keys: [{key_id: default}]
 
+  # The input has to be foreign for this to test coverage at all: a signer that
+  # owns the input can compute the missing share itself and legitimately finish
+  # the psbt, which is what Jade did while this input was its own.
   - description: "Multiple outputs require ECDH coverage for every scan key"
     id: scan_key_coverage_gap
     task: fail_sign
     validation_result: invalid
-    inputs: [{type: p2wpkh, amount: 200000}]
+    inputs: [{type: p2wpkh, amount: 200000, owner: foreign}]
     outputs:
       - {type: silent_payment, amount: 90000, scan_key_id: a}
       - {type: silent_payment, amount: 90000, scan_key_id: b}
     scan_keys: [{key_id: a}, {key_id: b}]
     control_override: {missing_ecdh_for_scan_key: b}
+
+  # The decoy sits on the foreign input, not Jade's own. On its own input Jade
+  # derives the key from its seed and sees the mismatch for free; here it has only
+  # the claimed derivation pubkey and a DLEQ proof that is valid for that decoy, so
+  # nothing catches it short of hashing the pubkey back into the prevout script.
+  - description: "Foreign input whose derivation pubkey is not committed to by its prevout is rejected"
+    id: foreign_pubkey_not_bound_to_prevout
+    task: fail_sign
+    validation_result: invalid
+    inputs:
+      - {type: p2wpkh, amount: 100000}
+      - {type: p2wpkh, amount: 100000, owner: foreign, contribute_foreign_share: true, mismatch_sp_pubkey: true}
+    outputs: [{type: silent_payment, amount: 195000, scan_key_id: default}]
+    scan_keys: [{key_id: default}]
+    control_override: {force_output_script: true}
