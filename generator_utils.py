@@ -35,6 +35,7 @@ from test_framework.messages import (
     uint256_from_str,
 )
 from test_framework.script import (
+    CScript,
     SIGHASH_ALL,
     SIGHASH_DEFAULT,
     LegacySignatureHash,
@@ -74,6 +75,8 @@ class PSBTKeyType:
     PSBT_IN_OUTPUT_INDEX = _tf_psbt.PSBT_IN_OUTPUT_INDEX
     PSBT_IN_SEQUENCE = _tf_psbt.PSBT_IN_SEQUENCE
     PSBT_IN_TAP_KEY_SIG = _tf_psbt.PSBT_IN_TAP_KEY_SIG
+    PSBT_IN_TAP_SCRIPT_SIG = _tf_psbt.PSBT_IN_TAP_SCRIPT_SIG
+    PSBT_IN_TAP_LEAF_SCRIPT = _tf_psbt.PSBT_IN_TAP_LEAF_SCRIPT
     PSBT_IN_TAP_INTERNAL_KEY = _tf_psbt.PSBT_IN_TAP_INTERNAL_KEY
     PSBT_IN_FINAL_SCRIPTSIG = _tf_psbt.PSBT_IN_FINAL_SCRIPTSIG
     PSBT_IN_FINAL_SCRIPTWITNESS = _tf_psbt.PSBT_IN_FINAL_SCRIPTWITNESS
@@ -419,6 +422,7 @@ _SIGNED_KEY_TYPES = frozenset(
     {
         PSBTKeyType.PSBT_IN_PARTIAL_SIG,
         PSBTKeyType.PSBT_IN_TAP_KEY_SIG,
+        PSBTKeyType.PSBT_IN_TAP_SCRIPT_SIG,
         PSBTKeyType.PSBT_IN_FINAL_SCRIPTSIG,
         PSBTKeyType.PSBT_IN_FINAL_SCRIPTWITNESS,
     }
@@ -571,6 +575,27 @@ def sign_p2pkh_input(
     return sig + bytes([sighash_type])
 
 
+def sign_p2sh_multisig_input(
+    private_keys: List[int],
+    inputs: List[UTXO],
+    outputs: List[dict],
+    input_index: int,
+    redeem_script: bytes,
+    threshold: int,
+) -> List[bytes]:
+    """Sign a legacy P2SH multisig input."""
+    tx = _build_tx(inputs, outputs)
+    sighash, err = LegacySignatureHash(CScript(redeem_script), tx, input_index, SIGHASH_ALL)
+    assert err is None
+
+    signatures = []
+    for private_key in private_keys[:threshold]:
+        sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
+        signatures.append(sig + bytes([SIGHASH_ALL]))
+
+    return signatures
+
+
 def sign_p2tr_input(
     private_key: int,
     inputs: List[UTXO],
@@ -598,6 +623,31 @@ def sign_p2tr_input(
     if sighash_type == SIGHASH_DEFAULT:
         return sig
     return sig + bytes([sighash_type])
+
+
+def sign_p2tr_script_path_input(
+    private_key: int,
+    inputs: List[UTXO],
+    outputs: List[dict],
+    input_index: int,
+    leaf_script: bytes,
+) -> bytes:
+    """Sign a P2TR script-path input with a tapscript CHECKSIG leaf."""
+    tx = _build_tx(inputs, outputs)
+    spent_utxos = [
+        CTxOut(inp.amount, bytes.fromhex(inp.script_pubkey)) for inp in inputs
+    ]
+    sighash = TaprootSignatureHash(
+        tx,
+        spent_utxos,
+        SIGHASH_ALL,
+        input_index=input_index,
+        scriptpath=True,
+        leaf_script=leaf_script,
+        codeseparator_pos=0xFFFFFFFF,
+    )
+    sig = sign_schnorr(int(private_key).to_bytes(32, "big"), sighash)
+    return sig + bytes([SIGHASH_ALL])
 
 
 # ============================================================================

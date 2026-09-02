@@ -62,7 +62,9 @@ from generator_utils import (
     psbt_disclosure_state,
     sign_p2wpkh_input,
     sign_p2pkh_input,
+    sign_p2sh_multisig_input,
     sign_p2tr_input,
+    sign_p2tr_script_path_input,
     compute_transaction_id,
     verify_receiver_detects_outputs,
     verify_no_empty_output_script_headers,
@@ -1146,6 +1148,42 @@ class PSBTBuilder:
         assert sighash_type != SIGHASH_DEFAULT or input_type == InputType.P2TR, (
             "SIGHASH_DEFAULT is only defined for taproot inputs"
         )
+        if input_type == InputType.P2SH_MULTISIG:
+            signatures = sign_p2sh_multisig_input(
+                private_keys=[int(key) for key in input_info["private_keys"]],
+                inputs=utxos,
+                outputs=outputs,
+                input_index=input_idx,
+                redeem_script=input_info["redeem_script"],
+                threshold=input_info["multisig_threshold"],
+            )
+            for pubkey, signature in zip(input_info["public_keys"], signatures):
+                add_raw_input_field(
+                    psbt,
+                    input_idx,
+                    PSBTKeyType.PSBT_IN_PARTIAL_SIG,
+                    pubkey.bytes,
+                    signature,
+                )
+            return
+
+        if "tap_leaf_script" in input_info:
+            signature = sign_p2tr_script_path_input(
+                private_key=int(input_info["private_key"]),
+                inputs=utxos,
+                outputs=outputs,
+                input_index=input_idx,
+                leaf_script=input_info["tap_leaf_script"],
+            )
+            add_raw_input_field(
+                psbt,
+                input_idx,
+                PSBTKeyType.PSBT_IN_TAP_SCRIPT_SIG,
+                input_info["public_key"].bytes_xonly + input_info["tap_leaf_hash"],
+                signature,
+            )
+            return
+
         if input_type == InputType.P2TR:
             signature = sign_p2tr_input(
                 private_key=int(input_info["private_key"]),
