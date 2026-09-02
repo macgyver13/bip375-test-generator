@@ -25,6 +25,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from test_framework.crypto.secp256k1 import GE, G
 from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut, hash256, uint256_from_str
 from test_framework.script import SIGHASH_ALL, SIGHASH_NONE, hash160
+from test_framework.script import taproot_construct
+from test_framework.key import tweak_add_privkey
 from test_framework.script_util import (
     key_to_p2pkh_script,
     keys_to_multisig_script,
@@ -542,8 +544,23 @@ class InputFactory:
                 "is_eligible": False,
             }
 
-        # P2TR scriptPubKey: OP_1 + 32-byte x-only key
-        script_pubkey = bytes(output_key_to_p2tr_script(input_pub.bytes_xonly))
+        # BIP-341 key-path tweak: fund, sign, and derive with the tweaked output
+        # keypair (Q, d') so the scriptPubKey key matches the signing key, the summed
+        # SP input pubkey, and the DLEQ proof (A = d'*G = Q). BIP-352 uses the even-y
+        # output key, so normalize d' to the even-y key. The raw internal key P is
+        # retained only as the PSBT's TAP_INTERNAL_KEY.
+        taproot_info = taproot_construct(input_pub.bytes_xonly)
+        output_priv_int = int.from_bytes(
+            tweak_add_privkey(input_priv.bytes, taproot_info.tweak), "big"
+        )
+        if int((output_priv_int * G).y) % 2 != 0:
+            output_priv_int = GE.ORDER - output_priv_int
+        tap_internal_xonly = input_pub.bytes_xonly
+        output_priv = PrivateKey(output_priv_int)
+        output_pub = PublicKey(output_priv_int * G)
+
+        # P2TR scriptPubKey: OP_1 + 32-byte tweaked output key
+        script_pubkey = bytes(taproot_info.scriptPubKey)
         prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
         previous_txid = hash256(prev_tx)
         witness_utxo = CTxOut(spec.amount, script_pubkey).serialize()
@@ -551,8 +568,9 @@ class InputFactory:
         return {
             "input_index": input_index,
             "input_type": InputType.P2TR,
-            "private_key": input_priv,
-            "public_key": input_pub,
+            "private_key": output_priv,
+            "public_key": output_pub,
+            "tap_internal_key": tap_internal_xonly,
             "previous_txid": previous_txid,
             "prevout_index": 0,
             "script_pubkey": script_pubkey,

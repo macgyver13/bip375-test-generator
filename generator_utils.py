@@ -24,10 +24,7 @@ from test_framework import psbt as _tf_psbt
 from test_framework.crypto.secp256k1 import GE, G
 from test_framework.key import (
     ECKey,
-    TaggedHash,
-    compute_xonly_pubkey,
     sign_schnorr,
-    tweak_add_privkey,
 )
 from test_framework.messages import (
     COutPoint,
@@ -523,6 +520,8 @@ def sign_p2tr_input(
 
     Applies the key-path tweak with an empty script tree and produces a
     64-byte Schnorr signature with an explicit sighash trailing byte.
+    The input already carries the tweaked output keypair (see _create_p2tr_input),
+    so we sign with the private key directly.
     """
     tx = _build_tx(inputs, outputs)
     spent_utxos = [
@@ -532,11 +531,7 @@ def sign_p2tr_input(
         tx, spent_utxos, sighash_type, input_index=input_index
     )
 
-    priv_bytes = int(private_key).to_bytes(32, "big")
-    xonly, _ = compute_xonly_pubkey(priv_bytes)
-    tweak = TaggedHash("TapTweak", xonly)
-    tweaked = tweak_add_privkey(priv_bytes, tweak)
-    sig = sign_schnorr(tweaked, sighash)
+    sig = sign_schnorr(int(private_key).to_bytes(32, "big"), sighash)
     return sig + bytes([sighash_type])
 
 
