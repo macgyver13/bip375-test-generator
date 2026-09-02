@@ -200,6 +200,7 @@ class InputSpec:
     omit_utxo: bool = False
     mismatch_sp_pubkey: bool = False  # Inject a decoy SP pubkey (BIP32_DERIVATION/ECDH/DLEQ/output) that does not match the prevout script
     contribute_foreign_share: bool = False  # Let a foreign input carry an ECDH share and DLEQ proof, as a co-signer would supply
+    decoy_first_derivation: bool = False  # Inject an extra non-matching PSBT_IN_BIP32_DERIVATION that sorts before the real key (selection test)
 
 
 @dataclass
@@ -366,6 +367,25 @@ class InputFactory:
             result["public_key"] = decoy_pub
             result["private_key"] = decoy_priv
             result["skip_signing"] = True
+
+        if spec.decoy_first_derivation:
+            # Inject an extra, non-matching PSBT_IN_BIP32_DERIVATION alongside the real
+            # key. The real key still drives all SP computation and signing; this only
+            # tests that a verifier selects the derivation matching the prevout rather
+            # than "the first" one. The library serializes same-type fields sorted by
+            # keydata, so pick a decoy whose compressed pubkey sorts before the real key
+            # to guarantee it appears first.
+            key_suffix = f"{spec.key_derivation_suffix}_{input_index}"
+            real_pubkey_bytes = result["public_key"].bytes
+            n = 0
+            while True:
+                _, decoy_pub = self.wallet.create_key_pair(
+                    "input", _deterministic_hash(f"{key_suffix}_decoy_deriv_{n}")
+                )
+                if decoy_pub.bytes < real_pubkey_bytes:
+                    result["decoy_derivation_pubkey"] = decoy_pub.bytes
+                    break
+                n += 1
 
         return result
 
@@ -956,6 +976,15 @@ class PSBTBuilder:
                 self._input_origin_value(input_info, taproot=True),
             )
             return
+        decoy = input_info.get("decoy_derivation_pubkey")
+        if decoy is not None:
+            add_raw_input_field(
+                psbt,
+                idx,
+                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+                decoy,
+                struct.pack("<I", 0x80000000) + struct.pack("<I", 0xFF),
+            )
         add_raw_input_field(
             psbt, idx, PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
             input_info["public_key"].bytes,
@@ -1859,6 +1888,7 @@ class ConfigBasedTestGenerator:
                 omit_utxo=input_config.get("omit_utxo", False),
                 mismatch_sp_pubkey=input_config.get("mismatch_sp_pubkey", False),
                 contribute_foreign_share=input_config.get("contribute_foreign_share", False),
+                decoy_first_derivation=input_config.get("decoy_first_derivation", False),
             )
 
             # Handle batch creation
@@ -1888,6 +1918,7 @@ class ConfigBasedTestGenerator:
                     omit_utxo=input_spec.omit_utxo,
                     mismatch_sp_pubkey=input_spec.mismatch_sp_pubkey,
                     contribute_foreign_share=input_spec.contribute_foreign_share,
+                    decoy_first_derivation=input_spec.decoy_first_derivation,
                 )
                 inputs.append(batch_spec)
 
