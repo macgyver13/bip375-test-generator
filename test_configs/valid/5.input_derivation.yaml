@@ -1,0 +1,37 @@
+description: "Input public key selection among multiple PSBT_IN_BIP32_DERIVATION entries"
+
+# BIP174 allows multiple PSBT_IN_BIP32_DERIVATION per input. For single-sig inputs only one
+# pubkey matches the prevout script; the rest are irrelevant to spending. Each input here carries
+# a non-matching decoy derivation that sorts (and therefore serializes) BEFORE the real key, plus
+# the real key whose hash matches the prevout. These PSBTs are valid: a correct implementation
+# must select the derivation matching the prevout (not "the first") to compute the silent payment
+# output and verify the DLEQ proof. An implementation that takes the first derivation would use the
+# decoy, fail DLEQ verification, and incorrectly reject these.
+
+test_cases:
+  - description: "can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        decoy_first_derivation: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
+  - description: "can finalize: P2PKH with decoy BIP32_DERIVATION before the matching key"
+    validation_result: "valid"
+    inputs:
+      - type: "p2pkh"
+        amount: 100000
+        decoy_first_derivation: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
