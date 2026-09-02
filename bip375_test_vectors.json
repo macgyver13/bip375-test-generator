@@ -2229,6 +2229,81 @@
         ],
         "psbt_unique_id": "f2a2e28a4ac943fc599ac1f12e5a7ddc49d84b7af1b476982eaddca2f9b0cc85"
       }
+    },
+    {
+      "description": "can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key",
+      "task": "deserialize",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCIG9hTKsWyAwmppZy4viq5wvAiLUgLqne/2rOeM2n+2JyAiAQVYeP/VlnUGDrYKAL+jNMnLJB+6EoTBEkkNEA2ex8LgEBAwQBAAAAIgYCpRa89dF+FVVFALBtY95Srqd8dFqTvkLq2/Sunj4dEqAIAAAAgP8AAAAiBgLIF7t1Ia/DXqlvO/snDm61Dd/6VWBie5Yf7ADymWUIvwgAAACAAAAAAAEOIPdO3R91tLs+XXScFb/bZjSPaAWptNRf7uGi4gH1A7txAQ8EAAAAAAEQBP7///8iHQJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaCED7KT/Ebco4uD2DOYiKUOm/1W52V9ie/mpnQhLyHLVClsiHgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaECKE7OYVUX3K9bolxSuuQmz41SoQqm7i1bNDt7SHfihmVmLMSKKSeC9fpXOEFP3xbKKy1Q6aHB2AOPOiYIu4yAhAAEDCBhzAQAAAAAAAQQiUSBkb0lMoLubzq0UuNt+TGlEVh+vIy58zMNr3VhpX3SRWQEJQgJ6SH/Bn7dph3uHQtbqGBGPPE5yseqMbeYCp61KQdvgaANh4bHp3l5CyyAH98pUueDVftE5OPrVbT8Z5XUTqPzgOQA=",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
+            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
+            "prevout_txid": "71bb03f501e2a2e1ee5fd4b4a905688f3466dbbf159c745d3ebbb4751fdd4ef7",
+            "prevout_index": 0,
+            "amount": 100000,
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000ffffffff01a0860100000000001600141e2ad7872d329413a56df0968be338222783163b00000000",
+            "witness_utxo": "a0860100000000001600141e2ad7872d329413a56df0968be338222783163b",
+            "sequence": 4294967294,
+            "signed": true
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe068",
+            "ecdh_share": "03eca4ff11b728e2e0f60ce6222943a6ff55b9d95f627bf9a99d084bc872d50a5b",
+            "dleq_proof": "8a13b3985545f72bd6e89714aeb909b3e354a842a9bb8b56cd0eded21df8a199598b31228a49e0bd7e95ce1053f7c5b28acb543a68707600e3ce89822ee32021",
+            "input_index": 0
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 95000,
+            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
+            "script": "5120646f494ca0bb9bcead14b8db7e4c6944561faf232e7cccc36bdd58695f749159"
+          }
+        ],
+        "psbt_unique_id": "a7c621cf51d6cd21e7f1f60da0df641e5cc7eb084dd8a4e6c588a7c2d315338e"
+      }
+    },
+    {
+      "description": "can finalize: P2PKH with decoy BIP32_DERIVATION before the matching key",
+      "task": "deserialize",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAFUCAAAAAfTCEtWu0ef2/2M/LOCcZHxXvt2TAxTZjed1A9WOlAszAAAAAAD/////AaCGAQAAAAAAGXapFB4q14ctMpQTpW3wlovjOCIngxY7iKwAAAAAIgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9IMEUCIQCKz65hp7Ug/wQxkrbclMyEJpEkQIMSdkyI3dldqY0pVQIgIIfDsRj5aZKk2iQTz/6RcPJQ4n48FMtd7z5jjDDX6oABAQMEAQAAACIGAqUWvPXRfhVVRQCwbWPeUq6nfHRak75C6tv0rp4+HRKgCAAAAID/AAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiBSJ0jrF3ZNKMpJSBXsjUnn0w1SvHNCLHyG63TjlwVylAEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwgYcwEAAAAAAAEEIlEg4UDSh7RbRs1OqvpDdwYVcLq+g9G4vJUKdKn+oJIz16YBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
+            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
+            "prevout_txid": "94720597e374eb867c2c4273bc520dd3e7498dec154849ca284d7617eb482752",
+            "prevout_index": 0,
+            "amount": 100000,
+            "non_witness_utxo": "0200000001f4c212d5aed1e7f6ff633f2ce09c647c57bedd930314d98de77503d58e940b330000000000ffffffff01a0860100000000001976a9141e2ad7872d329413a56df0968be338222783163b88ac00000000",
+            "sequence": 4294967294,
+            "signed": true
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe068",
+            "ecdh_share": "03eca4ff11b728e2e0f60ce6222943a6ff55b9d95f627bf9a99d084bc872d50a5b",
+            "dleq_proof": "8a13b3985545f72bd6e89714aeb909b3e354a842a9bb8b56cd0eded21df8a199598b31228a49e0bd7e95ce1053f7c5b28acb543a68707600e3ce89822ee32021",
+            "input_index": 0
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 95000,
+            "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
+            "script": "5120e140d287b45b46cd4eaafa4377061570babe83d1b8bc950a74a9fea09233d7a6"
+          }
+        ],
+        "psbt_unique_id": "872ae29633179ddb451526d3ee077cec6a8c3d06820db313789947ea6066eb28"
+      }
     }
   ],
   "workflows": [
