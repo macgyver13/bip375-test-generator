@@ -72,7 +72,7 @@ depends on how the shares are contributed.
 A global ECDH share means one party owns every input, and it acts once:
 
 ```text
-creator → constructor → updater → signer → finalizer → extractor
+creator → updater → signer → finalizer → extractor
 ```
 
 With per-input shares and `n` signers, no party can compute the output scripts until the
@@ -80,7 +80,7 @@ last share lands. The `n`-th signer therefore computes the scripts, clears the m
 flags and signs its own input; the others return in a second round to sign:
 
 ```text
-creator → constructor → updater
+creator → updater
         → signer × (n-1)   share + DLEQ proof, cannot yet sign
         → signer           final share → output scripts, flags cleared, signs its input
         → signer × (n-1)   scripts are set, signs its input

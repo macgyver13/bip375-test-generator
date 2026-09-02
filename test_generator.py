@@ -1837,7 +1837,6 @@ class WorkflowVectorGenerator:
     # already carries an ECDH share.
     _ROLE = {
         "create": "create",
-        "construct": "construct",
         "update": "update",
         "sign_all": "sign",
         "sign_share": "sign",
@@ -1848,8 +1847,7 @@ class WorkflowVectorGenerator:
     }
 
     _DESC = {
-        "create": "Creator produces an empty PSBT v2",
-        "construct": "Constructor adds inputs and SP outputs",
+        "create": "Creator adds inputs and SP outputs",
         "update": "Updater adds UTXO and BIP32 derivation data",
         "sign_all": (
             "Signer adds the ECDH shares and DLEQ proofs, computes the silent payment output "
@@ -1872,8 +1870,7 @@ class WorkflowVectorGenerator:
     # value *yet* is not a property of the role: it is read back off the emitted PSBT,
     # so the supplementary can never contradict the bytes it ships with.
     _SCOPE = {
-        "create": {},
-        "construct": {
+        "create": {
             "inputs": ["input_index", "prevout_txid", "prevout_index", "sequence"],
             "outputs": ["output_index", "amount", "sp_v0_info"],
         },
@@ -2032,22 +2029,14 @@ class WorkflowVectorGenerator:
             else:
                 add_raw_global_field(p, PSBTKeyType.PSBT_GLOBAL_SP_DLEQ, scan_key, dleq)
 
-        # 'create' is a truly empty PSBT v2. spdk requires the final input/output
-        # counts at create() time, so the empty stage uses its own create(0, 0) while
-        # the remaining stages build on a create(num_inputs, num_outputs) instance.
         # TX_MODIFIABLE = 0x03 (Inputs + Outputs Modifiable): the Creator leaves both
-        # flags set so the Constructor/Updater can add inputs and SP outputs. The Signer
-        # clears them once it sets the output scripts.
-        empty = SilentPaymentPsbt.create(0, 0)
-        empty.set_tx_modifiable(0x03)
-        emit("create", empty)
-
+        # flags set so the Updater can add UTXO data. The Signer clears them once it sets
+        # the output scripts.
         p = SilentPaymentPsbt.create(num_inputs, num_outputs)
         p.set_tx_modifiable(0x03)
-        psbt_in = snapshot(p)
         p.add_inputs(utxos)
         p.add_outputs(sp_outs)
-        emit("construct", p, psbt_in=psbt_in)
+        emit("create", p)
 
         # Builder's deterministic DLEQ proofs (full_supp is overwritten by refresh, so
         # snapshot the canonical proofs first). Per-input keyed by input_index; global
