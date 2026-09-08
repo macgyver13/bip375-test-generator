@@ -404,6 +404,43 @@ def verify_no_empty_output_script_headers(serialized_psbt: bytes, description: s
     )
 
 
+def _field_sort_key(item: Tuple) -> Tuple[int, bytes]:
+    """Sort key for a PSBT map entry: (type_value, key_data).
+
+    test_framework stores keyless fields as an int (the type byte) and keyed
+    fields as the full key bytes (type byte + key data).
+    """
+    key = item[0]
+    if isinstance(key, int):
+        return (key, b"")
+    return (key[0], key[1:])
+ 
+ 
+def normalize_psbt_field_order(serialized_psbt: bytes) -> bytes:
+    """Re-serialize a PSBT with every key-value map in canonical key order.
+
+    spdk_psbt emits map fields in an order that depends on the installed library
+    build, so regenerating against a rebuilt wheel reshuffles the vectors even
+    though the contents are identical. BIP-174 maps are unordered, so we
+    canonicalize each map to ascending (type_value, key_data) -- the same total
+    order rust-psbt sorts by -- making the published vectors deterministic
+    regardless of the serializer.
+
+    The pass canonicalizes two things: key order, and the absence of an empty
+    output script.
+    """
+    psbt = _tf_psbt.PSBT().deserialize(BytesIO(serialized_psbt))
+    # for field_map in [psbt.g, *psbt.i, *psbt.o]:
+    #     field_map.map = dict(sorted(field_map.map.items(), key=_field_sort_key))
+    for output_map in psbt.o:
+        # An empty output script is the absence of PSBT_OUT_SCRIPT, never a
+        # present-but-zero-length header. psbt-v2 only omits the field for silent
+        # payment outputs, so strip the malformed shape for the rest.
+        if output_map.map.get(_tf_psbt.PSBT_OUT_SCRIPT) == b"":
+            del output_map.map[_tf_psbt.PSBT_OUT_SCRIPT]
+        return psbt.serialize()
+
+
 # ============================================================================
 # Transaction Signing (for error-injection test cases)
 # ============================================================================
