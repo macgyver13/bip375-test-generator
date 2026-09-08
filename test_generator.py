@@ -51,6 +51,7 @@ from generator_utils import (
     UTXO,
     compute_bip352_output_script,
     apply_label_to_spend_key,
+    normalize_psbt_field_order,
     sign_p2wpkh_input,
     sign_p2pkh_input,
     sign_p2tr_input,
@@ -1866,6 +1867,7 @@ class ConfigBasedTestGenerator:
             expected_outputs.append(output)
 
         serialized_psbt = psbt.serialize()
+        serialized_psbt = normalize_psbt_field_order(serialized_psbt)
         verify_no_empty_output_script_headers(serialized_psbt, scenario.description)
         test_dict = {
             "description": scenario.description,
