@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test_framework.crypto.secp256k1 import GE, G
 from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut, hash256, uint256_from_str
-from test_framework.script import SIGHASH_ALL, SIGHASH_NONE, hash160
+from test_framework.script import SIGHASH_ALL, SIGHASH_DEFAULT, SIGHASH_NONE, hash160
 from test_framework.script import CScript, OP_CHECKSIG, taproot_construct
 from test_framework.key import tweak_add_privkey
 from test_framework.script_util import (
@@ -232,6 +232,7 @@ class TestScenario:
     invalid_dleq_for_input: Optional[int] = None
     no_sighash_for_input: Optional[int] = None
     wrong_sighash_for_input: Optional[int] = None
+    default_sighash_for_input: Optional[int] = None  # P2TR input signed with SIGHASH_DEFAULT
     missing_ecdh_for_input: Optional[int] = None
     wrong_sp_info_size: bool = False
     wrong_sp_label_size: bool = False
@@ -762,7 +763,12 @@ class PSBTBuilder:
             for input_info in input_data:
                 if input_info.get("is_eligible", False) and not input_info.get("skip_signing", False):
                     self._sign_single_input(
-                        psbt, input_info, input_data, finalized_outputs, input_info["input_index"]
+                        psbt, input_info, input_data, finalized_outputs, input_info["input_index"],
+                        sighash_type=(
+                            SIGHASH_DEFAULT
+                            if scenario.default_sighash_for_input == input_info["input_index"]
+                            else SIGHASH_ALL
+                        ),
                     )
                     signed_input_indices.add(input_info["input_index"])
             if not scenario.set_tx_modifiable:
@@ -1131,9 +1137,11 @@ class PSBTBuilder:
                     if scenario.wrong_sighash_for_input == input_idx
                     else SIGHASH_ALL
                 )
+                if scenario.default_sighash_for_input == input_idx:
+                    sighash_type = SIGHASH_DEFAULT
                 if scenario.no_sighash_for_input == input_idx:
                     sighash_type = None  # Don't add sighash type at all
-                if sighash_type:
+                if sighash_type is not None:
                     add_raw_input_field(
                         psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
                     )
@@ -1233,6 +1241,9 @@ class PSBTBuilder:
                 "script_pubkey": script.hex() if isinstance(script, bytes) else script,
             })
 
+        assert sighash_type != SIGHASH_DEFAULT or input_type == InputType.P2TR, (
+            "SIGHASH_DEFAULT is only defined for taproot inputs"
+        )
         if input_type == InputType.P2TR:
             signature = sign_p2tr_input(
                 private_key=int(input_info["private_key"]),
@@ -1762,6 +1773,7 @@ class ConfigBasedTestGenerator:
             invalid_dleq_for_input=control_override.get("invalid_dleq_for_input"),
             no_sighash_for_input=control_override.get("no_sighash_for_input"),
             wrong_sighash_for_input=control_override.get("wrong_sighash_for_input"),
+            default_sighash_for_input=control_override.get("default_sighash_for_input"),
             missing_ecdh_for_input=control_override.get("missing_ecdh_for_input"),
             wrong_sp_info_size=control_override.get("wrong_sp_info_size", False),
             wrong_sp_label_size=control_override.get("wrong_sp_label_size", False),
