@@ -36,6 +36,7 @@ from test_framework.messages import (
 )
 from test_framework.script import (
     SIGHASH_ALL,
+    SIGHASH_DEFAULT,
     LegacySignatureHash,
     SegwitV0SignatureHash,
     TaprootSignatureHash,
@@ -528,7 +529,8 @@ def sign_p2tr_input(
     """Sign a P2TR key-path input (BIP-341).
 
     Applies the key-path tweak with an empty script tree and produces a
-    64-byte Schnorr signature with an explicit sighash trailing byte.
+    64-byte Schnorr signature, followed by the sighash byte unless the type is
+    SIGHASH_DEFAULT, which BIP-341 encodes by omitting it.
     The input already carries the tweaked output keypair (see _create_p2tr_input),
     so we sign with the private key directly.
     """
@@ -541,6 +543,8 @@ def sign_p2tr_input(
     )
 
     sig = sign_schnorr(int(private_key).to_bytes(32, "big"), sighash)
+    if sighash_type == SIGHASH_DEFAULT:
+        return sig
     return sig + bytes([sighash_type])
 
 

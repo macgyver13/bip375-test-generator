@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through `v1.2.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through bookmark `v1.3.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -17,6 +17,10 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Missing `BIP32_DERIVATION` validation vector is no longer signed. One invalid PSBT map changed. |
 | | bips#2253 | Added valid “input eligibility: bare OP_2 script is not a segwit v2 witness program”. 20 valid, 22 invalid. |
 | 1.2.0 | Deterministic order | Fields serialized lexicographically. PSBT maps are equivalent; serialization order changed. |
+| | | Change `scriptPubKey` to match `PSBT_OUT_BIP32_DERIVATION`. Two PSBT maps changed. |
+| | | Signatures use the declared sighash type. The invalid non-`SIGHASH_ALL` PSBT map changed. |
+| | | P2TR inputs derived from the tweaked output key. Four PSBT maps changed. |
+| 1.2.1 | SIGHASH_DEFAULT | Added valid “can finalize: one P2TR input signed with SIGHASH_DEFAULT”. 21 valid, 22 invalid. |
 
 ---
 
