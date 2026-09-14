@@ -4,6 +4,20 @@ Configuration-driven tool for generating test vectors for [BIP-375](https://gith
 
 Reads YAML test configurations from `test_configs/` and produces `bip375_test_vectors.json` containing both valid and intentionally malformed PSBTs for use in implementation testing.
 
+## Vector revisions
+
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through `v1.2.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+
+| File version | Milestone | Vector changes |
+| --- | --- | --- |
+| 1.1.1 | bips#2207 | Baseline. `k` assigned by BIP-375 canonical ordering and labeled spend keys. 19 valid, 22 invalid. |
+| | | Negative-fee fix. PSBT map changed: valid “in progress: two P2TR inputs, neither is signed”. |
+| | | Supplementary inputs standardized. Many valid and invalid PSBT maps are not equivalent to the previous row. |
+| | | Signing replaced with the vendored Bitcoin Core `test_framework`. Many PSBT maps are not equivalent. |
+| | | Missing `BIP32_DERIVATION` validation vector is no longer signed. One invalid PSBT map changed. |
+| | bips#2253 | Added valid “input eligibility: bare OP_2 script is not a segwit v2 witness program”. 20 valid, 22 invalid. |
+| 1.2.0 | Deterministic order | Fields serialized lexicographically. PSBT maps are equivalent; serialization order changed. |
+
 ---
 
 ## Prerequisites
@@ -119,7 +133,7 @@ scan_keys:
 Optional section for injecting intentional faults into invalid test cases. Common fields:
 
 | Field | Effect |
-|---|---|
+| --- | --- |
 | `missing_ecdh_for_input: N` | Omit ECDH share for input at index N |
 | `missing_ecdh_for_scan_key: "key_id"` | Omit ECDH share for a specific scan key |
 | `wrong_ecdh_share_size: true` | Malform the PSBT_IN_SP_ECDH_SHARE field size |
