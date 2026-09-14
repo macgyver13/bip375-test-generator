@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through `v1.3.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through `v1.3.1`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -43,6 +43,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | BIP-352 wallet | Scan and spend keys for an account come from the primary wallet (m/352'/1'/account'/1'/0 and m/352'/1'/account'/0'/0). All 51 PSBT maps and every workflow step changed. |
 | | Funding transactions | Each prevout is paid by a two-output transaction: the spent output, then a P2WPKH change output. Every prevout txid changed. All 51 PSBT maps and every workflow step changed. |
 | | Nonzero prevout index | The spent output is vout 1. vout 0 is the change output, so a reader that ignores the index sees the wrong script. All 51 PSBT maps and every workflow step changed. 23 valid, 28 invalid, 17 workflow steps. |
+| 1.3.1 | | Added invalid “ecdh coverage: P2TR input with NUMS internal key claim not matching prevout missing ECDH share”. 23 valid, 29 invalid, 17 workflow steps. |
 
 ---
 
