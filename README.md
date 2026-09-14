@@ -26,6 +26,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Signatures that cannot exist are dropped and a negative fee is fixed. Four invalid PSBT maps changed. |
 | | | Valid vectors gained `supplementary.psbt_unique_id`, computed as BIP-375 specifies. PSBT maps are equivalent. |
 | | | NUMS inputs are built from a script tree and carry `PSBT_IN_TAP_MERKLE_ROOT`. Two PSBT maps changed. |
+| | SIGHASH_DEFAULT | Added valid “can finalize: one P2TR input signed with SIGHASH_DEFAULT”. 21 valid, 24 invalid. |
 
 ---
 
