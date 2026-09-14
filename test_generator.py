@@ -187,6 +187,7 @@ class InputSpec:
     multisig_pubkey_count: Optional[int] = None
     key_derivation_suffix: str = ""  # For deterministic key generation
     use_nums_tap_internal_key: bool = False  # For testing taproot internal key
+    false_nums_claim: bool = False  # Key-path P2TR input whose PSBT claims a NUMS internal key
     eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
     skip_signing: bool = False  # Force input to remain unsigned even if eligible
     script_pubkey_override: Optional[bytes] = None  # Replace the P2WPKH prevout scriptPubKey
@@ -522,6 +523,7 @@ class InputFactory:
                 "tap_leaf_hash": taproot_leaf.leaf_hash,
                 "tap_leaf_version": taproot_leaf.version,
                 "tap_control_block": control_block,
+                "tap_merkle_root": taproot_info.merkle_root,
                 "previous_txid": previous_txid,
                 "prevout_index": 0,
                 "script_pubkey": script_pubkey,
@@ -553,12 +555,26 @@ class InputFactory:
         previous_txid = hash256(prev_tx)
         witness_utxo = CTxOut(spec.amount, script_pubkey).serialize()
 
+        tap_merkle_root = None
+        is_eligible = True
+        if spec.false_nums_claim:
+            # The PSBT claims internal key H with a merkle root that does not
+            # reproduce the scriptPubKey, so the claim is false and the input
+            # stays key-path spendable and eligible. Every silent payment
+            # computation below treats it as ineligible, the way a signer that
+            # trusts the claim would, so only binding the claim to the prevout
+            # catches it.
+            tap_internal_xonly = NUMS_H
+            tap_merkle_root = hashlib.sha256(f"{key_suffix}_false_nums_merkle_root".encode()).digest()
+            is_eligible = False
+
         return {
             "input_index": input_index,
             "input_type": InputType.P2TR,
             "private_key": output_priv,
             "public_key": output_pub,
             "tap_internal_key": tap_internal_xonly,
+            "tap_merkle_root": tap_merkle_root,
             "previous_txid": previous_txid,
             "prevout_index": 0,
             "script_pubkey": script_pubkey,
@@ -566,7 +582,7 @@ class InputFactory:
             "non_witness_utxo": prev_tx,
             "amount": spec.amount,
             "sequence": spec.sequence,
-            "is_eligible": True,
+            "is_eligible": is_eligible,
         }
 
     def _create_prev_tx(self, prev_input_txid: bytes, amount: int, script_pubkey: bytes) -> bytes:
@@ -921,6 +937,14 @@ class PSBTBuilder:
                 b"",
                 tap_key,
             )
+            if input_info.get("tap_merkle_root") is not None:
+                add_raw_input_field(
+                    psbt,
+                    idx,
+                    PSBTKeyType.PSBT_IN_TAP_MERKLE_ROOT,
+                    b"",
+                    input_info["tap_merkle_root"],
+                )
 
     def _compute_ecdh_shares(
         self,
@@ -1642,6 +1666,7 @@ class ConfigBasedTestGenerator:
                 multisig_pubkey_count=input_config.get("multisig_pubkey_count"),
                 key_derivation_suffix=input_config.get("key_derivation_suffix", ""),
                 use_nums_tap_internal_key=input_config.get("use_nums_tap_internal_key", False),
+                false_nums_claim=input_config.get("false_nums_claim", False),
                 eligible_override=input_config.get("eligible_override"),
                 skip_signing=input_config.get("skip_signing", False),
                 script_pubkey_override=(
@@ -1663,6 +1688,7 @@ class ConfigBasedTestGenerator:
                     multisig_pubkey_count=input_spec.multisig_pubkey_count,
                     key_derivation_suffix=f"{input_spec.key_derivation_suffix}_batch_{i}",
                     use_nums_tap_internal_key=input_spec.use_nums_tap_internal_key,
+                    false_nums_claim=input_spec.false_nums_claim,
                     eligible_override=input_spec.eligible_override,
                     skip_signing=input_spec.skip_signing,
                     script_pubkey_override=input_spec.script_pubkey_override,
