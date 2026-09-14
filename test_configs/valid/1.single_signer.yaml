@@ -109,3 +109,17 @@ test_cases:
         derivation_suffix: "recipient_c"
     control_override:
       use_global_ecdh: ["recipient_a", "recipient_b", "recipient_c"]
+
+  - description: "can finalize: one P2TR input signed with SIGHASH_DEFAULT"
+    validation_result: "valid"
+    inputs:
+      - type: "p2tr"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      default_sighash_for_input: 0
