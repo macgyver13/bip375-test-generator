@@ -119,3 +119,24 @@ test_cases:
       - key_id: "default"
     control_override:
       strip_input_pubkeys_for_input: 0
+
+  # The P2TR input's PSBT_IN_TAP_INTERNAL_KEY claims NUMS H, but H tweaked by the
+  # declared PSBT_IN_TAP_MERKLE_ROOT does not reproduce its scriptPubKey. The input
+  # is key-path spendable and eligible, so it is missing its ECDH share. A verifier
+  # that trusts the claim treats it as ineligible and finds the shares, DLEQ proofs
+  # and output script all consistent.
+  - description: "ecdh coverage: P2TR input with NUMS internal key claim not matching prevout missing ECDH share"
+    task: "fail_sign"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2tr"
+        amount: 100000
+        false_nums_claim: true
+    outputs:
+      - type: "silent_payment"
+        amount: 195000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
