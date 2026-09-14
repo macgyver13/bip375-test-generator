@@ -1920,46 +1920,30 @@ class TestVectorGenerator:
         # Load invalid test cases
         invalid_configs = list(test_configs_dir.glob("invalid/**/*.yaml"))
         for config_file in sorted(invalid_configs):
-            try:
-                scenarios = self.config_generator.load_test_scenarios_from_config(
-                    str(config_file)
-                )
-                for scenario in scenarios:
-                    test_vector = (
-                        self.config_generator.generate_test_vector_from_scenario(
-                            scenario
-                        )
+            scenarios = self.config_generator.load_test_scenarios_from_config(
+                str(config_file)
+            )
+            for scenario in scenarios:
+                test_vector = (
+                    self.config_generator.generate_test_vector_from_scenario(
+                        scenario
                     )
-                    self.test_vectors["invalid"].append(test_vector)
-            except AssertionError:
-                raise
-            except Exception as e:
-                print(f"Error loading {config_file}: {str(e)}")
-                import traceback
-
-                traceback.print_exc()
+                )
+                self.test_vectors["invalid"].append(test_vector)
 
         # Load valid test cases
         valid_configs = list(test_configs_dir.glob("valid/**/*.yaml"))
         for config_file in sorted(valid_configs):
-            try:
-                scenarios = self.config_generator.load_test_scenarios_from_config(
-                    str(config_file)
-                )
-                for scenario in scenarios:
-                    test_vector = (
-                        self.config_generator.generate_test_vector_from_scenario(
-                            scenario
-                        )
+            scenarios = self.config_generator.load_test_scenarios_from_config(
+                str(config_file)
+            )
+            for scenario in scenarios:
+                test_vector = (
+                    self.config_generator.generate_test_vector_from_scenario(
+                        scenario
                     )
-                    self.test_vectors["valid"].append(test_vector)
-            except AssertionError:
-                raise
-            except Exception as e:
-                print(f"Error loading {config_file}: {str(e)}")
-                import traceback
-
-                traceback.print_exc()
+                )
+                self.test_vectors["valid"].append(test_vector)
 
         return self.test_vectors
 
