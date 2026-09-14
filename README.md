@@ -43,6 +43,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | BIP32 input keys | One-shot input keys are BIP32 from the workflow wallets (m/purpose'/1'/0'/branch/index), with taproot output keys negated to even y. Inputs that use the key origin (the keys a sign vector holds, foreign origins and decoy derivations) gained `master_fingerprint` and `derivation_path`. P2TR `private_key` and `public_key` are now the internal key, and `notes` describe the key paths. |
 | | BIP-352 wallet | Scan and spend keys for an account come from the primary wallet (m/352'/1'/account'/1'/0 and m/352'/1'/account'/0'/0). The default scan key is account 0, and other scan keys, then outputs with their own spend key, take the next accounts in order. |
 | | Funding transactions | Each prevout is paid by a two-output transaction: a P2WPKH change output with a different amount at vout 0 and the spent output at vout 1, so a reader that ignores the prevout index sees the wrong script and amount. Segwit v0 P2WPKH inputs also carry `PSBT_IN_NON_WITNESS_UTXO`. |
+| | | Added invalid “ecdh coverage: P2TR input 1 with a NUMS PSBT_IN_TAP_INTERNAL_KEY that does not tweak to scriptPubKey and no ECDH share”. 23 valid, 29 invalid, 17 workflow steps. |
 
 ---
 
