@@ -12,6 +12,11 @@ Transformation rules:
 - Workflow sign entries also carry signing_keys and sp_proofs, so the Signer role can be
   replayed: rust-psbt implements neither BIP-374 (DLEQ) nor BIP-352 (output derivation), so the
   shares, proofs and output scripts have to be supplied as data rather than derived
+- A one-shot (non-workflow) sign-task entry gets the same treatment when its held-key inputs
+  are all already signed, or when its expected.psbt differs from its psbt (the signer adds
+  something), reading signing_keys/sp_proofs/outputs straight from its own supplementary (not
+  trimmed like a workflow step, so nothing needs deriving from the psbt). A verify-and-hold
+  snapshot (expected.psbt equals psbt, some held-key input unsigned) is left alone.
 - Sign and extract entries' sp_proofs and outputs[].script_pubkey are parsed from
   expected.psbt (the generator no longer publishes them as supplementary, since they are
   derivable from the psbt bytes); output amount/label come from that scenario's create entry,
@@ -30,6 +35,12 @@ import json
 import sys
 
 from psbt_backend import SilentPaymentPsbt
+from test_framework.crypto.secp256k1 import G, GE
+from test_framework.key import TaggedHash
+from test_framework.psbt import PSBT
+
+PSBT_IN_TAP_INTERNAL_KEY = 0x17
+PSBT_IN_TAP_MERKLE_ROOT = 0x18
 
 
 B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -51,6 +62,33 @@ def base58check(payload: bytes) -> str:
 def to_wif(secret_hex: str) -> str:
     """Encode a raw 32-byte secret key as a compressed WIF string."""
     return base58check(bytes([WIF_PREFIX]) + bytes.fromhex(secret_hex) + b"\x01")
+
+
+def signer_secret(row: dict, psbt: PSBT) -> str:
+    """The secret a BIP-371 signer holds for an input.
+
+    A P2TR row discloses its output key secret d', which the BIP-352 share and
+    DLEQ checks need. A signer instead holds the internal key and applies the
+    TapTweak itself, so recover d from d' with the input's internal key and merkle
+    root. Any other key, or one that is not the internal key's (a NUMS script-path
+    key), is passed through.
+    """
+    tap_map = psbt.i[row["input_index"]].map
+    internal = tap_map.get(PSBT_IN_TAP_INTERNAL_KEY)
+    if internal is None:
+        return row["private_key"]
+    tweak = int.from_bytes(TaggedHash("TapTweak", internal + tap_map.get(PSBT_IN_TAP_MERKLE_ROOT, b"")), "big")
+    output_secret = int(row["private_key"], 16)
+    for secret in ((output_secret - tweak) % GE.ORDER, (-output_secret - tweak) % GE.ORDER):
+        if (secret * G).to_bytes_xonly() == internal:
+            return secret.to_bytes(32, "big").hex()
+    return row["private_key"]
+
+
+def signing_keys(rows: list, psbt_b64: str) -> list:
+    """Each held key as testnet WIF, in the form a signer holds it. Inputs that share a key list it once."""
+    psbt = PSBT.from_base64(psbt_b64)
+    return list(dict.fromkeys(to_wif(signer_secret(row, psbt)) for row in rows if row.get("private_key")))
 
 
 SYNTHESIZED_CASES = [
@@ -117,14 +155,9 @@ def convert(src: dict) -> dict:
             psbt = SilentPaymentPsbt.deserialize(base64.b64decode(entry["expected"]["psbt"]))
 
         if task == "sign":
-            # Inputs that share a key list it once.
-            signing_keys = list(dict.fromkeys(
-                to_wif(row["private_key"])
-                for row in entry["supplementary"].get("inputs", [])
-                if row.get("private_key")
-            ))
-            if signing_keys:
-                case["supplementary"]["signing_keys"] = signing_keys
+            keys = signing_keys(entry["supplementary"].get("inputs", []), entry["psbt"])
+            if keys:
+                case["supplementary"]["signing_keys"] = keys
 
             sp_proofs = derive_sp_proofs(psbt) if psbt is not None else []
             if sp_proofs:
@@ -204,6 +237,38 @@ def convert(src: dict) -> dict:
             output["script_pubkey"] = row["script"]
         return output
 
+    def is_drivable_one_shot_sign(entry: dict) -> bool:
+        """True for a one-shot (non-workflow) sign-task vector the Signer role can
+        replay: it holds a key, and either every held-key input is already signed
+        in the source PSBT or expected.psbt shows the signer adding something. A
+        verify-and-hold snapshot (expected.psbt equals psbt) is not."""
+        supp = entry["supplementary"]
+        if entry.get("task") != "sign":
+            return False
+        held_inputs = [row for row in supp.get("inputs", []) if row.get("private_key")]
+        if not held_inputs:
+            return False
+        if all(row.get("signed") for row in held_inputs):
+            return True
+        expected = entry.get("expected", {}).get("psbt")
+        return expected is not None and expected != entry["psbt"]
+
+    def add_one_shot_sign_supplementary(case: dict, entry: dict) -> None:
+        """Unlike a workflow sign step, a one-shot sign-task vector is not
+        trimmed by G3: its own supplementary already carries the signing key,
+        the ECDH shares/proofs and the output scripts directly, so they can be
+        passed through rather than derived from expected.psbt."""
+        supp = entry["supplementary"]
+        keys = signing_keys(supp.get("inputs", []), entry["psbt"])
+        if keys:
+            case["supplementary"]["signing_keys"] = keys
+        sp_proofs = supp.get("sp_proofs", [])
+        if sp_proofs:
+            case["supplementary"]["sp_proofs"] = sp_proofs
+        outputs = [workflow_output(row) for row in supp.get("outputs", []) if "amount" in row]
+        if outputs:
+            case["supplementary"]["outputs"] = outputs
+
     def convert_entry(entry: dict, prefix: str = "", *, workflow: bool = False) -> dict:
         case = {
             "description": prefix + entry["description"],
@@ -225,6 +290,8 @@ def convert(src: dict) -> dict:
                 case["expected"]["tx"] = entry["expected"]["tx"]
         if workflow:
             add_workflow_supplementary(case, entry)
+        elif is_drivable_one_shot_sign(entry):
+            add_one_shot_sign_supplementary(case, entry)
         return case
 
     cases = []
