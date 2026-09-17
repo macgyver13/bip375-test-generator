@@ -37,6 +37,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Added invalid “input derivation: P2WPKH BIP32_DERIVATION pubkey does not match prevout script”, its P2PKH and P2SH-P2WPKH variants, and “input pubkey mismatch: global ECDH share computed from decoy pubkey not matching prevout script”. 21 valid, 28 invalid. |
 | | Jade | Added valid “can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key” and its P2PKH variant. 23 valid, 28 invalid. |
 | | | `task` set on the four input derivation and pubkey mismatch invalid vectors (`fail_sign`), the two decoy valid vectors (`finalize`) and the SIGHASH_DEFAULT vector (`finalize`), all previously `deserialize`. The three valid vectors gained `expected.psbt`. PSBT maps are equivalent. |
+| | Reference runner | One-shot sign vectors disclose only the acting signer's `private_key`. Key-path P2TR inputs gained `PSBT_IN_TAP_BIP32_DERIVATION`. The large PSBT's acting party holds only its two P2TR inputs, so its `expected.psbt` adds their `PSBT_IN_TAP_KEY_SIG`. Four PSBT maps changed. |
 
 ---
 
