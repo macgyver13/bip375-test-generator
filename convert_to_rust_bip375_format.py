@@ -12,6 +12,11 @@ Transformation rules:
 - Workflow sign entries also carry signing_keys and sp_proofs, so the Signer role can be
   replayed: rust-psbt implements neither BIP-374 (DLEQ) nor BIP-352 (output derivation), so the
   shares, proofs and output scripts have to be supplied as data rather than derived
+- A one-shot (non-workflow) sign-task entry gets the same treatment when its held-key inputs
+  are all already signed, or when its expected.psbt differs from its psbt (the signer adds
+  something), reading signing_keys/sp_proofs/outputs straight from its own supplementary (not
+  trimmed like a workflow step, so nothing needs deriving from the psbt). A verify-and-hold
+  snapshot (expected.psbt equals psbt, some held-key input unsigned) is left alone.
 - Sign and extract entries' sp_proofs and outputs[].script_pubkey are parsed from
   expected.psbt (the generator no longer publishes them as supplementary, since they are
   derivable from the psbt bytes); output amount/label come from that scenario's create entry,
@@ -202,6 +207,40 @@ def convert(src: dict) -> dict:
             output["script_pubkey"] = row["script"]
         return output
 
+    def is_drivable_one_shot_sign(entry: dict) -> bool:
+        """True for a one-shot (non-workflow) sign-task vector the Signer role can
+        replay: it holds a key, and either every held-key input is already signed
+        in the source PSBT or expected.psbt shows the signer adding something. A
+        verify-and-hold snapshot (expected.psbt equals psbt) is not."""
+        supp = entry["supplementary"]
+        if supp.get("task") != "sign":
+            return False
+        held_inputs = [row for row in supp.get("inputs", []) if row.get("private_key")]
+        if not held_inputs:
+            return False
+        if all(row.get("signed") for row in held_inputs):
+            return True
+        expected = entry.get("expected", {}).get("psbt")
+        return expected is not None and expected != entry["psbt"]
+
+    def add_one_shot_sign_supplementary(case: dict, entry: dict) -> None:
+        """Unlike a workflow sign step, a one-shot sign-task vector is not
+        trimmed by G3: its own supplementary already carries the signing key,
+        the ECDH shares/proofs and the output scripts directly, so they can be
+        passed through rather than derived from expected.psbt."""
+        supp = entry["supplementary"]
+        signing_keys = [
+            to_wif(row["private_key"]) for row in supp.get("inputs", []) if row.get("private_key")
+        ]
+        if signing_keys:
+            case["supplementary"]["signing_keys"] = signing_keys
+        sp_proofs = supp.get("sp_proofs", [])
+        if sp_proofs:
+            case["supplementary"]["sp_proofs"] = sp_proofs
+        outputs = [workflow_output(row) for row in supp.get("outputs", []) if "amount" in row]
+        if outputs:
+            case["supplementary"]["outputs"] = outputs
+
     def convert_entry(entry: dict, prefix: str = "", *, workflow: bool = False) -> dict:
         case = {
             "description": prefix + entry["description"],
@@ -225,6 +264,8 @@ def convert(src: dict) -> dict:
                 case["expected"]["tx"] = entry["expected"]["tx"]
         if workflow:
             add_workflow_supplementary(case, entry)
+        elif is_drivable_one_shot_sign(entry):
+            add_one_shot_sign_supplementary(case, entry)
         return case
 
     cases = []
