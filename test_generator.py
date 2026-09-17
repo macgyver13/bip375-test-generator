@@ -943,6 +943,16 @@ class PSBTBuilder:
                     input_info["tap_merkle_root"],
                 )
 
+    def _dleq_aux_rand(self, scan_key_id: str, input_idx: Optional[int] = None) -> bytes:
+        """Deterministic DLEQ proof randomness for a (scan key[, input]) pair.
+
+        Shared so the workflow generator can publish the same randomness it used,
+        letting a reference Signer reproduce the proof instead of trusting it.
+        """
+        if input_idx is None:
+            return hashlib.sha256(f"{self.base_seed}_global_dleq_{scan_key_id}".encode()).digest()
+        return hashlib.sha256(f"{self.base_seed}_dleq_{input_idx}_{scan_key_id}".encode()).digest()
+
     def _compute_ecdh_shares(
         self,
         input_data: List[Dict],
@@ -989,7 +999,7 @@ class PSBTBuilder:
                     dleq_proof = None
                 else:
                     # Normal valid proof
-                    random_bytes = hashlib.sha256(f"{self.base_seed}_dleq_{input_idx}_{scan_key_id}".encode()).digest()
+                    random_bytes = self._dleq_aux_rand(scan_key_id, input_idx)
                     dleq_proof = spdk_psbt.dleq_generate_proof(private_key.bytes, scan_pub.bytes, random_bytes)
 
                     # Error injection: Wrong DLEQ proof size
@@ -1110,7 +1120,7 @@ class PSBTBuilder:
 
     def _compute_global_dleq_proof(self, scan_key_id: str, summed_private_key, scan_pub) -> bytes:
         """Compute a global DLEQ proof for a scan key using the summed private key"""
-        random_bytes = hashlib.sha256(f"{self.base_seed}_global_dleq_{scan_key_id}".encode()).digest()
+        random_bytes = self._dleq_aux_rand(scan_key_id)
         return spdk_psbt.dleq_generate_proof(summed_private_key.bytes, scan_pub.bytes, random_bytes)
 
     def _should_auto_sign(self, scenario: TestScenario) -> bool:
@@ -2027,8 +2037,6 @@ class WorkflowVectorGenerator:
         "extract": "Extractor produces the raw transaction",
     }
 
-    _SP_PROOF_FIELDS = ["scan_key", "ecdh_share", "dleq_proof", "input_index"]
-
     # Role -> which supplementary columns exist at all. Which of those columns hold a
     # value *yet* is not a property of the role: it is read back off the emitted PSBT,
     # so the supplementary can never contradict the bytes it ships with.
@@ -2038,34 +2046,22 @@ class WorkflowVectorGenerator:
             "outputs": ["output_index", "amount", "sp_v0_info"],
         },
         # The Updater is not assumed to hold private keys, and the ECDH shares it once
-        # carried here are Signer material.
+        # carried here are Signer material. prevout fields, amount and sequence are set
+        # from `create`'s expected.psbt already, so the Updater does not repeat them.
         "update": {
-            "inputs": [
-                "input_index",
-                "public_key",
-                "prevout_txid",
-                "prevout_index",
-                "amount",
-                "witness_utxo",
-                "non_witness_utxo",
-                "sequence",
-            ],
-            "outputs": ["output_index", "amount", "sp_v0_info"],
+            "inputs": ["input_index", "public_key", "witness_utxo", "non_witness_utxo"],
         },
+        # signed, sp_proofs and outputs are all derivable from expected.psbt, which the
+        # sign step already carries; the Signer needs only the keys it acts with and the
+        # randomness its own DLEQ proofs must reproduce (see dleq_aux_rand in emit()).
         "sign": {
-            "inputs": ["input_index", "private_key", "signed"],
-            "sp_proofs": _SP_PROOF_FIELDS,
-            "outputs": ["output_index", "amount", "sp_v0_info", "script"],
+            "inputs": ["input_index", "private_key"],
         },
-        "finalize": {"inputs": ["input_index", "signed"]},
-        # finalize() retains the ECDH shares and DLEQ proofs, so the Extractor can recompute
-        # each output script and verify it. Surface the material the validator checks against:
-        # public_key is A for BIP374 VerifyProof, script is the expected recomputed output.
-        "extract": {
-            "inputs": ["input_index", "public_key", "signed"],
-            "sp_proofs": _SP_PROOF_FIELDS,
-            "outputs": ["output_index", "amount", "sp_v0_info", "script"],
-        },
+        # Everything the Finalizer's output states is in expected.psbt already.
+        "finalize": {},
+        # Everything the Extractor's output states is in expected.psbt / expected.tx
+        # already; the workflow validator recomputes and verifies from those.
+        "extract": {},
     }
 
     def __init__(self, seed: str = "bip375_deterministic_seed"):
@@ -2137,15 +2133,12 @@ class WorkflowVectorGenerator:
         ):
             """Emit one step vector.
 
-            Everything the supplementary says about state -- which inputs are signed, which
-            ECDH shares exist, whether the output scripts are set -- is read back off the PSBT
-            being emitted, so the two can never disagree. The one fact the bytes cannot supply
-            is which party is acting: `acting` names the input whose private key that party
-            holds, and every other key is withheld. None means the party holds them all.
+            The one fact the emitted PSBT bytes cannot supply is which party is acting:
+            `acting` names the input whose private key that party holds, and every other
+            key is withheld. None means the party holds them all (single global signer).
             """
             serialized = normalize_psbt_field_order(p.serialize())
             verify_no_empty_output_script_headers(serialized, f"{scenario.description} [{stage}]")
-            state = psbt_disclosure_state(serialized)
 
             expected = {"psbt": base64.b64encode(serialized).decode()}
             if stage != "create":
@@ -2155,22 +2148,15 @@ class WorkflowVectorGenerator:
 
             supplementary = self._scope(full_supp, stage)
             for row in supplementary.get("inputs", []):
-                idx = row["input_index"]
-                if acting is not None and idx != acting and "private_key" in row:
+                if acting is not None and row["input_index"] != acting and "private_key" in row:
                     row["private_key"] = ""
-                if "signed" in row:
-                    row["signed"] = idx in state.signed
-            if "sp_proofs" in supplementary:
-                # A per-input proof surfaces once its share is in the PSBT; a global proof
-                # once the global share is.
-                supplementary["sp_proofs"] = [
-                    proof
-                    for proof in supplementary["sp_proofs"]
-                    if (proof["input_index"] in state.shares if "input_index" in proof else state.global_share)
-                ]
-            for row in supplementary.get("outputs", []):
-                if row["output_index"] not in state.scripts:
-                    row.pop("script", None)
+
+            if stage in ("sign_all", "sign_share", "sign_scripts"):
+                # Only the proofs the acting party contributes in this step: the DLEQ
+                # randomness a reference Signer needs to reproduce them byte for byte.
+                supplementary["dleq_aux_rand"] = self._dleq_aux_rand_entries(
+                    psbt_data, scenario, acting_input_idx=acting
+                )
 
             steps.append(
                 {
@@ -2275,6 +2261,46 @@ class WorkflowVectorGenerator:
         emit("extract", p, tx=p.extract_transaction().hex(), psbt_in=psbt_in)
 
         return steps
+
+    def _dleq_aux_rand_entries(
+        self,
+        psbt_data: Dict[str, Any],
+        scenario: TestScenario,
+        acting_input_idx: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """The DLEQ randomness the acting party contributes in a sign step.
+
+        A global signer contributes one proof per scan key it shares with; a
+        per-input signer contributes one proof, for the input whose key it holds.
+        """
+        scan_keys = psbt_data["scan_keys"]
+        entries: List[Dict[str, Any]] = []
+
+        if scenario.use_global_ecdh:
+            if scenario.missing_global_dleq:
+                return entries
+            for scan_key_id in scenario.use_global_ecdh:
+                if scan_key_id not in scan_keys:
+                    continue
+                entries.append({
+                    "scan_key": scan_keys[scan_key_id][0].hex,
+                    "aux_rand": self.cfg.builder._dleq_aux_rand(scan_key_id).hex(),
+                })
+            return entries
+
+        for (input_idx, scan_key_id), (_, dleq_proof) in psbt_data["ecdh_data"].items():
+            if dleq_proof is None:
+                continue
+            if acting_input_idx is not None and input_idx != acting_input_idx:
+                continue
+            if scan_key_id not in scan_keys:
+                continue
+            entries.append({
+                "scan_key": scan_keys[scan_key_id][0].hex,
+                "input_index": input_idx,
+                "aux_rand": self.cfg.builder._dleq_aux_rand(scan_key_id, input_idx).hex(),
+            })
+        return entries
 
     def _scope(self, full_supp: Dict[str, Any], stage: str) -> Dict[str, Any]:
         """Project the full supplementary down to the fields kept for this stage."""
