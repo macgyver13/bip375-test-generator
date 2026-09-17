@@ -1,6 +1,8 @@
 description: "Large PSBT test cases demonstrating scalability"
 
 test_cases:
+  # Co-signers have contributed their ECDH shares and signed their inputs (0-4, 7, 8).
+  # The acting party holds only the two P2TR inputs and signs them.
   - description: "in progress: large PSBT with nine mixed inputs / six outputs - some inputs signed"
     task: "sign"
     validation_result: "valid"
@@ -8,14 +10,20 @@ test_cases:
       - type: "p2wpkh"
         count: 5
         amount: 100000
+        owner: "foreign"
+        contribute_foreign_share: true
       - type: "p2tr"
         count: 2
         amount: 100000
         skip_signing: true
       - type: "p2sh_p2wpkh"
         amount: 100000
+        owner: "foreign"
+        contribute_foreign_share: true
       - type: "p2pkh"
         amount: 100000
+        owner: "foreign"
+        contribute_foreign_share: true
     outputs:
       - type: "silent_payment"
         count: 2
