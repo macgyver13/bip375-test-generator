@@ -14,6 +14,7 @@ description: "Input public key does not match the prevout script"
 
 test_cases:
   - description: "input derivation: P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -33,6 +34,7 @@ test_cases:
       force_output_script: true
 
   - description: "input derivation: P2PKH BIP32_DERIVATION pubkey does not match prevout script"
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -52,6 +54,7 @@ test_cases:
       force_output_script: true
 
   - description: "input derivation: P2SH-P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -71,6 +74,7 @@ test_cases:
       force_output_script: true
 
   - description: "input pubkey mismatch: global ECDH share computed from decoy pubkey not matching prevout script"
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"

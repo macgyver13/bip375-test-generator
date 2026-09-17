@@ -5,6 +5,7 @@ test_cases:
   # path) but replaces the prevout scriptPubKey with a bare OP_2, which is not a
   # witness program and so does not make the input ineligible.
   - description: "input eligibility: bare OP_2 script is not a segwit v2 witness program"
+    task: "deserialize"
     validation_result: "valid"
     checks: ["input_eligibility"]
     exclude_material: ["sp_proofs", "outputs"]
