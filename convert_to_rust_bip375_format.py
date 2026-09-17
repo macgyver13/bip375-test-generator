@@ -12,6 +12,10 @@ Transformation rules:
 - Workflow sign entries also carry signing_keys and sp_proofs, so the Signer role can be
   replayed: rust-psbt implements neither BIP-374 (DLEQ) nor BIP-352 (output derivation), so the
   shares, proofs and output scripts have to be supplied as data rather than derived
+- Sign and extract entries' sp_proofs and outputs[].script_pubkey are parsed from
+  expected.psbt (the generator no longer publishes them as supplementary, since they are
+  derivable from the psbt bytes); output amount/label come from that scenario's create entry,
+  which still carries them, since spdk_psbt exposes no output-amount getter
 - Signing keys are re-encoded from raw hex to testnet WIF, the form rust-psbt's PrivateKey
   deserializes natively
 - supplementary.task is carried through from the source
@@ -23,6 +27,8 @@ import base64
 import hashlib
 import json
 import sys
+
+from spdk_psbt import SilentPaymentPsbt
 
 
 B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -78,8 +84,24 @@ SYNTHESIZED_CASES = [
 
 def convert(src: dict) -> dict:
 
+    def scenario_key(description: str) -> str:
+        return description.split(":", 1)[0]
+
+    # create still carries amount/sp_v0_info/sp_v0_label unchanged (the generator
+    # never trims it); sign and extract no longer do, so their output rows are
+    # rebuilt from the psbt itself plus this scenario-level amount/label lookup.
+    create_outputs_by_scenario = {
+        scenario_key(entry["description"]): {
+            row["output_index"]: row for row in entry["supplementary"].get("outputs", [])
+        }
+        for entry in src.get("workflows", [])
+        if entry["supplementary"].get("task") == "create"
+    }
+
     def add_workflow_supplementary(case: dict, entry: dict) -> None:
-        if case["supplementary"]["task"] == "update":
+        task = case["supplementary"]["task"]
+
+        if task == "update":
             input_updates = [
                 workflow_input_update(row)
                 for row in entry["supplementary"].get("inputs", [])
@@ -89,7 +111,11 @@ def convert(src: dict) -> dict:
                 case["supplementary"]["input_updates"] = input_updates
             return
 
-        if case["supplementary"]["task"] == "sign":
+        psbt = None
+        if "expected" in entry and "psbt" in entry["expected"]:
+            psbt = SilentPaymentPsbt.deserialize(base64.b64decode(entry["expected"]["psbt"]))
+
+        if task == "sign":
             signing_keys = [
                 to_wif(row["private_key"])
                 for row in entry["supplementary"].get("inputs", [])
@@ -98,9 +124,7 @@ def convert(src: dict) -> dict:
             if signing_keys:
                 case["supplementary"]["signing_keys"] = signing_keys
 
-            sp_proofs = [
-                workflow_sp_proof(row) for row in entry["supplementary"].get("sp_proofs", [])
-            ]
+            sp_proofs = derive_sp_proofs(psbt) if psbt is not None else []
             if sp_proofs:
                 case["supplementary"]["sp_proofs"] = sp_proofs
 
@@ -112,11 +136,14 @@ def convert(src: dict) -> dict:
         if inputs:
             case["supplementary"]["inputs"] = inputs
 
-        outputs = [
-            workflow_output(row)
-            for row in entry["supplementary"].get("outputs", [])
-            if "amount" in row
-        ]
+        if task in ("sign", "extract") and psbt is not None:
+            outputs = derive_outputs(psbt, create_outputs_by_scenario.get(scenario_key(entry["description"]), {}))
+        else:
+            outputs = [
+                workflow_output(row)
+                for row in entry["supplementary"].get("outputs", [])
+                if "amount" in row
+            ]
         if outputs:
             case["supplementary"]["outputs"] = outputs
 
@@ -127,15 +154,43 @@ def convert(src: dict) -> dict:
             "bip32_derivation": [{"key": row["public_key"]}],
         }
 
-    def workflow_sp_proof(row: dict) -> dict:
-        proof = {
-            "scan_key": row["scan_key"],
-            "ecdh_share": row["ecdh_share"],
-            "dleq_proof": row["dleq_proof"],
-        }
-        if "input_index" in row:
-            proof["input_index"] = row["input_index"]
-        return proof
+    def derive_sp_proofs(psbt: SilentPaymentPsbt) -> list:
+        """Every ECDH share the psbt actually carries at this step, global then per-input."""
+        proofs = [
+            {
+                "scan_key": share.scan_key.hex(),
+                "ecdh_share": share.share_point.hex(),
+                "dleq_proof": share.dleq_proof.hex(),
+            }
+            for share in psbt.get_global_ecdh_shares()
+        ]
+        for input_index in range(psbt.num_inputs()):
+            for share in psbt.get_input_ecdh_shares(input_index):
+                proofs.append({
+                    "scan_key": share.scan_key.hex(),
+                    "ecdh_share": share.share_point.hex(),
+                    "dleq_proof": share.dleq_proof.hex(),
+                    "input_index": input_index,
+                })
+        return proofs
+
+    def derive_outputs(psbt: SilentPaymentPsbt, amounts_by_index: dict) -> list:
+        outputs = []
+        for output_index in range(psbt.num_outputs()):
+            row = amounts_by_index.get(output_index)
+            if row is None or "amount" not in row:
+                continue
+            output = {"value": row["amount"]}
+            address = psbt.get_output_sp_address(output_index)
+            if address is not None:
+                output["sp_v0_info"] = (address.scan_key + address.spend_key).hex()
+                if "sp_v0_label" in row:
+                    output["sp_v0_label"] = row["sp_v0_label"]
+            script = psbt.get_output_script(output_index)
+            if script:
+                output["script_pubkey"] = script.hex()
+            outputs.append(output)
+        return outputs
 
     def workflow_output(row: dict) -> dict:
         output = {"value": row["amount"]}
