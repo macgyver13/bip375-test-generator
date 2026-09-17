@@ -33,6 +33,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | Workflows | Added the generated `out/bip375_test_vectors_extended.json`: the standard vectors plus `workflows`, step vectors for a single-input global-share, a two-input global-share and a two-input per-input-share scenario, each step with `expected.psbt` and supplementary scoped to that step. `bip375_test_vectors.json` stays the standard set with no workflow steps. Both files report version 1.2.0. Standard: 21 valid, 24 invalid. Extended: 21 valid, 24 invalid, 17 workflow steps. |
 | | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Three PSBT maps changed. |
 | | rust-psbt | Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
+| | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. PSBT maps are equivalent. |
 
 ---
 
