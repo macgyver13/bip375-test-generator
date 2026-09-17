@@ -17,6 +17,10 @@ gen:
   @echo "Generating {{vectors_file}}"
   python {{project_root}}/test_generator.py
 
+gen-simple:
+  @echo "Generating {{vectors_file}} without the workflows section"
+  python {{project_root}}/test_generator.py --no-workflows
+
 gen-jade:
   @echo "Generating Jade fixtures in {{out_dir}}/jade"
   python {{project_root}}/test_generator.py --key-profile jade
