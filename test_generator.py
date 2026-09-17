@@ -482,9 +482,9 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": True,
         }
+        result["owner"] = spec.owner
         if material:
             result["key_material"] = material
-            result["owner"] = spec.owner
         return result
 
     def _create_p2pkh_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
@@ -510,9 +510,9 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": True,
         }
+        result["owner"] = spec.owner
         if material:
             result["key_material"] = material
-            result["owner"] = spec.owner
         return result
 
     def _create_p2sh_p2wpkh_input(self, spec: InputSpec, input_index: int) -> Dict[str, Any]:
@@ -546,9 +546,9 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": True,
         }
+        result["owner"] = spec.owner
         if material:
             result["key_material"] = material
-            result["owner"] = spec.owner
         return result
 
     def _generate_multisig_keys_and_script(self, spec: InputSpec, input_index: int, purpose: str) -> Tuple[list, bytes]:
@@ -744,9 +744,9 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": is_eligible,
         }
+        result["owner"] = spec.owner
         if material:
             result["key_material"] = material
-            result["owner"] = spec.owner
         return result
 
     def _create_prev_tx(self, prev_input_txid: bytes, amount: int, script_pubkey: bytes) -> bytes:
@@ -1395,11 +1395,17 @@ class PSBTBuilder:
             ]
         )
 
-    def _should_sign_input(self, input_info: Dict[str, Any], *, honor_skip_signing: bool = True) -> bool:
-        """Return True when this input has spend material the generator can sign."""
-        if honor_skip_signing and input_info.get("skip_signing", False):
-            return False
-        if input_info.get("owner", "wallet") != "wallet":
+    def _should_sign_input(self, input_info: Dict[str, Any], *, incoming: bool = True) -> bool:
+        """Return True when this input has spend material the generator can sign.
+
+        The incoming PSBT is a snapshot of what happened before the acting party, so
+        skip_signing decides and a co-signer's (foreign) input may already be signed.
+        The expected post-signer PSBT adds only the acting party's (wallet) signatures.
+        """
+        if incoming:
+            if input_info.get("skip_signing", False):
+                return False
+        elif input_info.get("owner", "wallet") != "wallet":
             return False
         return (
             input_info.get("is_eligible", False)
@@ -1419,7 +1425,7 @@ class PSBTBuilder:
             input_index = input_info["input_index"]
             if input_index in signed_input_indices:
                 continue
-            if self._should_sign_input(input_info, honor_skip_signing=False):
+            if self._should_sign_input(input_info, incoming=False):
                 self._sign_single_input(
                     psbt,
                     input_info,
@@ -2187,8 +2193,12 @@ class ConfigBasedTestGenerator:
             public_key = ""
 
             if "private_key" in inp and inp["private_key"] is not None:
-                private_key = inp["private_key"].hex
                 public_key = inp["public_key"].hex
+                # A one-shot sign-task vector discloses a held key's private half only
+                # for the inputs the acting party actually owns; a foreign input's is
+                # left out, same as a co-signer would never see it (see R5).
+                if not (scenario.task == "sign" and inp.get("owner", "wallet") == "foreign"):
+                    private_key = inp["private_key"].hex
 
             utxo_field = {"non_witness_utxo": inp["non_witness_utxo"].hex()}
             if "witness_utxo" in inp:
