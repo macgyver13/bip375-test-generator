@@ -24,6 +24,7 @@ test_cases:
     inputs:
       - type: "p2tr"
         amount: 100000
+        owner: "foreign"  # acting party holds no keys; a verify-and-hold step
     outputs:
       - type: "silent_payment"
         amount: 95000
@@ -41,6 +42,7 @@ test_cases:
         amount: 100000
       - type: "p2wpkh"
         amount: 150000
+        owner: "foreign"  # a co-signer's input; acting party holds only input 0's key
     outputs:
       - type: "silent_payment"
         amount: 200000
@@ -50,12 +52,17 @@ test_cases:
     control_override:
       missing_ecdh_for_input: 1  # Input 1 will not have ECDH share
 
+  # Validate but do not sign: the acting party holds no key, so it can check the share
+  # present for scan_key_b but cannot supply the one missing for scan_key_a, and with
+  # PSBT_OUT_SCRIPT unset it must not sign.
   - description: "in progress: one input / two sp outputs, input 0 missing ECDH share for output 0 when PSBT_OUT_SCRIPT field is not set"
     task: "sign"
     validation_result: "valid"
     inputs:
       - type: "p2wpkh"
         amount: 200000
+        owner: "foreign"
+        contribute_foreign_share: true
     outputs:
       - type: "silent_payment"
         amount: 90000
