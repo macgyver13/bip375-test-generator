@@ -4,10 +4,10 @@ Convert bip375_test_vectors.json to the bip375.json format used by rust-psbt.
 
 Transformation rules:
 - Combine 'valid', 'invalid', synthesized, and 'workflows' entries into a flat 'cases' array
-- Each entry gets: description (valid/invalid prefixed "valid: " or "invalid: "), version (hardcoded 2), supplementary.task, supplementary.psbts
-- The PSBT base64 string moves from the top-level 'psbt' field into supplementary.psbts[0].base64
-- Source expected.psbt, when present, moves to top-level expected.base64/expected.hex
-- Workflow expected.tx/transaction_id, when present, are carried into top-level expected
+- Each entry gets description (valid/invalid prefixed "Valid: " or "Invalid: "), version
+  (hardcoded 2), and a task object keyed by the source supplementary.task
+- Each task payload carries the input psbt and expected result as base64 objects, without hex.
+  Create has only expected; extract carries psbt, tx, and transaction_id instead of expected
 - Workflow inputs/outputs, when present, are converted to rust-psbt-friendly OutPoint/TxOut shapes
 - Workflow sign entries also carry signing_keys and sp_proofs, so the Signer role can be
   replayed: rust-psbt implements neither BIP-374 (DLEQ) nor BIP-352 (output derivation), so the
@@ -23,7 +23,6 @@ Transformation rules:
   which still carries them, since spdk_psbt exposes no output-amount getter
 - Signing keys are re-encoded from raw hex to testnet WIF, the form rust-psbt's PrivateKey
   deserializes natively
-- supplementary.task is carried through from the source
 - All other supplementary data is dropped
 """
 
@@ -61,29 +60,25 @@ SYNTHESIZED_CASES = [
     {
         "description": "Invalid: psbt structure: duplicate PSBT_GLOBAL_SP_ECDH_SHARE with same scan key",
         "version": 2,
-        "supplementary": {
-            "task": "fail_deserialize",
-            "psbts": [
-                {
-                    "base64": "",
-                    "hex": "70736274ff01fb040200000001020402000000010401000105010001060100220702020202020202020202020202020202020202020202020202020202020202020221040404040404040404040404040404040404040404040404040404040404040404220702020202020202020202020202020202020202020202020202020202020202020221050505050505050505050505050505050505050505050505050505050505050505220802020202020202020202020202020202020202020202020202020202020202020240aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa00",
+        "task": {
+            "fail_deserialize": {
+                "psbt": {
+                    "base64": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQABBQEAAQYBACIHAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICIQQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBCIHAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICIQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBSIIAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICQKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqoA"
                 }
-            ],
-        },
+            }
+        }
     },
     {
         "description": "Invalid: psbt structure: duplicate PSBT_IN_SP_ECDH_SHARE with same scan key",
         "version": 2,
-        "supplementary": {
-            "task": "fail_deserialize",
-            "psbts": [
-                {
-                    "base64": "",
-                    "hex": "70736274ff01fb04020000000102040200000001040101010501000106010000010e200000000000000000000000000000000000000000000000000000000000000000010f0400000000221d02020202020202020202020202020202020202020202020202020202020202020221040404040404040404040404040404040404040404040404040404040404040404221d02020202020202020202020202020202020202020202020202020202020202020221050505050505050505050505050505050505050505050505050505050505050505221e02020202020202020202020202020202020202020202020202020202020202020240aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa00",
+        "task": {
+            "fail_deserialize": {
+                "psbt": {
+                    "base64": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEAAQYBAAABDiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEPBAAAAAAiHQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiEEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQiHQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiEFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUiHgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAkCqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqAA=="
                 }
-            ],
-        },
-    },
+            }
+        }
+    }
 ]
 
 
@@ -103,8 +98,8 @@ def convert(src: dict) -> dict:
         if entry["supplementary"].get("task") == "create"
     }
 
-    def add_workflow_supplementary(case: dict, entry: dict) -> None:
-        task = case["supplementary"]["task"]
+    def add_workflow_supplementary(payload: dict, entry: dict) -> None:
+        task = entry["supplementary"]["task"]
 
         if task == "update":
             input_updates = [
@@ -112,8 +107,8 @@ def convert(src: dict) -> dict:
                 for row in entry["supplementary"].get("inputs", [])
                 if "non_witness_utxo" in row and "public_key" in row
             ]
-            if input_updates:
-                case["supplementary"]["input_updates"] = input_updates
+            payload["input_updates"] = input_updates
+            payload["output_updates"] = []
             return
 
         psbt = None
@@ -127,11 +122,11 @@ def convert(src: dict) -> dict:
                 if row.get("private_key")
             ]
             if signing_keys:
-                case["supplementary"]["signing_keys"] = signing_keys
+                payload["signing_keys"] = signing_keys
 
             sp_proofs = derive_sp_proofs(psbt) if psbt is not None else []
             if sp_proofs:
-                case["supplementary"]["sp_proofs"] = sp_proofs
+                payload["sp_proofs"] = sp_proofs
 
         inputs = [
             f"{row['prevout_txid']}:{row['prevout_index']}"
@@ -139,7 +134,7 @@ def convert(src: dict) -> dict:
             if "prevout_txid" in row and "prevout_index" in row
         ]
         if inputs:
-            case["supplementary"]["inputs"] = inputs
+            payload["inputs"] = inputs
 
         if task in ("sign", "extract") and psbt is not None:
             outputs = derive_outputs(psbt, create_outputs_by_scenario.get(scenario_key(entry["description"]), {}))
@@ -150,7 +145,7 @@ def convert(src: dict) -> dict:
                 if "amount" in row
             ]
         if outputs:
-            case["supplementary"]["outputs"] = outputs
+            payload["outputs"] = outputs
 
     def workflow_input_update(row: dict) -> dict:
         return {
@@ -223,7 +218,7 @@ def convert(src: dict) -> dict:
         expected = entry.get("expected", {}).get("psbt")
         return expected is not None and expected != entry["psbt"]
 
-    def add_one_shot_sign_supplementary(case: dict, entry: dict) -> None:
+    def add_one_shot_sign_supplementary(payload: dict, entry: dict) -> None:
         """Unlike a workflow sign step, a one-shot sign-task vector is not
         trimmed by G3: its own supplementary already carries the signing key,
         the ECDH shares/proofs and the output scripts directly, so they can be
@@ -233,45 +228,45 @@ def convert(src: dict) -> dict:
             to_wif(row["private_key"]) for row in supp.get("inputs", []) if row.get("private_key")
         ]
         if signing_keys:
-            case["supplementary"]["signing_keys"] = signing_keys
+            payload["signing_keys"] = signing_keys
         sp_proofs = supp.get("sp_proofs", [])
         if sp_proofs:
-            case["supplementary"]["sp_proofs"] = sp_proofs
+            payload["sp_proofs"] = sp_proofs
         outputs = [workflow_output(row) for row in supp.get("outputs", []) if "amount" in row]
         if outputs:
-            case["supplementary"]["outputs"] = outputs
+            payload["outputs"] = outputs
 
     def convert_entry(entry: dict, prefix: str = "", *, workflow: bool = False) -> dict:
+        task = entry["supplementary"]["task"]
+        payload = {}
+        if task != "create":
+            payload["psbt"] = {"base64": entry["psbt"]}
+        if task == "extract" and "psbt" in entry.get("expected", {}):
+            payload["tx"] = entry["expected"]["tx"]
+        if workflow:
+            add_workflow_supplementary(payload, entry)
+        elif is_drivable_one_shot_sign(entry):
+            add_one_shot_sign_supplementary(payload, entry)
+        if "expected" in entry and "psbt" in entry["expected"]:
+            expected = {"base64": entry["expected"]["psbt"]}
+            if "transaction_id" in entry["expected"]:
+                expected["transaction_id"] = entry["expected"]["transaction_id"]
+            if task == "extract":
+                if "transaction_id" in expected:
+                    payload["transaction_id"] = expected["transaction_id"]
+            else:
+                payload["expected"] = expected
         case = {
             "description": prefix + entry["description"],
             "version": 2,
-            "supplementary": {
-                "task": entry["supplementary"]["task"],
-                "psbts": [{"base64": entry["psbt"], "hex": entry["supplementary"].get("hex", "")}],
-            },
+            "task": {task: payload},
         }
-        if case["supplementary"]["psbts"][0]["hex"] == "" and entry["psbt"] != "":
-            case["supplementary"]["psbts"][0]["hex"] = base64.b64decode(entry["psbt"]).hex()
-        if "expected" in entry and "psbt" in entry["expected"]:
-            expected_base64 = entry["expected"]["psbt"]
-            case["expected"] = {
-                "base64": expected_base64,
-                "hex": base64.b64decode(expected_base64).hex(),
-            }
-            if "transaction_id" in entry["expected"]:
-                case["expected"]["transaction_id"] = entry["expected"]["transaction_id"]
-            if "tx" in entry["expected"]:
-                case["expected"]["tx"] = entry["expected"]["tx"]
-        if workflow:
-            add_workflow_supplementary(case, entry)
-        elif is_drivable_one_shot_sign(entry):
-            add_one_shot_sign_supplementary(case, entry)
         return case
 
     cases = []
-    for section in ("Valid", "Invalid"):
+    for section, prefix in (("valid", "Valid: "), ("invalid", "Invalid: ")):
         for entry in src.get(section, []):
-            cases.append(convert_entry(entry, f"{section}: "))
+            cases.append(convert_entry(entry, prefix))
     cases.extend(SYNTHESIZED_CASES)
     for entry in src.get("workflows", []):
         cases.append(convert_entry(entry, workflow=True))

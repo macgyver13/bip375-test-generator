@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through bookmark `v1.2.2`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through 1.3.1. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -32,6 +32,9 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | 1.3.0 | rust-psbt | Supplementary `unique_id` removed. Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
 | | | Added invalid “input derivation: P2WPKH BIP32_DERIVATION pubkey does not match prevout script”, its P2PKH and P2SH-P2WPKH variants, and “input pubkey mismatch: global ECDH share computed from decoy pubkey not matching prevout script”. 21 valid, 27 invalid. |
 | | Jade | Added valid “can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key” and its P2PKH variant. 23 valid, 27 invalid. |
+| | | `task` set on the four input-derivation invalid vectors (`fail_sign`), the two decoy valid vectors (`finalize`) and the SIGHASH_DEFAULT vector (`finalize`), all previously `deserialize`. The three valid vectors gained `expected.psbt`. PSBT maps are equivalent. |
+| | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. PSBT maps are equivalent. |
+| 1.3.1 | Reference runner | One-shot sign vectors disclose only the acting signer's `private_key`; four vectors withhold keys. The large PSBT's acting party holds only its two P2TR inputs, so its `expected.psbt` adds their `PSBT_IN_TAP_KEY_SIG`. 23 valid, 28 invalid, 17 workflow steps. |
 
 ---
 
