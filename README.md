@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through bookmark `v1.3.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through bookmark `v1.2.2`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -30,6 +30,8 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Four PSBT maps changed. |
 | | | NUMS inputs carry `PSBT_IN_TAP_MERKLE_ROOT`. Two PSBT maps changed. Added invalid “ecdh coverage: P2TR input with NUMS internal key claim not matching prevout missing ECDH share”. 21 valid, 23 invalid. |
 | 1.3.0 | rust-psbt | Supplementary `unique_id` removed. Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
+| | | Added invalid “input derivation: P2WPKH BIP32_DERIVATION pubkey does not match prevout script”, its P2PKH and P2SH-P2WPKH variants, and “input pubkey mismatch: global ECDH share computed from decoy pubkey not matching prevout script”. 21 valid, 27 invalid. |
+| | Jade | Added valid “can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key” and its P2PKH variant. 23 valid, 27 invalid. |
 
 ---
 
