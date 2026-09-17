@@ -15,6 +15,7 @@ description: "Input public key does not match the prevout script"
 test_cases:
   - description: "ecdh coverage: P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -35,6 +36,7 @@ test_cases:
 
   - description: "ecdh coverage: P2PKH BIP32_DERIVATION pubkey does not match prevout script"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -55,6 +57,7 @@ test_cases:
 
   - description: "ecdh coverage: P2SH-P2WPKH BIP32_DERIVATION pubkey does not match prevout script"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -75,6 +78,7 @@ test_cases:
 
   - description: "ecdh coverage: global ECDH share computed from decoy pubkey not matching prevout script"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"

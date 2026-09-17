@@ -117,6 +117,7 @@ test_cases:
       use_global_ecdh: ["recipient_a", "recipient_b", "recipient_c"]
 
   - description: "can finalize: one P2TR input signed with SIGHASH_DEFAULT"
+    task: "finalize"
     validation_result: "valid"
     inputs:
       - type: "p2tr"
