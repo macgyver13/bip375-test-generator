@@ -1,0 +1,22 @@
+description: "Valid input eligibility edge cases"
+
+test_cases:
+  # Mirrors the segwit v2 invalid vector (use_segwit_v2_input keeps its signing
+  # path) but replaces the prevout scriptPubKey with a bare OP_2, which is not a
+  # witness program and so does not make the input ineligible.
+  - description: "input eligibility: bare OP_2 script is not a segwit v2 witness program"
+    validation_result: "valid"
+    checks: ["input_eligibility"]
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        script_pubkey: "52"
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_segwit_v2_input: True

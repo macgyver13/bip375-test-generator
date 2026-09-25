@@ -177,6 +177,7 @@ class InputSpec:
     use_nums_tap_internal_key: bool = False  # For testing taproot internal key
     eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
     skip_signing: bool = False  # Force input to remain unsigned even if eligible
+    script_pubkey_override: Optional[bytes] = None  # Replace the P2WPKH prevout scriptPubKey
 
 
 @dataclass
@@ -313,6 +314,8 @@ class InputFactory:
         script_pubkey = bytes(
             program_to_witness_script(segwit_version, hash160(input_pub.bytes))
         )
+        if spec.script_pubkey_override is not None:
+            script_pubkey = spec.script_pubkey_override
         prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
         previous_txid = hash256(prev_tx)
 
@@ -1189,8 +1192,8 @@ class PSBTBuilder:
             # Inner P2WPKH redeem_script: OP_0 <20-byte hash>
             pubkey_hash = input_info["redeem_script"][2:]
         else:
-            # P2WPKH script_pubkey: OP_0 <20-byte hash>
-            pubkey_hash = input_info["script_pubkey"][2:]
+            # P2WPKH: hash the key, since script_pubkey may be overridden
+            pubkey_hash = hash160(input_info["public_key"].bytes)
 
         if input_type == InputType.P2PKH:
             signature = sign_p2pkh_input(
@@ -1606,6 +1609,11 @@ class ConfigBasedTestGenerator:
                 use_nums_tap_internal_key=input_config.get("use_nums_tap_internal_key", False),
                 eligible_override=input_config.get("eligible_override"),
                 skip_signing=input_config.get("skip_signing", False),
+                script_pubkey_override=(
+                    bytes.fromhex(input_config["script_pubkey"])
+                    if "script_pubkey" in input_config
+                    else None
+                ),
             )
 
             # Handle batch creation
@@ -1622,6 +1630,7 @@ class ConfigBasedTestGenerator:
                     use_nums_tap_internal_key=input_spec.use_nums_tap_internal_key,
                     eligible_override=input_spec.eligible_override,
                     skip_signing=input_spec.skip_signing,
+                    script_pubkey_override=input_spec.script_pubkey_override,
                 )
                 inputs.append(batch_spec)
 
