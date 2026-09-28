@@ -4,6 +4,20 @@ Configuration-driven tool for generating test vectors for [BIP-375](https://gith
 
 Reads YAML test configurations from `test_configs/` and produces `bip375_test_vectors.json` containing both valid and intentionally malformed PSBTs for use in implementation testing.
 
+## Vector revisions
+
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through `v1.2.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+
+| File version | Milestone | Vector changes |
+| --- | --- | --- |
+| 1.1.1 | bips#2207 | Baseline. `k` assigned by BIP-375 canonical ordering and labeled spend keys. 19 valid, 22 invalid. |
+| | | Negative-fee fix. PSBT map changed: valid “in progress: two P2TR inputs, neither is signed”. |
+| | | Supplementary inputs standardized. Many valid and invalid PSBT maps are not equivalent to the previous row. |
+| | | Signing replaced with the vendored Bitcoin Core `test_framework`. Many PSBT maps are not equivalent. |
+| | | Missing `BIP32_DERIVATION` validation vector is no longer signed. One invalid PSBT map changed. |
+| | bips#2253 | Added valid “input eligibility: bare OP_2 script is not a segwit v2 witness program”. 20 valid, 22 invalid. |
+| 1.2.0 | Deterministic order | Fields serialized lexicographically. PSBT maps are equivalent; serialization order changed. |
+
 ---
 
 ## Prerequisites
@@ -119,7 +133,7 @@ scan_keys:
 Optional section for injecting intentional faults into invalid test cases. Common fields:
 
 | Field | Effect |
-|---|---|
+| --- | --- |
 | `missing_ecdh_for_input: N` | Omit ECDH share for input at index N |
 | `missing_ecdh_for_scan_key: "key_id"` | Omit ECDH share for a specific scan key |
 | `wrong_ecdh_share_size: true` | Malform the PSBT_IN_SP_ECDH_SHARE field size |
@@ -139,3 +153,35 @@ Optional section for injecting intentional faults into invalid test cases. Commo
 | `force_output_script: true` | Inject wrong output script |
 | `inject_ineligible_ecdh: true` | Add ECDH data to non-eligible inputs |
 | `strip_input_pubkeys_for_input: N` | Remove public keys from input N |
+
+## Diagnostics
+
+### Explain PSBT changes between revisions
+
+Raw diffs of base64 PSBTs are not meaningful because one early byte changes the
+rest of the encoded line. Compare decoded PSBT maps instead:
+
+```sh
+just diff-vectors                 # @- versus @
+just diff-vectors main @          # any two jj revisions
+just diff-vectors @- @ -v         # affected field type codes
+just diff-vectors @- @ -vv        # values and complete serialization ordering
+python psbt_diff.py --jj @- @ -vv -f 'missing ECDH share'
+```
+
+Without verbosity the report only lists PSBTs whose maps are not equivalent. `-v`
+adds changed field type codes and compact ordering information. `-vv` adds decoded
+values and complete old/new serialization sequences, including key data. The report
+matches vectors by section and description. Individual PSBT strings or saved JSON
+files can also be compared directly:
+
+```sh
+python psbt_diff.py 'OLD_BASE64' 'NEW_BASE64'
+python psbt_diff.py old.json new.json
+```
+
+### Display supplementary data
+
+```sh
+jq -r '(.valid[], .invalid[]) | select(.supplementary.inputs != null) | .description, .supplementary.task, (.supplementary.inputs[] | "  input \(.input_index): signed=\(.signed)")' bip375_test_vectors.json
+```
