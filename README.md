@@ -38,6 +38,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | Jade | Added valid “can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key” and its P2PKH variant. 23 valid, 28 invalid. |
 | | | `task` set on the four input derivation and pubkey mismatch invalid vectors (`fail_sign`), the two decoy valid vectors (`finalize`) and the SIGHASH_DEFAULT vector (`finalize`), all previously `deserialize`. The three valid vectors gained `expected.psbt`. PSBT maps are equivalent. |
 | | Reference runner | One-shot sign vectors disclose only the acting signer's `private_key`. Key-path P2TR inputs gained `PSBT_IN_TAP_BIP32_DERIVATION`. The large PSBT's acting party holds only its two P2TR inputs, so its `expected.psbt` adds their `PSBT_IN_TAP_KEY_SIG`. Four PSBT maps changed. |
+| | | Added top-level `wallets`, two seeded wallets for the workflow parties. Workflow inputs gained `master_fingerprint` and `derivation_path`, and every workflow step changed. One-shot PSBT maps are equivalent. |
 
 ---
 

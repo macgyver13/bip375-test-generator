@@ -52,6 +52,7 @@ from generator_utils import (
     PrivateKey,
     PublicKey,
     Wallet,
+    WorkflowKeyProfile,
     JadeKeyProfile,
     UTXO,
     apply_label_to_spend_key,
@@ -1928,7 +1929,7 @@ class ConfigBasedTestGenerator:
     """Generates test vectors from YAML configurations"""
 
     def __init__(self, base_seed: str = "bip375_deterministic_seed", key_profile: str = "current"):
-        profiles = {"current": None, "jade": JadeKeyProfile}
+        profiles = {"current": None, "jade": JadeKeyProfile, "workflow": WorkflowKeyProfile}
         if key_profile not in profiles:
             raise ValueError(f"Unknown key profile: {key_profile}")
         self.wallet = Wallet(base_seed)
@@ -2226,12 +2227,15 @@ class ConfigBasedTestGenerator:
             }
             material = inp.get("key_material")
             if material is not None:
+                # private_key/public_key are the raw key at the path (the P2TR internal key);
+                # a signer applies any BIP-341 tweak itself.
+                if input_key["private_key"]:
+                    input_key["private_key"] = material.derivation_private_key.hex
                 input_key.update({
+                    "public_key": material.derivation_public_key.hex,
                     "owner": inp.get("owner", "wallet"),
                     "master_fingerprint": material.fingerprint.hex(),
-                    "derivation_path": list(material.path),
-                    "derivation_private_key": material.derivation_private_key.hex,
-                    "derivation_public_key": material.derivation_public_key.hex,
+                    "derivation_path": material.path_string,
                 })
             input_keys.append(input_key)
 
@@ -2312,7 +2316,7 @@ class ConfigBasedTestGenerator:
                 if material is not None:
                     output.update({
                         "master_fingerprint": material.fingerprint.hex(),
-                        "derivation_path": list(material.path),
+                        "derivation_path": material.path_string,
                         "private_key": material.private_key.hex,
                         "public_key": material.public_key.hex,
                     })
@@ -2393,7 +2397,14 @@ class WorkflowVectorGenerator:
         # carried here are Signer material. prevout fields, amount and sequence are set
         # from `create`'s expected.psbt already, so the Updater does not repeat them.
         "update": {
-            "inputs": ["input_index", "public_key", "witness_utxo", "non_witness_utxo"],
+            "inputs": [
+                "input_index",
+                "public_key",
+                "witness_utxo",
+                "non_witness_utxo",
+                "master_fingerprint",
+                "derivation_path",
+            ],
         },
         # signed, sp_proofs and outputs are all derivable from expected.psbt, which the
         # sign step already carries; the Signer needs only the keys it acts with and the
@@ -2764,7 +2775,7 @@ class TestVectorGenerator:
         no_workflows: bool = False,
     ):
         self.config_generator = ConfigBasedTestGenerator(seed, key_profile)
-        self.workflow_generator = WorkflowVectorGenerator(seed)
+        self.workflow_generator = WorkflowVectorGenerator(seed, key_profile="workflow")
         self.no_workflows = no_workflows
         self.test_vectors = {
             "description": "BIP-375 Test Vectors",
@@ -2805,6 +2816,8 @@ class TestVectorGenerator:
         # Generate workflow (step-by-step) vectors
         if not self.no_workflows:
             self.test_vectors["workflows"] = self.workflow_generator.generate()
+            # The seeded wallets behind the workflow keys, so any implementer can load them
+            self.test_vectors["wallets"] = WorkflowKeyProfile().wallets
 
         return self.test_vectors
 

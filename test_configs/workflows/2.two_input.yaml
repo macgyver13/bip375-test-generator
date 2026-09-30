@@ -22,7 +22,11 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 100000
-        count: 2
+        owner: wallet
+      - type: "p2wpkh"
+        amount: 100000
+        owner: foreign
+        contribute_foreign_share: true
     outputs:
       - type: "silent_payment"
         amount: 190000

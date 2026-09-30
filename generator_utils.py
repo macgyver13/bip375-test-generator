@@ -252,6 +252,13 @@ class DerivedKeyMaterial:
     derivation_private_key: PrivateKey
     derivation_public_key: PublicKey
 
+    @property
+    def path_string(self) -> str:
+        """The path as "m/86'/1'/0'/0/0"."""
+        return "m/" + "/".join(
+            f"{child & 0x7FFFFFFF}'" if child & 0x80000000 else str(child) for child in self.path
+        )
+
 
 class JadeKeyProfile:
     """The fixed test wallet loaded by Jade's single-signature tests."""
@@ -325,6 +332,53 @@ class JadeKeyProfile:
             material.derivation_private_key,
             material.derivation_public_key,
         )
+
+
+class WorkflowKeyProfile(JadeKeyProfile):
+    """Two seeded BIP-39 test wallets for workflow vectors, so every implementer can load the same keys.
+
+    The primary wallet owns `owner: wallet` inputs and the cosigner wallet `owner: foreign` ones. Both
+    derive real BIP32 keys (m/purpose'/1'/0'/branch/index) and carry their fingerprint and path into the PSBT.
+    """
+
+    MNEMONIC = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+    COSIGNER_MNEMONIC = "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong"
+
+    def __init__(self):
+        self.FINGERPRINT = self._fingerprint(self._seed(self.MNEMONIC))
+        self.COSIGNER_FINGERPRINT = self._fingerprint(self._seed(self.COSIGNER_MNEMONIC))
+        super().__init__()
+        self.cosigner_master_private_key, self.cosigner_master_chain_code = self._master_key(
+            self._seed(self.COSIGNER_MNEMONIC)
+        )
+
+    @staticmethod
+    def _seed(mnemonic: str) -> bytes:
+        mnemonic = unicodedata.normalize("NFKD", mnemonic).encode()
+        return hashlib.pbkdf2_hmac("sha512", mnemonic, unicodedata.normalize("NFKD", "mnemonic").encode(), 2048)
+
+    @classmethod
+    def _fingerprint(cls, seed: bytes) -> bytes:
+        private_key, _ = cls._master_key(seed)
+        public_key = PublicKey(private_key * G)
+        return hashlib.new("ripemd160", hashlib.sha256(public_key.bytes).digest()).digest()[:4]
+
+    @property
+    def wallets(self) -> list:
+        return [
+            {"fingerprint": self.FINGERPRINT.hex(), "mnemonic": self.MNEMONIC},
+            {"fingerprint": self.COSIGNER_FINGERPRINT.hex(), "mnemonic": self.COSIGNER_MNEMONIC},
+        ]
+
+    def derive(self, purpose: int, branch: int, index: int, *, foreign: bool = False) -> DerivedKeyMaterial:
+        if not foreign:
+            return super().derive(purpose, branch, index)
+        path = (purpose | 0x80000000, self.COIN_TYPE, 0x80000000, branch, index)
+        private_key, chain_code = self.cosigner_master_private_key, self.cosigner_master_chain_code
+        for child in path:
+            private_key, chain_code = self._derive_child(private_key, chain_code, child)
+        public_key = PublicKey(private_key * G)
+        return DerivedKeyMaterial(private_key, public_key, self.COSIGNER_FINGERPRINT, path, private_key, public_key)
 
 
 # ============================================================================
