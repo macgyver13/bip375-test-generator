@@ -1,0 +1,22 @@
+description: "PSBT structure validation errors: PSBT_OUT_SP_V0_LABEL length (bips#2286)"
+
+test_cases:
+  - description: "psbt structure: incorrect byte length for PSBT_OUT_SP_V0_LABEL field"
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 500000
+    outputs:
+      - type: "silent_payment"
+        amount: 100000
+        scan_key_id: "default"
+        label: 1
+      - type: "regular_p2wpkh"
+        amount: 390000
+        add_bip32_derivation: true
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sp_label_size: true
