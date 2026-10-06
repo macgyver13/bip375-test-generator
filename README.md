@@ -28,20 +28,20 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 
 ## Installing `spdk_psbt`
 
-**Note:** Version 1.2 requires rust dependencies that are not yet published like PSBT_OUT_SCRIPT missing field - `rust-psbt script_pubkey: Option<ScriptBuf>`.
-At this time using wheels is the easier solution to installing spdk_psbt - 3.14.2026
-```bash
-pip install --no-index --find-links wheels/ spdk_psbt
-```
+`spdk_psbt` is a Rust/UniFFI Python extension built from the
+[bip375-examples](https://github.com/macgyver13/bip375-examples) repo, crate
+`crates/spdk-uniffi`. The generator needs version 1.2.5 or later, which finalizes
+taproot inputs signed with SIGHASH_DEFAULT. Install it in editable mode, which compiles
+the Rust crate with maturin:
 
-~~`spdk_psbt` is a Rust/uniffi Python extension. Its source lives in the `bip375-examples` repo under `rust/crates/spdk-uniffi`. Install it in editable mode, which compiles the Rust crate via maturin:~~
-
-<del>
 ```bash
-cd /path/to/bip375-examples/rust/crates/spdk-uniffi
+cd /path/to/bip375-examples/crates/spdk-uniffi
 pip install -e .
 ```
-</del>
+
+Until the rust-psbt finalizer fix 1.2.5 depends on is published, bip375-examples builds
+`psbt-v2` from a local rust-psbt checkout next to it (see the `[patch]` section in its
+`Cargo.toml`).
 
 ## Running the Generator
 
