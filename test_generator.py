@@ -1425,9 +1425,9 @@ class PSBTBuilder:
                 )
                 if scenario.default_sighash_for_input == input_idx:
                     sighash_type = SIGHASH_DEFAULT
-                if scenario.no_sighash_for_input == input_idx:
-                    sighash_type = None  # Don't add sighash type at all
-                if sighash_type is not None:
+                # no_sighash_for_input omits the field only; combined with
+                # wrong_sighash_for_input the input still signs SIGHASH_NONE
+                if scenario.no_sighash_for_input != input_idx:
                     add_raw_input_field(
                         psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
                     )
