@@ -166,6 +166,47 @@
       }
     },
     {
+      "description": "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field when PSBT_OUT_SCRIPT not set",
+      "task": "fail_sign",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAHECAAAAARinF2Y7C6sUsSoadxMj/x5Aed1TLl3RPijqEIHHAJhKAAAAAAD+////AqCGAQAAAAAAFgAU7TjbCZtVOTtHiU9JCKBAQl1915ughgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhAAAAAAEBH6CGAQAAAAAAFgAU0MSj7wnpl7bpnjl+UY/j5BoRjKEBAwQBAAAAIgYC56slN7XUnpcDCargbp5J82zhyf671E7I4NHMoLT5wxkYc8XaClQAAIABAACAAAAAgAAAAAAAAAAAAQ4gd8/Fu0TXiUFgEiWGBHfahyI/3eIw6YZoFuZmamJgzAsBDwQBAAAAARAE/v///yIdA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshIQIYU8t+y4/zaLEGGbkkA454cGVw7538ViMHIlg/8F7CTiIeA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshQJ0UuMYo79yQn6ffGZwdN9SXqxHdjV/glHDI1nMjD9r4UbTtub6wM8yMI2+Ml7uMgbnE3SP04Qyhd9mjdtZ9UzgAAQBxAgAAAAG+nWXIORX7CSSKu9/KjKPu5s41DFVPZejVJuXfUnq1IgAAAAAA/v///wIQJwAAAAAAABYAFKNCIuLW89MlfbU+88UryiCkyDkqECcAAAAAAAAWABRvoBZQCjxqc367Jg4t3KeLqSNFWAAAAAABAR8QJwAAAAAAABYAFG+gFlAKPGpzfrsmDi3cp4upI0VYIgYD7u0gWmkCL+1KYqAkV/NpmxnAa/dL+AGsxtmuhLwWqeEYc8XaClQAAIABAACAAAAAgAAAAAABAAAAAQ4ggmgc0YxGvgZFLGrs3z0bJlAOl8PzxpdDcNC1gjjbNicBDwQBAAAAARAE/v///wABAwgomgEAAAAAAAEJQgNDn8IwGCtG/yIDLKeuLf8ylYyaDRd8e3CW3w1LcUHrIQKDMIXJpxbTa0Z1UsANaqi9QuOa2+mLBbwgMRAXcZL3AgA=",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "a9c4134b73560f43fc5c081e5c1daa7ce068adc806d80e1f37cb658e0fea4c8d",
+            "public_key": "02e7ab2537b5d49e970309aae06e9e49f36ce1c9febbd44ec8e0d1cca0b4f9c319",
+            "prevout_txid": "0bcc60626a66e6166886e930e2dd3f2287da7704862512604189d744bbc5cf77",
+            "prevout_index": 1,
+            "amount": 100000,
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000feffffff02a086010000000000160014ed38db099b55393b47894f4908a040425d7dd79ba086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca100000000",
+            "witness_utxo": "a086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca1",
+            "sequence": 4294967294,
+            "signed": false
+          },
+          {
+            "input_index": 1,
+            "private_key": "4f9fb140e0586691de963613549631e2048ab4030d74f4d98405686dd30a9d75",
+            "public_key": "03eeed205a69022fed4a62a02457f3699b19c06bf74bf801acc6d9ae84bc16a9e1",
+            "prevout_txid": "2736db3882b5d0704397c6f3c3970e50261b3ddfec6a2c4506be468cd11c6882",
+            "prevout_index": 1,
+            "amount": 10000,
+            "non_witness_utxo": "0200000001be9d65c83915fb09248abbdfca8ca3eee6ce350c554f65e8d526e5df527ab5220000000000feffffff021027000000000000160014a34222e2d6f3d3257db53ef3c52bca20a4c8392a10270000000000001600146fa016500a3c6a737ebb260e2ddca78ba923455800000000",
+            "witness_utxo": "10270000000000001600146fa016500a3c6a737ebb260e2ddca78ba9234558",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb21",
+            "ecdh_share": "021853cb7ecb8ff368b10619b924038e78706570ef9dfc56230722583ff05ec24e",
+            "dleq_proof": "9d14b8c628efdc909fa7df199c1d37d497ab11dd8d5fe09470c8d673230fdaf851b4edb9beb033cc8c236f8c97bb8c81b9c4dd23f4e10ca177d9a376d67d5338",
+            "input_index": 0
+          }
+        ]
+      }
+    },
+    {
       "description": "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field when PSBT_GLOBAL_SP_ECDH_SHARE set",
       "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAIgcDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yEhAhhTy37Lj/NosQYZuSQDjnhwZXDvnfxWIwciWD/wXsJOAfsEAgAAAAABAHECAAAAARinF2Y7C6sUsSoadxMj/x5Aed1TLl3RPijqEIHHAJhKAAAAAAD+////AqCGAQAAAAAAFgAU7TjbCZtVOTtHiU9JCKBAQl1915ughgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhAAAAAAEBH6CGAQAAAAAAFgAU0MSj7wnpl7bpnjl+UY/j5BoRjKEiAgLnqyU3tdSelwMJquBunknzbOHJ/rvUTsjg0cygtPnDGUcwRAIgS06ZzW239QT+gGrL2pq6rI7AZ9+0X9yVxHWwQa+IaXECIGNMs2ra5Dwge1QjGlGMXlWGRrpMrMhadVmM7l6Tn5vBASIGAuerJTe11J6XAwmq4G6eSfNs4cn+u9ROyODRzKC0+cMZGHPF2gpUAACAAQAAgAAAAIAAAAAAAAAAAAEOIHfPxbtE14lBYBIlhgR32ociP93iMOmGaBbmZmpiYMwLAQ8EAQAAAAEQBP7///8AAQMIGHMBAAAAAAABBCJRIHUB/THNUlGr0oGzUe6fsapoRDWkyhnLOQe0/Je1y0cdAQlCA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshAoMwhcmnFtNrRnVSwA1qqL1C45rb6YsFvCAxEBdxkvcCAA==",
@@ -209,6 +250,46 @@
             "witness_utxo": "a086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca1",
             "sequence": 4294967294,
             "signed": true
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb21",
+            "ecdh_share": "021853cb7ecb8ff368b10619b924038e78706570ef9dfc56230722583ff05ec24e",
+            "dleq_proof": "2c90d6b044d76b57fa62c4a2e04d2c4cc8e3cf5c43ad0c5841e27aab7d49d65c2f0d0f19dec1c648122472b7ca1f41c367d55fb9b75b039310bd703e5ca3ebcd"
+          }
+        ]
+      }
+    },
+    {
+      "description": "ecdh coverage: global ECDH share proven over a subset of eligible inputs",
+      "task": "fail_sign",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAIgcDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yEhAhhTy37Lj/NosQYZuSQDjnhwZXDvnfxWIwciWD/wXsJOIggDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yFALJDWsETXa1f6YsSi4E0sTMjjz1xDrQxYQeJ6q31J1lwvDQ8Z3sHGSBIkcrfKH0HDZ9VfubdbA5MQvXA+XKPrzQH7BAIAAAAAAQBxAgAAAAEYpxdmOwurFLEqGncTI/8eQHndUy5d0T4o6hCBxwCYSgAAAAAA/v///wKghgEAAAAAABYAFO042wmbVTk7R4lPSQigQEJdfdeboIYBAAAAAAAWABTQxKPvCemXtumeOX5Rj+PkGhGMoQAAAAABAR+ghgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhIgYC56slN7XUnpcDCargbp5J82zhyf671E7I4NHMoLT5wxkYc8XaClQAAIABAACAAAAAgAAAAAAAAAAAAQ4gd8/Fu0TXiUFgEiWGBHfahyI/3eIw6YZoFuZmamJgzAsBDwQBAAAAARAE/v///wABAHECAAAAAb6dZcg5FfsJJIq738qMo+7mzjUMVU9l6NUm5d9SerUiAAAAAAD+////AhAnAAAAAAAAFgAUo0Ii4tbz0yV9tT7zxSvKIKTIOSoQJwAAAAAAABYAFG+gFlAKPGpzfrsmDi3cp4upI0VYAAAAAAEBHxAnAAAAAAAAFgAUb6AWUAo8anN+uyYOLdyni6kjRVgBDiCCaBzRjEa+BkUsauzfPRsmUA6Xw/PGl0Nw0LWCONs2JwEPBAEAAAABEAT+////AAEDCCiaAQAAAAAAAQlCA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshAoMwhcmnFtNrRnVSwA1qqL1C45rb6YsFvCAxEBdxkvcCAA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "a9c4134b73560f43fc5c081e5c1daa7ce068adc806d80e1f37cb658e0fea4c8d",
+            "public_key": "02e7ab2537b5d49e970309aae06e9e49f36ce1c9febbd44ec8e0d1cca0b4f9c319",
+            "prevout_txid": "0bcc60626a66e6166886e930e2dd3f2287da7704862512604189d744bbc5cf77",
+            "prevout_index": 1,
+            "amount": 100000,
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000feffffff02a086010000000000160014ed38db099b55393b47894f4908a040425d7dd79ba086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca100000000",
+            "witness_utxo": "a086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca1",
+            "sequence": 4294967294,
+            "signed": false
+          },
+          {
+            "input_index": 1,
+            "private_key": "4f9fb140e0586691de963613549631e2048ab4030d74f4d98405686dd30a9d75",
+            "public_key": "03eeed205a69022fed4a62a02457f3699b19c06bf74bf801acc6d9ae84bc16a9e1",
+            "prevout_txid": "2736db3882b5d0704397c6f3c3970e50261b3ddfec6a2c4506be468cd11c6882",
+            "prevout_index": 1,
+            "amount": 10000,
+            "non_witness_utxo": "0200000001be9d65c83915fb09248abbdfca8ca3eee6ce350c554f65e8d526e5df527ab5220000000000feffffff021027000000000000160014a34222e2d6f3d3257db53ef3c52bca20a4c8392a10270000000000001600146fa016500a3c6a737ebb260e2ddca78ba923455800000000",
+            "witness_utxo": "10270000000000001600146fa016500a3c6a737ebb260e2ddca78ba9234558",
+            "sequence": 4294967294,
+            "signed": false
           }
         ],
         "sp_proofs": [
@@ -684,6 +765,27 @@
       "description": "input eligibility: non-SIGHASH_ALL signature on input with sp output",
       "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAHECAAAAARinF2Y7C6sUsSoadxMj/x5Aed1TLl3RPijqEIHHAJhKAAAAAAD+////AqCGAQAAAAAAFgAU7TjbCZtVOTtHiU9JCKBAQl1915ughgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhAAAAAAEBH6CGAQAAAAAAFgAU0MSj7wnpl7bpnjl+UY/j5BoRjKEiAgLnqyU3tdSelwMJquBunknzbOHJ/rvUTsjg0cygtPnDGUcwRAIgdQk8bJu1f5FUjCmQ+Wr8z5bFFUmVPlMCHffWFyXXCVACIH9EF9746x8pmmesRxS664XmD0ngQ5MAA+3J2eikTsYTAgEDBAIAAAAiBgLnqyU3tdSelwMJquBunknzbOHJ/rvUTsjg0cygtPnDGRhzxdoKVAAAgAEAAIAAAACAAAAAAAAAAAABDiB3z8W7RNeJQWASJYYEd9qHIj/d4jDphmgW5mZqYmDMCwEPBAEAAAABEAT+////Ih0DQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yEhAhhTy37Lj/NosQYZuSQDjnhwZXDvnfxWIwciWD/wXsJOIh4DQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yFAdyoz3bsXfTvG3BCPPhdwwmjhWosB4jGHaqeCeKM+jbiS1aBc5lpJxQnTfaxFeiHpv4HC9CmXMpayqo7y4DDtnQABAwgYcwEAAAAAAAEEIlEgdQH9Mc1SUavSgbNR7p+xqmhENaTKGcs5B7T8l7XLRx0BCUIDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yECgzCFyacW02tGdVLADWqovULjmtvpiwW8IDEQF3GS9wIA",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "a9c4134b73560f43fc5c081e5c1daa7ce068adc806d80e1f37cb658e0fea4c8d",
+            "public_key": "02e7ab2537b5d49e970309aae06e9e49f36ce1c9febbd44ec8e0d1cca0b4f9c319",
+            "prevout_txid": "0bcc60626a66e6166886e930e2dd3f2287da7704862512604189d744bbc5cf77",
+            "prevout_index": 1,
+            "amount": 100000,
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000feffffff02a086010000000000160014ed38db099b55393b47894f4908a040425d7dd79ba086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca100000000",
+            "witness_utxo": "a086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca1",
+            "sequence": 4294967294,
+            "signed": true
+          }
+        ]
+      }
+    },
+    {
+      "description": "input eligibility: non-SIGHASH_ALL signature on input with sp output and PSBT_IN_SIGHASH_TYPE omitted",
+      "task": "fail_sign",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAHECAAAAARinF2Y7C6sUsSoadxMj/x5Aed1TLl3RPijqEIHHAJhKAAAAAAD+////AqCGAQAAAAAAFgAU7TjbCZtVOTtHiU9JCKBAQl1915ughgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhAAAAAAEBH6CGAQAAAAAAFgAU0MSj7wnpl7bpnjl+UY/j5BoRjKEiAgLnqyU3tdSelwMJquBunknzbOHJ/rvUTsjg0cygtPnDGUcwRAIgdQk8bJu1f5FUjCmQ+Wr8z5bFFUmVPlMCHffWFyXXCVACIH9EF9746x8pmmesRxS664XmD0ngQ5MAA+3J2eikTsYTAiIGAuerJTe11J6XAwmq4G6eSfNs4cn+u9ROyODRzKC0+cMZGHPF2gpUAACAAQAAgAAAAIAAAAAAAAAAAAEOIHfPxbtE14lBYBIlhgR32ociP93iMOmGaBbmZmpiYMwLAQ8EAQAAAAEQBP7///8iHQNDn8IwGCtG/yIDLKeuLf8ylYyaDRd8e3CW3w1LcUHrISECGFPLfsuP82ixBhm5JAOOeHBlcO+d/FYjByJYP/Bewk4iHgNDn8IwGCtG/yIDLKeuLf8ylYyaDRd8e3CW3w1LcUHrIUB3KjPduxd9O8bcEI8+F3DCaOFaiwHiMYdqp4J4oz6NuJLVoFzmWknFCdN9rEV6Iem/gcL0KZcylrKqjvLgMO2dAAEDCBhzAQAAAAAAAQQiUSB1Af0xzVJRq9KBs1Hun7GqaEQ1pMoZyzkHtPyXtctHHQEJQgNDn8IwGCtG/yIDLKeuLf8ylYyaDRd8e3CW3w1LcUHrIQKDMIXJpxbTa0Z1UsANaqi9QuOa2+mLBbwgMRAXcZL3AgA=",
       "supplementary": {
         "inputs": [
           {
