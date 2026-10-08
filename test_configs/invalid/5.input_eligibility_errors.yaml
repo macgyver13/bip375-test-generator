@@ -57,6 +57,26 @@ test_cases:
     control_override:
       wrong_sighash_for_input: 0
 
+  # The partial signature's sighash byte is SIGHASH_NONE and PSBT_IN_SIGHASH_TYPE
+  # is omitted, so only the signature itself carries the type.
+  - description: "input eligibility: non-SIGHASH_ALL signature on input with sp output and PSBT_IN_SIGHASH_TYPE omitted"
+    violates: [bip375_sighash_all]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sighash_for_input: 0
+      no_sighash_for_input: 0
+
   - description: "input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output"
     violates: [bip375_eligibility]
     task: "fail_sign"
