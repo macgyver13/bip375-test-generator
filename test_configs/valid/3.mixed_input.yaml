@@ -52,3 +52,23 @@ test_cases:
       - type: "silent_payment"
         amount: 9500
         scan_key_id: "default"
+
+  # An ineligible input may declare SIGHASH_ALL; only other sighash types are rejected.
+  - description: "can finalize: ineligible P2SH multisig input declaring SIGHASH_ALL"
+    task: "finalize"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2sh_multisig"
+        amount: 150000
+        multisig_threshold: 2
+        multisig_pubkey_count: 2
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      declare_sighash_for_input: 1

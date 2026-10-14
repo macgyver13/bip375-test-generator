@@ -77,6 +77,106 @@ test_cases:
       wrong_sighash_for_input: 0
       no_sighash_for_input: 0
 
+  # The BIP-375 sighash rule covers every input once sp outputs are present,
+  # not only the inputs that contribute ECDH shares.
+  - description: "input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output"
+    violates: [bip375_sighash_all]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2sh_multisig"
+        amount: 150000
+        multisig_threshold: 2
+        multisig_pubkey_count: 2
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sighash_for_input: 1
+
+  - description: "input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output and PSBT_IN_SIGHASH_TYPE omitted"
+    violates: [bip375_sighash_all]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2sh_multisig"
+        amount: 150000
+        multisig_threshold: 2
+        multisig_pubkey_count: 2
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sighash_for_input: 1
+      no_sighash_for_input: 1
+
+  - description: "input eligibility: non-SIGHASH_ALL signature on taproot input with sp output"
+    violates: [bip375_sighash_all]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2tr"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sighash_for_input: 0
+
+  # A check that masks the sighash type with 0x1f reads 0x81 as SIGHASH_ALL.
+  - description: "input eligibility: SIGHASH_ALL|ANYONECANPAY sighash type on input with sp output"
+    violates: [bip375_sighash_all]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sighash_for_input: 0
+      wrong_sighash_value: 0x81
+
+  # SIGHASH_DEFAULT is defined only for taproot inputs.
+  - description: "input eligibility: SIGHASH_DEFAULT sighash type on non-taproot input with sp output"
+    violates: [bip375_sighash_all]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sighash_for_input: 0
+      wrong_sighash_value: 0x00
+
   - description: "input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output"
     violates: [bip375_eligibility]
     task: "fail_sign"

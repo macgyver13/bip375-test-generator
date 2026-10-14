@@ -45,6 +45,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | Nonzero prevout index | The spent output is vout 1. vout 0 is the change output, so a reader that ignores the index sees the wrong script. All 51 PSBT maps and every workflow step changed. 23 valid, 28 invalid, 17 workflow steps. |
 | 1.3.1 | | Added invalid “ecdh coverage: P2TR input with NUMS internal key claim not matching prevout missing ECDH share”. 23 valid, 29 invalid, 17 workflow steps. |
 | | Hardening | Added invalid “ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field when PSBT_OUT_SCRIPT not set”, “ecdh coverage: global ECDH share proven over a subset of eligible inputs”, and “input eligibility: non-SIGHASH_ALL signature on input with sp output and PSBT_IN_SIGHASH_TYPE omitted”. 23 valid, 32 invalid, 17 workflow steps. |
+| | Sighash coverage | Added invalid “input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output” and its PSBT_IN_SIGHASH_TYPE-omitted variant, “SIGHASH_ALL\|ANYONECANPAY sighash type on input with sp output”, “non-SIGHASH_ALL signature on taproot input with sp output” and “SIGHASH_DEFAULT sighash type on non-taproot input with sp output”. Added valid “can finalize: ineligible P2SH multisig input declaring SIGHASH_ALL”. 24 valid, 37 invalid, 17 workflow steps. |
 
 ---
 
