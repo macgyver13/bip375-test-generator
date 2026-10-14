@@ -253,6 +253,8 @@ class TestScenario:
     invalid_dleq_for_input: Optional[int] = None
     no_sighash_for_input: Optional[int] = None
     wrong_sighash_for_input: Optional[int] = None
+    wrong_sighash_value: int = SIGHASH_NONE  # Sighash type wrong_sighash_for_input declares
+    declare_sighash_for_input: Optional[int] = None  # Declare SIGHASH_ALL on an input without a per-input share
     default_sighash_for_input: Optional[int] = None  # P2TR input signed with SIGHASH_DEFAULT
     missing_ecdh_for_input: Optional[int] = None
     wrong_sp_info_size: bool = False
@@ -1372,6 +1374,17 @@ class PSBTBuilder:
         if per_input_ecdh:
             self._add_per_input_ecdh_shares(psbt, per_input_ecdh, scenario, input_data, scan_keys, signed_input_indices)
 
+        # Inputs that received a per-input share, in first-seen order, then any
+        # input a scenario targets directly, such as an ineligible one
+        sighash_inputs = dict.fromkeys(
+            input_idx for input_idx, scan_key_id in per_input_ecdh if scan_key_id in scan_keys
+        )
+        for input_idx in (scenario.wrong_sighash_for_input, scenario.declare_sighash_for_input):
+            if input_idx is not None:
+                sighash_inputs[input_idx] = None
+        for input_idx in sighash_inputs:
+            self._add_input_sighash(psbt, scenario, input_data, input_idx, signed_input_indices)
+
         # Error injection: Add ECDH share for ineligible input (only when explicitly requested)
         if scenario.inject_ineligible_ecdh:
             self._inject_ineligible_input_ecdh_shares(psbt, input_data, scan_keys)
@@ -1411,13 +1424,6 @@ class PSBTBuilder:
             if dleq_proof is not None:
                 add_raw_input_field(psbt, input_idx, PSBTKeyType.PSBT_IN_SP_DLEQ, scan_pub.bytes, dleq_proof)
 
-        # Inputs that received a per-input share, in first-seen order
-        share_inputs = dict.fromkeys(
-            input_idx for input_idx, scan_key_id in ecdh_data if scan_key_id in scan_keys
-        )
-        for input_idx in share_inputs:
-            self._add_input_sighash(psbt, scenario, input_data, input_idx, signed_input_indices)
-
     def _add_input_sighash(
         self,
         psbt: SilentPaymentPsbt,
@@ -1429,30 +1435,26 @@ class PSBTBuilder:
         """Add PSBT_IN_SIGHASH_TYPE to one input, and sign it when a scenario
         needs a signature present before the output scripts are set"""
         sighash_type = (
-            SIGHASH_NONE
+            scenario.wrong_sighash_value
             if scenario.wrong_sighash_for_input == input_idx
             else SIGHASH_ALL
         )
         if scenario.default_sighash_for_input == input_idx:
             sighash_type = SIGHASH_DEFAULT
+        sighash_field = struct.pack("<I", sighash_type)
         # no_sighash_for_input omits the field only; combined with
         # wrong_sighash_for_input the input still signs SIGHASH_NONE
         if scenario.no_sighash_for_input != input_idx:
-            add_raw_input_field(
-                psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
-            )
+            add_raw_input_field(psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", sighash_field)
 
         # A segwit v2 input is left unsigned: no signature message is
         # defined for it, and the check does not need a signature.
-        if scenario.wrong_sighash_for_input == input_idx:
-            # Partially sign to support correct detection at signed stage.
-            # SIGHASH_NONE does not commit to the intentionally empty outputs.
-            assert sighash_type == SIGHASH_NONE, (
-                "empty output_data is only valid for SIGHASH_NONE; "
-                "SIGHASH_SINGLE commits to the output at this index"
-            )
+        # Partially sign to support correct detection at signed stage.
+        # SIGHASH_NONE does not commit to the intentionally empty outputs, so any
+        # other wrong_sighash_value is declared only.
+        if scenario.wrong_sighash_for_input == input_idx and sighash_type == SIGHASH_NONE:
             input_info = self._find_input_info_by_index(input_data, input_idx)
-            if input_info and input_info.get("is_eligible", False):
+            if input_info and self._should_sign_input(input_info):
                 self._sign_single_input(
                     psbt,
                     input_info,
@@ -2164,6 +2166,8 @@ class ConfigBasedTestGenerator:
             invalid_dleq_for_input=control_override.get("invalid_dleq_for_input"),
             no_sighash_for_input=control_override.get("no_sighash_for_input"),
             wrong_sighash_for_input=control_override.get("wrong_sighash_for_input"),
+            wrong_sighash_value=control_override.get("wrong_sighash_value", SIGHASH_NONE),
+            declare_sighash_for_input=control_override.get("declare_sighash_for_input"),
             default_sighash_for_input=control_override.get("default_sighash_for_input"),
             missing_ecdh_for_input=control_override.get("missing_ecdh_for_input"),
             wrong_sp_info_size=control_override.get("wrong_sp_info_size", False),
