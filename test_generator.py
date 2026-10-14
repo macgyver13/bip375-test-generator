@@ -1394,9 +1394,6 @@ class PSBTBuilder:
     ):
         """Add per-input ECDH shares"""
 
-        # Track which inputs have been processed to add sighash type
-        processed_inputs = set()
-
         for (input_idx, scan_key_id), (ecdh_result, dleq_proof) in ecdh_data.items():
             if scan_key_id not in scan_keys:
                 continue
@@ -1414,45 +1411,58 @@ class PSBTBuilder:
             if dleq_proof is not None:
                 add_raw_input_field(psbt, input_idx, PSBTKeyType.PSBT_IN_SP_DLEQ, scan_pub.bytes, dleq_proof)
 
-            # Add sighash type only once per input
-            if input_idx not in processed_inputs:
-                sighash_type = (
-                    SIGHASH_NONE
-                    if scenario.wrong_sighash_for_input == input_idx
-                    else SIGHASH_ALL
+        # Inputs that received a per-input share, in first-seen order
+        share_inputs = dict.fromkeys(
+            input_idx for input_idx, scan_key_id in ecdh_data if scan_key_id in scan_keys
+        )
+        for input_idx in share_inputs:
+            self._add_input_sighash(psbt, scenario, input_data, input_idx, signed_input_indices)
+
+    def _add_input_sighash(
+        self,
+        psbt: SilentPaymentPsbt,
+        scenario: TestScenario,
+        input_data: List[Dict],
+        input_idx: int,
+        signed_input_indices: Optional[set] = None,
+    ):
+        """Add PSBT_IN_SIGHASH_TYPE to one input, and sign it when a scenario
+        needs a signature present before the output scripts are set"""
+        sighash_type = (
+            SIGHASH_NONE
+            if scenario.wrong_sighash_for_input == input_idx
+            else SIGHASH_ALL
+        )
+        if scenario.default_sighash_for_input == input_idx:
+            sighash_type = SIGHASH_DEFAULT
+        # no_sighash_for_input omits the field only; combined with
+        # wrong_sighash_for_input the input still signs SIGHASH_NONE
+        if scenario.no_sighash_for_input != input_idx:
+            add_raw_input_field(
+                psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
+            )
+
+        # A segwit v2 input is left unsigned: no signature message is
+        # defined for it, and the check does not need a signature.
+        if scenario.wrong_sighash_for_input == input_idx:
+            # Partially sign to support correct detection at signed stage.
+            # SIGHASH_NONE does not commit to the intentionally empty outputs.
+            assert sighash_type == SIGHASH_NONE, (
+                "empty output_data is only valid for SIGHASH_NONE; "
+                "SIGHASH_SINGLE commits to the output at this index"
+            )
+            input_info = self._find_input_info_by_index(input_data, input_idx)
+            if input_info and input_info.get("is_eligible", False):
+                self._sign_single_input(
+                    psbt,
+                    input_info,
+                    input_data,
+                    [],
+                    input_idx,
+                    sighash_type=sighash_type,
                 )
-                if scenario.default_sighash_for_input == input_idx:
-                    sighash_type = SIGHASH_DEFAULT
-                if scenario.no_sighash_for_input == input_idx:
-                    sighash_type = None  # Don't add sighash type at all
-                if sighash_type is not None:
-                    add_raw_input_field(
-                        psbt, input_idx, PSBTKeyType.PSBT_IN_SIGHASH_TYPE, b"", struct.pack("<I", sighash_type)
-                    )
-
-                # A segwit v2 input is left unsigned: no signature message is
-                # defined for it, and the check does not need a signature.
-                if scenario.wrong_sighash_for_input == input_idx:
-                    # Partially sign to support correct detection at signed stage.
-                    # SIGHASH_NONE does not commit to the intentionally empty outputs.
-                    assert sighash_type == SIGHASH_NONE, (
-                        "empty output_data is only valid for SIGHASH_NONE; "
-                        "SIGHASH_SINGLE commits to the output at this index"
-                    )
-                    input_info = self._find_input_info_by_index(input_data, input_idx)
-                    if input_info and input_info.get("is_eligible", False):
-                        self._sign_single_input(
-                            psbt,
-                            input_info,
-                            input_data,
-                            [],
-                            input_idx,
-                            sighash_type=sighash_type,
-                        )
-                        if signed_input_indices is not None:
-                            signed_input_indices.add(input_idx)
-
-                processed_inputs.add(input_idx)
+                if signed_input_indices is not None:
+                    signed_input_indices.add(input_idx)
 
     def _compute_global_dleq_proof(self, scan_key_id: str, summed_private_key, scan_pub) -> bytes:
         """Compute a global DLEQ proof for a scan key using the summed private key"""
