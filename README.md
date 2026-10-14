@@ -45,6 +45,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | Funding transactions | Each prevout is paid by a two-output transaction: a P2WPKH change output with a different amount at vout 0 and the spent output at vout 1, so a reader that ignores the prevout index sees the wrong script and amount. Segwit v0 P2WPKH inputs also carry `PSBT_IN_NON_WITNESS_UTXO`. |
 | | | Added invalid “ecdh coverage: P2TR input 1 with a NUMS PSBT_IN_TAP_INTERNAL_KEY that does not tweak to scriptPubKey and no ECDH share”. 23 valid, 29 invalid, 17 workflow steps. |
 | | Hardening | Added invalid “ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field when PSBT_OUT_SCRIPT not set for sp output”, “ecdh coverage: global ECDH share proven over a subset of eligible inputs”, and “input eligibility: non-SIGHASH_ALL signature on input with sp output and PSBT_IN_SIGHASH_TYPE omitted”. `notes` gained “Invalid vectors have PSBT_OUT_SCRIPT set on every sp output unless the description says it is not set.” 23 valid, 32 invalid, 17 workflow steps. |
+| | Sighash coverage | Added invalid “input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output” and its PSBT_IN_SIGHASH_TYPE-omitted variant, “SIGHASH_ALL\|ANYONECANPAY sighash type on input with sp output”, “non-SIGHASH_ALL signature on taproot input with sp output” and “SIGHASH_DEFAULT sighash type on non-taproot input with sp output”. Added valid “can finalize: P2WPKH input with ineligible P2SH multisig input declaring SIGHASH_ALL”. 24 valid, 37 invalid, 17 workflow steps. |
 
 ---
 
