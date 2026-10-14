@@ -757,16 +757,17 @@ def sign_p2sh_multisig_input(
     input_index: int,
     redeem_script: bytes,
     threshold: int,
+    sighash_type: int = SIGHASH_ALL,
 ) -> List[bytes]:
     """Sign a legacy P2SH multisig input."""
     tx = _build_tx(inputs, outputs)
-    sighash, err = LegacySignatureHash(CScript(redeem_script), tx, input_index, SIGHASH_ALL)
+    sighash, err = LegacySignatureHash(CScript(redeem_script), tx, input_index, sighash_type)
     assert err is None
 
     signatures = []
     for private_key in private_keys[:threshold]:
         sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
-        signatures.append(sig + bytes([SIGHASH_ALL]))
+        signatures.append(sig + bytes([sighash_type]))
 
     return signatures
 
