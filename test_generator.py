@@ -6,12 +6,12 @@ Configuration-driven system for generating test vectors with support for large P
 Organized by validation type → input/output type → complexity.
 """
 
+import argparse
 import base64
 from dataclasses import dataclass, field
 from enum import Enum
 import json
 import hashlib
-from importlib.metadata import version
 import os
 from pathlib import Path
 import struct
@@ -33,8 +33,8 @@ from test_framework.script_util import (
     script_to_p2sh_script,
     script_to_p2wsh_script,
 )
-import spdk_psbt
-from spdk_psbt import (
+import psbt_backend as spdk_psbt
+from psbt_backend import (
     add_raw_global_field,
     add_raw_input_field,
     add_raw_output_field,
@@ -74,7 +74,7 @@ NUMS_H = bytes.fromhex("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9a
 def _create_psbt(num_inputs: int, num_outputs: int, *, tx_modifiable: bool = False) -> SilentPaymentPsbt:
     """Create a PSBT v2 with the given number of inputs/outputs.
 
-    Uses the Rust SilentPaymentPsbt.create() which sets standard global fields
+    Uses the PSBT backend's SilentPaymentPsbt.create() which sets standard global fields
     (VERSION, TX_VERSION, INPUT_COUNT, OUTPUT_COUNT, TX_MODIFIABLE), then
     overrides TX_MODIFIABLE to match the test scenario.
     """
@@ -1959,7 +1959,16 @@ class TestVectorGenerator:
 
 
 if __name__ == "__main__":
-    print(f"Using spdk_psbt version {version('spdk_psbt')}")
+    print(f"Using PSBT backend {spdk_psbt.BACKEND_LABEL}")
+
+    parser = argparse.ArgumentParser(description="Generate BIP-375 test vectors")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(__file__).parent / "bip375_test_vectors.json",
+        help="Where to write the vector file",
+    )
+    args = parser.parse_args()
 
     # Create test configs directory structure if it doesn't exist
     test_configs_dir = Path(__file__).parent / "test_configs"
@@ -1967,8 +1976,5 @@ if __name__ == "__main__":
     (test_configs_dir / "invalid").mkdir(exist_ok=True)
     (test_configs_dir / "valid").mkdir(exist_ok=True)
 
-    # Default: save to parent directory
-    default_output = Path(__file__).parent / "bip375_test_vectors.json"
-
     generator = TestVectorGenerator()
-    generator.save_test_vectors(str(default_output))
+    generator.save_test_vectors(str(args.output))
