@@ -180,6 +180,7 @@ class InputSpec:
     eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
     skip_signing: bool = False  # Force input to remain unsigned even if eligible
     script_pubkey_override: Optional[bytes] = None  # Replace the P2WPKH or P2PKH prevout scriptPubKey
+    keyless: bool = False  # No generated key controls the script (e.g. a bare OP_2 override)
 
 
 @dataclass
@@ -293,6 +294,15 @@ class InputFactory:
 
         if spec.eligible_override is not None:
             result["is_eligible"] = spec.eligible_override
+
+        if spec.keyless:
+            if spec.input_type != InputType.P2PKH:
+                raise ValueError(
+                    f"keyless is only supported for p2pkh inputs, got {spec.input_type.value}"
+                )
+            # No generated key controls the script, so none is exposed or disclosed
+            result["private_key"] = None
+            result["public_key"] = None
 
         if spec.skip_signing:
             result["skip_signing"] = True
@@ -839,14 +849,15 @@ class PSBTBuilder:
                 b"",
                 input_info["non_witness_utxo"],
             )
-            fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-                input_info["public_key"].bytes,
-                fake_derivation,
-            )
+            if input_info["public_key"] is not None:
+                fake_derivation = struct.pack("<I", 0x80000000) + struct.pack("<I", idx)
+                add_raw_input_field(
+                    psbt,
+                    idx,
+                    PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+                    input_info["public_key"].bytes,
+                    fake_derivation,
+                )
 
         elif input_type == InputType.P2SH_P2WPKH:
             # Both non-witness UTXO (full prev tx) and witness UTXO (P2SH scriptPubKey),
@@ -1558,8 +1569,9 @@ class PSBTBuilder:
         self, psbt: SilentPaymentPsbt, output_idx: int, input_data: List[Dict]
     ):
         """Add PSBT_OUT_BIP32_DERIVATION for change identification"""
-        # Use the first input's public key for the derivation (common pattern)
-        if input_data and "public_key" in input_data[0]:
+        # Use the first input's public key for the derivation (common pattern).
+        # Keyless inputs expose no public key, so the derivation is skipped.
+        if input_data and input_data[0].get("public_key") is not None:
             pubkey = input_data[0]["public_key"]
 
             # Create BIP32 derivation path (master_fingerprint + path)
@@ -1617,6 +1629,7 @@ class ConfigBasedTestGenerator:
                 use_nums_tap_internal_key=input_config.get("use_nums_tap_internal_key", False),
                 eligible_override=input_config.get("eligible_override"),
                 skip_signing=input_config.get("skip_signing", False),
+                keyless=input_config.get("keyless", False),
                 script_pubkey_override=(
                     bytes.fromhex(input_config["script_pubkey"])
                     if "script_pubkey" in input_config
@@ -1638,6 +1651,7 @@ class ConfigBasedTestGenerator:
                     use_nums_tap_internal_key=input_spec.use_nums_tap_internal_key,
                     eligible_override=input_spec.eligible_override,
                     skip_signing=input_spec.skip_signing,
+                    keyless=input_spec.keyless,
                     script_pubkey_override=input_spec.script_pubkey_override,
                 )
                 inputs.append(batch_spec)
