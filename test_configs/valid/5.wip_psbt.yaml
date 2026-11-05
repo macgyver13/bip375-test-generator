@@ -66,3 +66,28 @@ test_cases:
         derivation_suffix: "recipient_b"
     control_override:
       missing_ecdh_for_scan_key: "scan_key_a"
+
+  # Valid counterpart to the segwit version greater than 1 invalid vectors: a
+  # bare OP_2 scriptPubKey is not a BIP-141 witness program, so the segwit
+  # version check must not reject it. The input is ineligible for BIP-352 and
+  # contributes no ECDH share; the P2WPKH input carries the share. The bare
+  # OP_2 prevout is not segwit, so it is supplied via PSBT_IN_NON_WITNESS_UTXO.
+  # The input needs no signature but carries no PSBT_IN_FINAL_SCRIPTSIG, so
+  # the PSBT is valid but incomplete.
+  - description: "in progress: two mixed input types - only eligible inputs contribute ECDH shares (bare OP_2 excluded, not a segwit v2 witness program)"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2pkh"
+        amount: 150000
+        script_pubkey: "52"
+        eligible_override: false
+        skip_signing: true
+        keyless: true
+    outputs:
+      - type: "silent_payment"
+        amount: 245000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
