@@ -2,7 +2,7 @@
 """
 Utilities for the BIP-375 test vector generator.
 
-Provides the BIP-352 crypto wrappers (spdk_psbt), PSBT key type constants,
+Provides the BIP-352 crypto wrappers (PSBT backend), PSBT key type constants,
 deterministic key generation, and transaction signing. Bitcoin primitive
 assembly (transactions, scripts, sighash, signing) is delegated to the
 vendored Bitcoin Core test_framework; only the BIP-375 silent-payment
@@ -18,7 +18,7 @@ import hashlib
 from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
-import spdk_psbt
+import psbt_backend as spdk_psbt
 
 from test_framework import psbt as _tf_psbt
 from test_framework.crypto.secp256k1 import GE, G
@@ -232,7 +232,7 @@ class Wallet:
 
 
 # ============================================================================
-# BIP-352 Cryptographic Functions (spdk_psbt wrappers)
+# BIP-352 Cryptographic Functions (PSBT backend wrappers)
 # ============================================================================
 
 
@@ -419,12 +419,13 @@ def _field_sort_key(item: Tuple) -> Tuple[int, bytes]:
 def normalize_psbt_field_order(serialized_psbt: bytes) -> bytes:
     """Re-serialize a PSBT with every key-value map in canonical key order.
 
-    spdk_psbt emits map fields in an order that depends on the installed library
-    build, so regenerating against a rebuilt wheel reshuffles the vectors even
-    though the contents are identical. BIP-174 maps are unordered, so we
-    canonicalize each map to ascending (type_value, key_data) -- the same total
-    order rust-psbt sorts by -- making the published vectors deterministic
-    regardless of the serializer.
+    The PSBT backend does not emit map fields in a stable order (spdk_psbt's
+    depends on the installed library build, py_spdk's on insertion order), so
+    regenerating can reshuffle the vectors even though the contents are
+    identical. BIP-174 maps are unordered, so we canonicalize each map to
+    ascending (type_value, key_data) -- the same total order rust-psbt sorts
+    by -- making the published vectors deterministic regardless of the
+    serializer.
 
     The pass canonicalizes two things: key order, and the absence of an empty
     output script.
