@@ -8,6 +8,8 @@ test_cases:
         amount: 10000
         use_nums_tap_internal_key: true
         eligible_override: true
+        # No private key exists for a NUMS output key, so no key-path signature.
+        skip_signing: true
     outputs:
       - type: "silent_payment"
         amount: 9500
@@ -52,7 +54,7 @@ test_cases:
         amount: 100000
     outputs:
       - type: "silent_payment"
-        amount: 90000
+        amount: 75000
         scan_key_id: "default"
         force_k_index: 0
       - type: "silent_payment"

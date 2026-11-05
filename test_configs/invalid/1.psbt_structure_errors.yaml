@@ -108,6 +108,8 @@ test_cases:
     inputs:
       - type: "p2wpkh"
         amount: 100000
+        # Without the output script the transaction to sign is undefined.
+        skip_signing: true
     outputs:
       - type: "regular_p2wpkh"
         amount: 95000
