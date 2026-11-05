@@ -230,6 +230,7 @@ class TestScenario:
     wrong_sighash_for_input: Optional[int] = None
     missing_ecdh_for_input: Optional[int] = None
     wrong_sp_info_size: bool = False
+    wrong_sp_label_size: bool = False
     missing_global_dleq: bool = False
     use_global_ecdh: Optional[List[str]] = (
         None  # list of scan key IDs to use global ECDH
@@ -1526,12 +1527,15 @@ class PSBTBuilder:
 
         # Add label if specified (this will create invalid PSBT if SP_V0_INFO is missing)
         if output_info.get("label") is not None:
+            label = struct.pack("<I", output_info["label"])
+            if scenario.wrong_sp_label_size:
+                label = label[:1]  # Wrong size (1 instead of 4)
             add_raw_output_field(
                 psbt,
                 idx,
                 PSBTKeyType.PSBT_OUT_SP_V0_LABEL,
                 b"",
-                struct.pack("<I", output_info["label"]),
+                label,
             )
 
         return output_script
@@ -1693,6 +1697,7 @@ class ConfigBasedTestGenerator:
             wrong_sighash_for_input=control_override.get("wrong_sighash_for_input"),
             missing_ecdh_for_input=control_override.get("missing_ecdh_for_input"),
             wrong_sp_info_size=control_override.get("wrong_sp_info_size", False),
+            wrong_sp_label_size=control_override.get("wrong_sp_label_size", False),
             missing_global_dleq=control_override.get("missing_global_dleq", False),
             use_global_ecdh=use_global_ecdh,
             use_segwit_v2_input=control_override.get("use_segwit_v2_input", False),
