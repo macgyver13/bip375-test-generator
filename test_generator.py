@@ -179,7 +179,7 @@ class InputSpec:
     use_nums_tap_internal_key: bool = False  # For testing taproot internal key
     eligible_override: Optional[bool] = None  # Force is_eligible regardless of input type
     skip_signing: bool = False  # Force input to remain unsigned even if eligible
-    script_pubkey_override: Optional[bytes] = None  # Replace the P2WPKH prevout scriptPubKey
+    script_pubkey_override: Optional[bytes] = None  # Replace the P2WPKH or P2PKH prevout scriptPubKey
 
 
 @dataclass
@@ -347,6 +347,8 @@ class InputFactory:
         )
 
         script_pubkey = bytes(key_to_p2pkh_script(input_pub.bytes))
+        if spec.script_pubkey_override is not None:
+            script_pubkey = spec.script_pubkey_override
 
         prev_input_txid = hashlib.sha256(
             f"{self.base_seed}_p2pkh_prevout_{input_index}".encode()
