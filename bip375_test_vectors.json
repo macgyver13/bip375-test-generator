@@ -420,6 +420,25 @@
       ]
     },
     {
+      "description": "input eligibility: segwit version greater than 1 supplied via PSBT_IN_NON_WITNESS_UTXO with sp output",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAFICAAAAAfTCEtWu0ef2/2M/LOCcZHxXvt2TAxTZjed1A9WOlAszAAAAAAD/////AfBJAgAAAAAAFlIUIppy00pkW9NJa7v1C7uByQY/T5QAAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiDh/4XEEQ/a9bWfgusG8FVcGc53XmlVhXM3mLq1uKH89AEPBAAAAAABEAT+////AAEDCJBfAQAAAAAAAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
+            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
+            "prevout_txid": "f4fca1b8b5ba9837738555695e77ce195c55f006eb829fb5f5da0f11c485ffe1",
+            "prevout_index": 0,
+            "amount": 150000,
+            "non_witness_utxo": "0200000001f4c212d5aed1e7f6ff633f2ce09c647c57bedd930314d98de77503d58e940b330000000000ffffffff01f049020000000000165214229a72d34a645bd3496bbbf50bbb81c9063f4f9400000000",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ]
+      }
+    },
+    {
       "description": "input eligibility: non-SIGHASH_ALL signature on input with sp output",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAR+ghgEAAAAAABYAFB4q14ctMpQTpW3wlovjOCIngxY7IgICyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL9HMEQCID1lvc+owIu6KcBlzqbELkBAvrwUG9UvgfUD9jrZiAZUAiBGU0AdzeUC8dVS4BTFAgx1UerNOncuiYVMYBgzYyB9FAEBAwQCAAAAIgYCyBe7dSGvw16pbzv7Jw5utQ3f+lVgYnuWH+wA8pllCL8IAAAAgAAAAAABDiD3Tt0fdbS7Pl10nBW/22Y0j2gFqbTUX+7houIB9QO7cQEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghA+yk/xG3KOLg9gzmIilDpv9VudlfYnv5qZ0IS8hy1QpbIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhAihOzmFVF9yvW6JcUrrkJs+NUqEKpu4tWzQ7e0h34oZlZizEiikngvX6VzhBT98WyistUOmhwdgDjzomCLuMgIQABAwgYcwEAAAAAAAEEIlEgZG9JTKC7m86tFLjbfkxpRFYfryMufMzDa91YaV90kVkBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
