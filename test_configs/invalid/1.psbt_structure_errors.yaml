@@ -2,6 +2,7 @@ description: "PSBT structure validation errors"
 
 test_cases:
   - description: "psbt structure: missing PSBT_OUT_SP_V0_INFO field when PSBT_OUT_SP_V0_LABEL set"
+    violates: [bip375_eligibility]
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -18,6 +19,7 @@ test_cases:
       missing_sp_info_field: true
 
   - description: "psbt structure: incorrect byte length for PSBT_OUT_SP_V0_LABEL field"
+    violates: [bip174_framing]
     task: "fail_deserialize"
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
@@ -38,6 +40,7 @@ test_cases:
       wrong_sp_label_size: true
 
   - description: "psbt structure: incorrect byte length for PSBT_OUT_SP_V0_INFO field"
+    violates: [bip174_framing, bip352_outputs]
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -53,6 +56,7 @@ test_cases:
       wrong_sp_info_size: true
 
   - description: "psbt structure: incorrect byte length for PSBT_IN_SP_ECDH_SHARE field"
+    violates: [bip174_framing, bip352_outputs, bip374_dleq, bip375_ecdh]
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -68,6 +72,7 @@ test_cases:
       wrong_ecdh_share_size: true
 
   - description: "psbt structure: incorrect byte length for PSBT_IN_SP_DLEQ field"
+    violates: [bip174_framing, bip374_dleq]
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
@@ -89,6 +94,7 @@ test_cases:
   # observable here. Either assert the Signer obligation as a workflow step or
   # drop the case and raise the receiver-side check against the BIP.
   - description: "psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output"
+    violates: [bip370_modifiable]
     validation_result: "invalid"
     inputs:
       - type: "p2wpkh"
@@ -104,6 +110,7 @@ test_cases:
       set_tx_modifiable: true
 
   - description: "psbt structure: missing PSBT_OUT_SCRIPT field when sending to non-sp output"
+    violates: [bip370_outputs]
     validation_result: "invalid"
     exclude_material: ["inputs", "sp_proofs", "outputs"]
     inputs:
