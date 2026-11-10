@@ -252,6 +252,13 @@ class DerivedKeyMaterial:
     derivation_private_key: PrivateKey
     derivation_public_key: PublicKey
 
+    @property
+    def path_string(self) -> str:
+        """The path as "m/86'/1'/0'/0/0"."""
+        return "m/" + "/".join(
+            f"{child & 0x7FFFFFFF}'" if child & 0x80000000 else str(child) for child in self.path
+        )
+
 
 class JadeKeyProfile:
     """The fixed test wallet loaded by Jade's single-signature tests."""
@@ -294,22 +301,45 @@ class JadeKeyProfile:
             raise ValueError("Invalid BIP32 child private key")
         return PrivateKey(child_private_key), digest[32:]
 
-    def derive(self, purpose: int, branch: int, index: int, *, foreign: bool = False) -> DerivedKeyMaterial:
-        path = (purpose | 0x80000000, self.COIN_TYPE, 0x80000000, branch, index)
-        if foreign:
-            private_key = self.FOREIGN_PRIVATE_KEY
-            public_key = PublicKey(private_key * G)
-            return DerivedKeyMaterial(
-                private_key, public_key, self.FOREIGN_FINGERPRINT, path, private_key, public_key
-            )
-
-        private_key, chain_code = self.master_private_key, self.master_chain_code
+    def _derive_from(
+        self, private_key: PrivateKey, chain_code: bytes, path: tuple[int, ...], fingerprint: bytes
+    ) -> DerivedKeyMaterial:
         for child in path:
             private_key, chain_code = self._derive_child(private_key, chain_code, child)
         public_key = PublicKey(private_key * G)
+        return DerivedKeyMaterial(private_key, public_key, fingerprint, path, private_key, public_key)
+
+    def _derive_foreign(self, path: tuple[int, ...]) -> DerivedKeyMaterial:
+        private_key = self.FOREIGN_PRIVATE_KEY
+        public_key = PublicKey(private_key * G)
         return DerivedKeyMaterial(
-            private_key, public_key, self.FINGERPRINT, path, private_key, public_key
+            private_key, public_key, self.FOREIGN_FINGERPRINT, path, private_key, public_key
         )
+
+    def derive_path(self, path: tuple[int, ...], *, foreign: bool = False) -> DerivedKeyMaterial:
+        if foreign:
+            return self._derive_foreign(path)
+        return self._derive_from(self.master_private_key, self.master_chain_code, path, self.FINGERPRINT)
+
+    def derive(self, purpose: int, branch: int, index: int, *, foreign: bool = False) -> DerivedKeyMaterial:
+        path = (purpose | 0x80000000, self.COIN_TYPE, 0x80000000, branch, index)
+        return self.derive_path(path, foreign=foreign)
+
+    def bip352_scan_spend(self, account: int = 0, *, foreign: bool = False):
+        """BIP-352 scan and spend keys from this wallet.
+
+        scan is m/352'/coin'/account'/1'/0 and spend is m/352'/coin'/account'/0'/0.
+        """
+        if not 0 <= account < 0x80000000:
+            raise ValueError("Invalid BIP-352 account")
+        account_h = account | 0x80000000
+        scan = self.derive_path(
+            (352 | 0x80000000, self.COIN_TYPE, account_h, 1 | 0x80000000, 0), foreign=foreign
+        )
+        spend = self.derive_path(
+            (352 | 0x80000000, self.COIN_TYPE, account_h, 0 | 0x80000000, 0), foreign=foreign
+        )
+        return scan, spend
 
     def derive_taproot(self, branch: int, index: int, *, foreign: bool = False) -> DerivedKeyMaterial:
         material = self.derive(86, branch, index, foreign=foreign)
@@ -330,6 +360,51 @@ class JadeKeyProfile:
             material.path,
             material.derivation_private_key,
             material.derivation_public_key,
+        )
+
+
+class WorkflowKeyProfile(JadeKeyProfile):
+    """Two seeded BIP-39 test wallets for workflow vectors, so every implementer can load the same keys.
+
+    The primary wallet owns `owner: wallet` inputs and the cosigner wallet `owner: foreign` ones. Both
+    derive real BIP32 keys (m/purpose'/1'/0'/branch/index) and carry their fingerprint and path into the PSBT.
+    """
+
+    MNEMONIC = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+    COSIGNER_MNEMONIC = "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong"
+
+    def __init__(self):
+        self.FINGERPRINT = self._fingerprint(self._seed(self.MNEMONIC))
+        self.COSIGNER_FINGERPRINT = self._fingerprint(self._seed(self.COSIGNER_MNEMONIC))
+        super().__init__()
+        self.cosigner_master_private_key, self.cosigner_master_chain_code = self._master_key(
+            self._seed(self.COSIGNER_MNEMONIC)
+        )
+
+    @staticmethod
+    def _seed(mnemonic: str) -> bytes:
+        mnemonic = unicodedata.normalize("NFKD", mnemonic).encode()
+        return hashlib.pbkdf2_hmac("sha512", mnemonic, unicodedata.normalize("NFKD", "mnemonic").encode(), 2048)
+
+    @classmethod
+    def _fingerprint(cls, seed: bytes) -> bytes:
+        private_key, _ = cls._master_key(seed)
+        public_key = PublicKey(private_key * G)
+        return hashlib.new("ripemd160", hashlib.sha256(public_key.bytes).digest()).digest()[:4]
+
+    @property
+    def wallets(self) -> list:
+        return [
+            {"fingerprint": self.FINGERPRINT.hex(), "mnemonic": self.MNEMONIC},
+            {"fingerprint": self.COSIGNER_FINGERPRINT.hex(), "mnemonic": self.COSIGNER_MNEMONIC},
+        ]
+
+    def _derive_foreign(self, path: tuple[int, ...]) -> DerivedKeyMaterial:
+        return self._derive_from(
+            self.cosigner_master_private_key,
+            self.cosigner_master_chain_code,
+            path,
+            self.COSIGNER_FINGERPRINT,
         )
 
 
