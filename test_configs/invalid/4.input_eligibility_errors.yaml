@@ -2,6 +2,7 @@ description: "Signer constraint validation errors"
 
 test_cases:
   - description: "input eligibility: segwit version greater than 1 in transaction inputs with sp output"
+    violates: [bip352_outputs, bip375_eligibility]
     validation_result: "invalid"
     checks: ["input_eligibility"]
     exclude_material: ["sp_proofs", "outputs"]
@@ -22,6 +23,7 @@ test_cases:
   # PSBT_IN_NON_WITNESS_UTXO. Everything else is valid, so the PSBT fails only
   # because the segwit version check reads the script from either UTXO field.
   - description: "input eligibility: segwit version greater than 1 supplied via PSBT_IN_NON_WITNESS_UTXO with sp output"
+    violates: [bip375_eligibility]
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
@@ -37,6 +39,7 @@ test_cases:
       - key_id: "default"
 
   - description: "input eligibility: non-SIGHASH_ALL signature on input with sp output"
+    violates: [bip375_sighash_all]
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
