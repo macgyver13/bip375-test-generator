@@ -289,6 +289,10 @@ class TestScenario:
 
 
 class InputFactory:
+    # Spend vout 1. vout 0 of the funding transaction is change, so a decoder
+    # that ignores the prevout index and reads output 0 sees the wrong script.
+    SPENT_OUTPUT_INDEX = 1
+
     """Creates PSBT inputs based on specifications"""
 
     def __init__(self, wallet: Wallet, base_seed: str = "deterministic_test", jade_profile: Optional[JadeKeyProfile] = None):
@@ -487,7 +491,7 @@ class InputFactory:
             "private_key": input_priv,
             "public_key": input_pub,
             "previous_txid": previous_txid,
-            "prevout_index": 0,
+            "prevout_index": self.SPENT_OUTPUT_INDEX,
             "script_pubkey": script_pubkey,
             "witness_utxo": witness_utxo,
             "non_witness_utxo": prev_tx,
@@ -518,7 +522,7 @@ class InputFactory:
             "private_key": input_priv,
             "public_key": input_pub,
             "previous_txid": previous_txid,
-            "prevout_index": 0,
+            "prevout_index": self.SPENT_OUTPUT_INDEX,
             "script_pubkey": script_pubkey,
             "non_witness_utxo": prev_tx,
             "amount": spec.amount,
@@ -552,7 +556,7 @@ class InputFactory:
             "private_key": input_priv,
             "public_key": input_pub,
             "previous_txid": previous_txid,
-            "prevout_index": 0,
+            "prevout_index": self.SPENT_OUTPUT_INDEX,
             "script_pubkey": script_pubkey,
             "redeem_script": redeem_script,
             "witness_utxo": witness_utxo,
@@ -598,7 +602,7 @@ class InputFactory:
             "public_keys": [pub for _, pub in keys],
             "public_key": keys[0][1] if keys else None,
             "multisig_threshold": spec.multisig_threshold or 2,
-            "prevout_index": 0,
+            "prevout_index": self.SPENT_OUTPUT_INDEX,
             "amount": spec.amount,
             "sequence": spec.sequence,
             "is_eligible": False,
@@ -704,7 +708,7 @@ class InputFactory:
                 "tap_control_block": control_block,
                 "tap_merkle_root": taproot_info.merkle_root,
                 "previous_txid": previous_txid,
-                "prevout_index": 0,
+                "prevout_index": self.SPENT_OUTPUT_INDEX,
                 "script_pubkey": script_pubkey,
                 "witness_utxo": witness_utxo,
                 "non_witness_utxo": prev_tx,
@@ -743,7 +747,7 @@ class InputFactory:
             "public_key": output_pub,
             "tap_internal_key": tap_internal_xonly,
             "previous_txid": previous_txid,
-            "prevout_index": 0,
+            "prevout_index": self.SPENT_OUTPUT_INDEX,
             "script_pubkey": script_pubkey,
             "witness_utxo": witness_utxo,
             "non_witness_utxo": prev_tx,
@@ -759,17 +763,19 @@ class InputFactory:
     def _create_prev_tx(self, prev_input_txid: bytes, amount: int, script_pubkey: bytes) -> bytes:
         """Funding transaction that created this input's prevout.
 
-        vout 0 is the spent payment. vout 1 pays change to a distinct P2WPKH
-        program, so the prevout comes from a two-output transaction. The
-        funding input is not itself a checked prevout.
+        vout 0 pays change to a distinct P2WPKH program. The spent payment
+        is SPENT_OUTPUT_INDEX, which is not zero. The funding input is not
+        itself a checked prevout.
         """
         tx = CTransaction()
         tx.version = 2
         tx.nLockTime = 0
         tx.vin.append(CTxIn(COutPoint(uint256_from_str(prev_input_txid), 0), b"", 0xFFFFFFFE))
-        tx.vout.append(CTxOut(amount, bytes(script_pubkey)))
+        if self.SPENT_OUTPUT_INDEX != 1:
+            raise ValueError("funding transaction is built with change at vout 0 and the payment at vout 1")
         change_program = hash160(hashlib.sha256(b"funding-change" + prev_input_txid).digest())
         tx.vout.append(CTxOut(amount, bytes(program_to_witness_script(0, change_program))))
+        tx.vout.append(CTxOut(amount, bytes(script_pubkey)))
         return tx.serialize_without_witness()
 
 
