@@ -322,8 +322,14 @@ class JadeKeyProfile:
         material = self.derive(86, branch, index, foreign=foreign)
         xonly, _ = compute_xonly_pubkey(material.derivation_private_key.bytes)
         tweak = TaggedHash("TapTweak", xonly)
-        effective_private_key = PrivateKey(int.from_bytes(tweak_add_privkey(material.derivation_private_key.bytes, tweak), "big"))
-        effective_public_key = PublicKey(effective_private_key * G)
+        effective_private_int = int.from_bytes(
+            tweak_add_privkey(material.derivation_private_key.bytes, tweak), "big"
+        )
+        # BIP340 lifts the output key with even y. The DLEQ public key is that point.
+        if int((effective_private_int * G).y) % 2 != 0:
+            effective_private_int = GE.ORDER - effective_private_int
+        effective_private_key = PrivateKey(effective_private_int)
+        effective_public_key = PublicKey(effective_private_int * G)
         return DerivedKeyMaterial(
             effective_private_key,
             effective_public_key,
