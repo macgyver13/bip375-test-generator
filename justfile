@@ -1,6 +1,9 @@
 project_root := justfile_directory()
 home := env_var("HOME")
 vectors_file := "bip375_test_vectors.json"
+# The standard vectors plus every optional set (see INCLUDE_CHOICES in test_generator.py)
+extended_file := "bip375_test_vectors_extended.json"
+extended_includes := "workflows,experimental"
 rust_vectors_file := "bip375.json"
 out_dir := project_root + "/out"
 bips_dir := home + "/src/bips/bip-0375"
@@ -17,12 +20,16 @@ _default:
   @just --list
 
 gen:
-  @echo "Generating {{vectors_file}}"
+  @echo "Generating {{vectors_file}} (standard)"
   python {{project_root}}/test_generator.py
 
-gen-simple:
-  @echo "Generating {{vectors_file}} without the workflows section"
-  python {{project_root}}/test_generator.py --no-workflows
+gen-extended:
+  @echo "Generating {{extended_file}} (standard plus {{extended_includes}})"
+  python {{project_root}}/test_generator.py --include {{extended_includes}} --output {{project_root}}/{{extended_file}}
+
+gen-all:
+  @just gen
+  @just gen-extended
 
 gen-jade:
   @echo "Generating Jade fixtures in {{out_dir}}/jade"
@@ -30,13 +37,20 @@ gen-jade:
 
 gen-rust:
   @mkdir -p {{out_dir}}
-  @if [ ! -f {{project_root}}/{{vectors_file}} ]; then echo "Missing source file: {{project_root}}/{{vectors_file}}" >&2; exit 1; fi
+  @if [ ! -f {{project_root}}/{{extended_file}} ]; then echo "Missing source file: {{project_root}}/{{extended_file}}" >&2; exit 1; fi
   @if [ ! -f {{convert_script}} ]; then echo "Missing conversion script: {{convert_script}}" >&2; exit 1; fi
-  @echo "Generating {{out_dir}}/{{rust_vectors_file}} from {{vectors_file}}"
-  python {{convert_script}} {{project_root}}/{{vectors_file}} -o {{out_dir}}/{{rust_vectors_file}}
+  @echo "Generating {{out_dir}}/{{rust_vectors_file}} from {{extended_file}}"
+  python {{convert_script}} {{project_root}}/{{extended_file}} -o {{out_dir}}/{{rust_vectors_file}}
 
 sync target:
   @case "{{target}}" in bip) just sync-bip ;; rust) just sync-rust ;; spdk) just sync-spdk ;; *) echo "Invalid sync target: {{target}}. Expected one of: bip, rust, spdk" >&2; exit 1 ;; esac
+
+# The workflow PR in bips takes the extended file under the standard name.
+sync-bip-extended:
+  @if [ ! -f {{project_root}}/{{extended_file}} ]; then echo "Missing source file: {{project_root}}/{{extended_file}}" >&2; exit 1; fi
+  @if [ ! -d {{bips_dir}} ]; then echo "Missing destination directory: {{bips_dir}}" >&2; exit 1; fi
+  @echo "Copying {{project_root}}/{{extended_file}} -> {{bips_dir}}/{{vectors_file}}"
+  cp {{project_root}}/{{extended_file}} {{bips_dir}}/{{vectors_file}}
 
 sync-bip:
   @if [ ! -f {{project_root}}/{{vectors_file}} ]; then echo "Missing source file: {{project_root}}/{{vectors_file}}" >&2; exit 1; fi
@@ -46,26 +60,26 @@ sync-bip:
 
 sync-rust:
   @mkdir -p {{out_dir}}
-  @if [ ! -f {{project_root}}/{{vectors_file}} ]; then echo "Missing source file: {{project_root}}/{{vectors_file}}" >&2; exit 1; fi
+  @if [ ! -f {{project_root}}/{{extended_file}} ]; then echo "Missing source file: {{project_root}}/{{extended_file}}" >&2; exit 1; fi
   @if [ ! -f {{convert_script}} ]; then echo "Missing conversion script: {{convert_script}}" >&2; exit 1; fi
   @if [ ! -d {{rust_psbt_dir}}/tests/data ]; then echo "Missing destination directory: {{rust_psbt_dir}}/tests/data" >&2; exit 1; fi
-  @echo "Generating {{out_dir}}/{{rust_vectors_file}} from {{project_root}}/{{vectors_file}}"
-  python {{convert_script}} {{project_root}}/{{vectors_file}} -o {{out_dir}}/{{rust_vectors_file}}
+  @echo "Generating {{out_dir}}/{{rust_vectors_file}} from {{project_root}}/{{extended_file}}"
+  python {{convert_script}} {{project_root}}/{{extended_file}} -o {{out_dir}}/{{rust_vectors_file}}
   @if [ ! -f {{out_dir}}/{{rust_vectors_file}} ]; then echo "Missing generated file: {{out_dir}}/{{rust_vectors_file}}" >&2; exit 1; fi
   @echo "Copying {{out_dir}}/{{rust_vectors_file}} -> {{rust_psbt_dir}}/tests/data/{{rust_vectors_file}}"
   cp {{out_dir}}/{{rust_vectors_file}} {{rust_psbt_dir}}/tests/data/{{rust_vectors_file}}
 
 sync-spdk:
-  @if [ ! -f {{project_root}}/{{vectors_file}} ]; then echo "Missing source file: {{project_root}}/{{vectors_file}}" >&2; exit 1; fi
+  @if [ ! -f {{project_root}}/{{extended_file}} ]; then echo "Missing source file: {{project_root}}/{{extended_file}}" >&2; exit 1; fi
   @if [ ! -d {{spdk_dir}} ]; then echo "Missing destination directory: {{spdk_dir}}" >&2; exit 1; fi
-  @echo "Copying {{project_root}}/{{vectors_file}} -> {{spdk_dir}}/{{vectors_file}}"
-  cp {{project_root}}/{{vectors_file}} {{spdk_dir}}/{{vectors_file}}
+  @echo "Copying {{project_root}}/{{extended_file}} -> {{spdk_dir}}/{{vectors_file}}"
+  cp {{project_root}}/{{extended_file}} {{spdk_dir}}/{{vectors_file}}
 
 sync-jade:
-  @if [ ! -f {{project_root}}/{{vectors_file}} ]; then echo "Missing source file: {{project_root}}/{{vectors_file}}" >&2; exit 1; fi
+  @if [ ! -f {{project_root}}/{{extended_file}} ]; then echo "Missing source file: {{project_root}}/{{extended_file}}" >&2; exit 1; fi
   @if [ ! -d {{jade_dir}} ]; then echo "Missing destination directory: {{jade_dir}}" >&2; exit 1; fi
-  @echo "Copying {{project_root}}/{{vectors_file}} -> {{jade_dir}}/{{vectors_file}}"
-  cp {{project_root}}/{{vectors_file}} {{jade_dir}}/{{vectors_file}}
+  @echo "Copying {{project_root}}/{{extended_file}} -> {{jade_dir}}/{{vectors_file}}"
+  cp {{project_root}}/{{extended_file}} {{jade_dir}}/{{vectors_file}}
 
 sync-jade-fixtures:
   @if [ ! -d {{jade_fixtures_dir}} ]; then echo "Missing destination directory: {{jade_fixtures_dir}}" >&2; exit 1; fi
@@ -89,6 +103,7 @@ regen-stack revs="@::":
   for rev in $(jj log --no-graph --reversed -r 'mutable() & ({{revs}})' -T 'change_id ++ "\n"'); do
     jj edit "$rev"
     python {{project_root}}/test_generator.py
+    python {{project_root}}/test_generator.py --include {{extended_includes}} --output {{project_root}}/{{extended_file}}
   done
   jj edit "$start"
 
@@ -96,11 +111,13 @@ regen-stack revs="@::":
 diff-vectors from="@-" to="@" verbosity="":
   python {{project_root}}/psbt_diff.py {{verbosity}} --jj "{{from}}" "{{to}}"
 
-# Regenerate the vectors, require the committed file to match, and check every PSBT.
+# Regenerate both vector files, require the committed copies to match, and check every PSBT.
 test:
   mkdir -p {{out_dir}}/test
   python {{project_root}}/test_generator.py --output {{out_dir}}/test/{{vectors_file}}
   cmp {{out_dir}}/test/{{vectors_file}} {{project_root}}/{{vectors_file}}
+  python {{project_root}}/test_generator.py --include {{extended_includes}} --output {{out_dir}}/test/{{extended_file}}
+  cmp {{out_dir}}/test/{{extended_file}} {{project_root}}/{{extended_file}}
   python -m unittest discover -s {{project_root}}/tests
 
 # Generate with the Python and Rust (spdk_psbt) backends into out/parity and require identical output.
@@ -112,6 +129,7 @@ test-parity:
     echo "== $backend"
     mkdir -p "$dir/$backend"
     BIP375_PSBT_BACKEND=$backend python {{project_root}}/test_generator.py --output "$dir/$backend/{{vectors_file}}"
-    BIP375_PSBT_BACKEND=$backend python {{convert_script}} "$dir/$backend/{{vectors_file}}" -o "$dir/$backend/{{rust_vectors_file}}"
+    BIP375_PSBT_BACKEND=$backend python {{project_root}}/test_generator.py --include {{extended_includes}} --output "$dir/$backend/{{extended_file}}"
+    BIP375_PSBT_BACKEND=$backend python {{convert_script}} "$dir/$backend/{{extended_file}}" -o "$dir/$backend/{{rust_vectors_file}}"
   done
   diff -r "$dir/spdk" "$dir/py" && echo "parity OK: python and spdk backends match"

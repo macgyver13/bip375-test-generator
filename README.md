@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through `v1.3.1`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through the split into standard and extended files. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -46,6 +46,8 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | 1.3.1 | | Added invalid “ecdh coverage: P2TR input with NUMS internal key claim not matching prevout missing ECDH share”. 23 valid, 29 invalid, 17 workflow steps. |
 | | Hardening | Added invalid “ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field when PSBT_OUT_SCRIPT not set”, “ecdh coverage: global ECDH share proven over a subset of eligible inputs”, and “input eligibility: non-SIGHASH_ALL signature on input with sp output and PSBT_IN_SIGHASH_TYPE omitted”. 23 valid, 32 invalid, 17 workflow steps. |
 | | Sighash coverage | Added invalid “input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output” and its PSBT_IN_SIGHASH_TYPE-omitted variant, “SIGHASH_ALL\|ANYONECANPAY sighash type on input with sp output”, “non-SIGHASH_ALL signature on taproot input with sp output” and “SIGHASH_DEFAULT sighash type on non-taproot input with sp output”. Added valid “can finalize: ineligible P2SH multisig input declaring SIGHASH_ALL”. 24 valid, 37 invalid, 17 workflow steps. |
+| | Extractor failures | Added valid "can finalize: NUMS script-path input proven by PSBT_IN_TAP_LEAF_SCRIPT with no internal key or merkle root". Added invalid NUMS tapleaf and finalized NUMS witness claims that do not commit to the prevout, a P2SH redeem script that does not match its prevout, a signature before the silent payment scripts are set, and a finalized P2SH redeem mismatch. `fail_extract` is a finalized PSBT an Extractor must reject. 25 valid, 42 invalid, 17 workflow steps. |
+| 1.2.0 | Standard and extended files | `bip375_test_vectors.json` is now the standard set: no workflow steps, and no case marked `experimental`. The tapleaf NUMS, P2SH redeem and `fail_extract` vectors above are marked experimental. `bip375_test_vectors_extended.json` adds both, listed in its `includes`. Both files carry `wallets` and report version 1.2.0. Standard: 24 valid, 38 invalid. Extended: 25 valid, 42 invalid, 17 workflow steps. |
 
 ---
 
@@ -91,10 +93,30 @@ Until the rust-psbt finalizer fix 1.2.5 depends on is published, bip375-examples
 ```bash
 cd bip375-test-generator
 pip install pyyaml
-python test_generator.py
+python test_generator.py                                    # or: just gen
+python test_generator.py --include workflows,experimental \
+  --output bip375_test_vectors_extended.json                 # or: just gen-extended
 ```
 
-Output: `bip375_test_vectors.json`
+Output:
+- `bip375_test_vectors.json`: the standard vectors, what a validator for the merged
+  BIP-375 text should accept and reject.
+- `bip375_test_vectors_extended.json`: the standard vectors plus the optional sets named
+  in its `includes` field.
+
+`--include` takes a comma-separated list of optional sets:
+- `workflows`: the step-by-step workflow vectors.
+- `experimental`: test cases marked `experimental: "<what it waits on>"` in their config,
+  for validator behavior not merged yet. Every run prints these cases and their reasons.
+
+`STANDARD_INCLUDES` in `test_generator.py` lists the sets every file includes, and
+`VECTOR_VERSION` names the standard set. Both files report that version. To make workflow
+vectors standard, add `"workflows"` to `STANDARD_INCLUDES` and bump `VECTOR_VERSION`.
+`just test` regenerates both files and requires the committed copies to match.
+
+Syncing: `just sync-bip` copies the standard file into bips, and `just sync-bip-extended`
+copies the extended file under the standard name for a bips branch that runs workflows.
+`sync-rust`, `sync-spdk` and `sync-jade` use the extended file.
 
 Pass `--hex` to also write each serialized PSBT as `supplementary.hex`, for
 diagnostics.
@@ -104,8 +126,8 @@ diagnostics.
 just gen-rust
 ```
 
-Writes `out/bip375.json`. Generated artifacts other than
-`bip375_test_vectors.json` live in the untracked `out/` directory and can be
+Writes `out/bip375.json` from the extended file. Generated artifacts other than the
+two committed vector files live in the untracked `out/` directory and can be
 regenerated at any revision.
 
 ### Regenerating vectors across a jj stack
@@ -115,7 +137,7 @@ just regen-stack '@::<revision tip>'
 ```
 
 Edits each mutable revision from `@` through `<revision tip>`, oldest first, and regenerates
-`bip375_test_vectors.json` with the `spdk` backend. This replaces conflicted copies of the
+both vector files with the `spdk` backend. This replaces conflicted copies of the
 file left by a rebase. It stops at the first revision where the generator fails and returns
 to the starting revision when done.
 
@@ -129,7 +151,8 @@ specifics remain custom in `generator_utils.py`.
 
 ### Output sections
 
-`bip375_test_vectors.json` has three vector arrays:
+The extended file has three vector arrays; the standard file has `valid` and `invalid`.
+Both carry `wallets`, the seeded wallets behind every input key.
 
 - `valid` / `invalid` — one-shot config-driven PSBTs (see YAML config below).
 - `workflows` — a single PSBT walked **step by step** through the BIP-375 roles.
@@ -186,7 +209,7 @@ Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenari
 Successful one-shot vectors include `expected.psbt`: for `sign`, it is the PSBT after
 the signer has added every signature it can from the supplied key material.
 For `finalize`, `psbt` is signed and `expected.psbt` is finalized. Failure tasks such
-as `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
+as `fail_sign` and `fail_deserialize` omit `expected`. `fail_extract` is a finalized PSBT: every input has a final scriptSig or witness, and an Extractor must reject it. It also omits `expected`. For one-shot vectors,
 `supplementary.inputs[].signed` describes the input/current `psbt` state.
 
 ---

@@ -54,7 +54,8 @@ from test_framework.script import (
 )
 from test_framework.script_util import keyhash_to_p2pkh_script
 
-VECTORS = ROOT / "bip375_test_vectors.json"
+# Every committed vector file: the standard set and the extended one.
+VECTOR_FILES = (ROOT / "bip375_test_vectors.json", ROOT / "bip375_test_vectors_extended.json")
 INVALID_CONFIGS = ROOT / "test_configs" / "invalid"
 
 NUMS_H = bytes.fromhex("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0")
@@ -1008,34 +1009,36 @@ def _psbts(vector):
 class ComplianceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.vectors = json.loads(VECTORS.read_text())
+        cls.files = {path.name: json.loads(path.read_text()) for path in VECTOR_FILES}
         cls.violates = _load_violates()
 
     def test_valid_and_workflows(self):
         failures = []
-        for section in ("valid", "workflows"):
-            for vector in self.vectors[section]:
-                for label, blob in _psbts(vector):
-                    if not blob:
-                        continue
-                    failed = _failed(evaluate(blob))
-                    if failed:
-                        failures.append(f"{section} {vector['description']} {label}: {sorted(failed)}")
+        for name, vectors in self.files.items():
+            for section in ("valid", "workflows"):
+                for vector in vectors.get(section, []):
+                    for label, blob in _psbts(vector):
+                        if not blob:
+                            continue
+                        failed = _failed(evaluate(blob))
+                        if failed:
+                            failures.append(f"{name} {section} {vector['description']} {label}: {sorted(failed)}")
         if failures:
             self.fail("\n".join(failures[:40]))
 
     def test_invalid_only_declared_properties(self):
         failures = []
-        for vector in self.vectors["invalid"]:
-            declared = self.violates.get(vector["description"])
-            failed = _failed(evaluate(vector["psbt"]))
-            if declared is None:
-                failures.append(f"{vector['description']}: missing violates, failed {sorted(failed)}")
-                continue
-            if set(declared) != failed:
-                failures.append(
-                    f"{vector['description']}: violates {declared} but failed {sorted(failed)}"
-                )
+        for name, vectors in self.files.items():
+            for vector in vectors["invalid"]:
+                declared = self.violates.get(vector["description"])
+                failed = _failed(evaluate(vector["psbt"]))
+                if declared is None:
+                    failures.append(f"{name} {vector['description']}: missing violates, failed {sorted(failed)}")
+                    continue
+                if set(declared) != failed:
+                    failures.append(
+                        f"{name} {vector['description']}: violates {declared} but failed {sorted(failed)}"
+                    )
         if failures:
             self.fail("\n".join(failures[:50]))
 
