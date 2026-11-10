@@ -42,6 +42,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | BIP32 input keys | One-shot input keys are BIP32 from the workflow wallets (m/purpose'/1'/0'/branch/index), with taproot output keys negated to even y. Inputs gained `master_fingerprint` and `derivation_path`, and `notes` describe the key paths. 50 PSBT maps and five workflow steps changed. |
 | | BIP-352 wallet | Scan and spend keys for an account come from the primary wallet (m/352'/1'/account'/1'/0 and m/352'/1'/account'/0'/0). All 51 PSBT maps and every workflow step changed. |
 | | Funding transactions | Each prevout is paid by a two-output transaction: the spent output, then a P2WPKH change output. Every prevout txid changed. All 51 PSBT maps and every workflow step changed. |
+| | Nonzero prevout index | The spent output is vout 1. vout 0 is the change output, so a reader that ignores the index sees the wrong script. All 51 PSBT maps and every workflow step changed. 23 valid, 28 invalid, 17 workflow steps. |
 
 ---
 
