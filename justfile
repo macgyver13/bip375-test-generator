@@ -1,6 +1,7 @@
 project_root := justfile_directory()
 home := env_var("HOME")
 vectors_file := "bip375_test_vectors.json"
+out_dir := project_root + "/out"
 bips_dir := home + "/src/bips/bip-0375"
 spdk_dir := home + "/src/spdk/psbt/tests"
 jade_dir := home + "/src/Jade/components/libwally-core/upstream/src/data"
@@ -54,6 +55,13 @@ regen-stack revs="@::":
 # Report semantic PSBT field changes between two jj revisions.
 diff-vectors from="@-" to="@" verbosity="":
   python {{project_root}}/psbt_diff.py {{verbosity}} --jj "{{from}}" "{{to}}"
+
+# Regenerate the vectors, require the committed file to match, and check every PSBT.
+test:
+  mkdir -p {{out_dir}}/test
+  python {{project_root}}/test_generator.py --output {{out_dir}}/test/{{vectors_file}}
+  cmp {{out_dir}}/test/{{vectors_file}} {{project_root}}/{{vectors_file}}
+  python -m unittest discover -s {{project_root}}/tests
 
 # Generate with the Python and Rust (spdk_psbt) backends into out/parity and require identical output.
 test-parity:
