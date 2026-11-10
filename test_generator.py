@@ -757,12 +757,19 @@ class InputFactory:
         return result
 
     def _create_prev_tx(self, prev_input_txid: bytes, amount: int, script_pubkey: bytes) -> bytes:
-        """Create a previous transaction for non-witness UTXOs"""
+        """Funding transaction that created this input's prevout.
+
+        vout 0 is the spent payment. vout 1 pays change to a distinct P2WPKH
+        program, so the prevout comes from a two-output transaction. The
+        funding input is not itself a checked prevout.
+        """
         tx = CTransaction()
         tx.version = 2
         tx.nLockTime = 0
-        tx.vin.append(CTxIn(COutPoint(uint256_from_str(prev_input_txid), 0), b"", 0xFFFFFFFF))
+        tx.vin.append(CTxIn(COutPoint(uint256_from_str(prev_input_txid), 0), b"", 0xFFFFFFFE))
         tx.vout.append(CTxOut(amount, bytes(script_pubkey)))
+        change_program = hash160(hashlib.sha256(b"funding-change" + prev_input_txid).digest())
+        tx.vout.append(CTxOut(amount, bytes(program_to_witness_script(0, change_program))))
         return tx.serialize_without_witness()
 
 
