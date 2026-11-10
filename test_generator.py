@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from test_framework.crypto.secp256k1 import GE, G
 from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut, hash256, uint256_from_str
 from test_framework.script import SIGHASH_ALL, SIGHASH_NONE, hash160
-from test_framework.script import taproot_construct
+from test_framework.script import CScript, OP_CHECKSIG, taproot_construct
 from test_framework.key import tweak_add_privkey
 from test_framework.script_util import (
     key_to_p2pkh_script,
@@ -535,9 +535,14 @@ class InputFactory:
             input_pub = PublicKey(int(input_priv) * G)
 
         if spec.use_nums_tap_internal_key:
-            # NUMS point as taproot internal key: no private key exists, input is ineligible
-            # for Silent Payments (cannot contribute an ECDH share).
-            script_pubkey = bytes(output_key_to_p2tr_script(NUMS_H))
+            # NUMS point as taproot internal key: no key-path private key exists,
+            # but a known script path makes the input spendable while keeping it
+            # ineligible for Silent Payments. The scriptPubKey commits to H and the
+            # leaf, so a verifier can check the claim against the prevout.
+            script_priv, script_pub = self.wallet.create_key_pair("tap_script", _deterministic_hash(key_suffix))
+            leaf_script = bytes(CScript([script_pub.bytes_xonly, OP_CHECKSIG]))
+            taproot_info = taproot_construct(NUMS_H, [("spend", leaf_script)])
+            script_pubkey = bytes(taproot_info.scriptPubKey)
             prev_tx = self._create_prev_tx(prev_input_txid, spec.amount, script_pubkey)
             previous_txid = hash256(prev_tx)
 
@@ -545,9 +550,10 @@ class InputFactory:
             return {
                 "input_index": input_index,
                 "input_type": InputType.P2TR,
-                "private_key": input_priv,
-                "public_key": input_pub,
+                "private_key": script_priv,
+                "public_key": script_pub,
                 "tap_internal_key": NUMS_H,
+                "tap_merkle_root": taproot_info.merkle_root,
                 "previous_txid": previous_txid,
                 "prevout_index": 0,
                 "script_pubkey": script_pubkey,
@@ -966,6 +972,14 @@ class PSBTBuilder:
                 b"",
                 tap_key,
             )
+            if input_info.get("tap_merkle_root") is not None:
+                add_raw_input_field(
+                    psbt,
+                    idx,
+                    PSBTKeyType.PSBT_IN_TAP_MERKLE_ROOT,
+                    b"",
+                    input_info["tap_merkle_root"],
+                )
 
     def _compute_ecdh_shares(
         self,

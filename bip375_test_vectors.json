@@ -460,18 +460,18 @@
     },
     {
       "description": "output scripts: P2TR input with NUMS internal key cannot derive sp output",
-      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABASsQJwAAAAAAACJRIFCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAAQMEAQAAAAEOIGAXtZAPmL6eOm19nK05Aozq0/UhOaeh2exXaT6+bJqjAQ8EAAAAAAEQBP7///8BFyBQkpt0waBJVLeLS2A16XpeB4paDyjsltVHv+6azoA6wCIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQPspP8Rtyji4PYM5iIpQ6b/VbnZX2J7+amdCEvIctUKWyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQIoTs5hVRfcr1uiXFK65CbPjVKhCqbuLVs0O3tId+KGZWYsxIopJ4L1+lc4QU/fFsorLVDpocHYA486Jgi7jICEAAQMIHCUAAAAAAAABBCJRIH8g1ZcdEHfp+YxGX+rWqYpYpSwldlgDPz2VIJholJH0AQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABASsQJwAAAAAAACJRICG+i0nY1uxr8GEwJe9oKFeYqXr2DtXaB7tet9ZpYewfAQMEAQAAAAEOIH+QX5ugy7b4HNdKHstiYMqtPm+AQQ5JLIv1XAj9zv6iAQ8EAAAAAAEQBP7///8BFyBQkpt0waBJVLeLS2A16XpeB4paDyjsltVHv+6azoA6wAEYIMsC1iyIbaqg6A/joocuiAsyxzUq0DqnEO9KKf0yXfA+Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghAm4w8ShPbGbAm3ZU73IN2M0+RUEpUQvGp9jwNFV8+IWiIh4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhALSLEJgdzB0pUmyzfewhQr2VRMuHIb12djTXH8g2q8ODua7McdrYjqJxie6BN6aGesgacQt2Yi3EKmm4KpRUGWAABAwgcJQAAAAAAAAEEIlEgOwB1kqKTFP8NUJ6d02uqJVLvwKsGsDO/0vYkCFfQAQcBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
       "supplementary": {
         "inputs": [
           {
             "input_index": 0,
-            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
-            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
-            "prevout_txid": "a39a6cbe3e6957ecd9a1a73921f5d3ea8c0239ad9c7d6d3a9ebe980f90b51760",
+            "private_key": "9dab08c8eb0a4d9984ba709d580d009608f7b117dd4620eb4209c1d67a6c29d0",
+            "public_key": "02d32ca2926b322f145d76cfc8b063ee38f4e984b5275c705c77f369ea2dc198d7",
+            "prevout_txid": "a2fecefd085cf58b2c490e41806f3eadca6062cb1e4ad71cf8b6cba09b5f907f",
             "prevout_index": 0,
             "amount": 10000,
-            "non_witness_utxo": "020000000113f106b64b57b5b1376f9f6c47190f40cc06b3bedcb8aaba97850ab3d7f67d020000000000ffffffff01102700000000000022512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
-            "witness_utxo": "102700000000000022512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0",
+            "non_witness_utxo": "020000000113f106b64b57b5b1376f9f6c47190f40cc06b3bedcb8aaba97850ab3d7f67d020000000000ffffffff01102700000000000022512021be8b49d8d6ec6bf0613025ef68285798a97af60ed5da07bb5eb7d66961ec1f00000000",
+            "witness_utxo": "102700000000000022512021be8b49d8d6ec6bf0613025ef68285798a97af60ed5da07bb5eb7d66961ec1f",
             "sequence": 4294967294,
             "signed": false
           }
@@ -479,8 +479,8 @@
         "sp_proofs": [
           {
             "scan_key": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe068",
-            "ecdh_share": "03eca4ff11b728e2e0f60ce6222943a6ff55b9d95f627bf9a99d084bc872d50a5b",
-            "dleq_proof": "8a13b3985545f72bd6e89714aeb909b3e354a842a9bb8b56cd0eded21df8a199598b31228a49e0bd7e95ce1053f7c5b28acb543a68707600e3ce89822ee32021",
+            "ecdh_share": "026e30f1284f6c66c09b7654ef720dd8cd3e454129510bc6a7d8f034557cf885a2",
+            "dleq_proof": "2d22c4260773074a549b2cdf7b0850af655132e1c86f5d9d8d35c7f20daaf0e0ee6bb31c76b623a89c627ba04de9a19eb2069c42dd988b710a9a6e0aa5150658",
             "input_index": 0
           }
         ],
@@ -489,7 +489,7 @@
             "output_index": 0,
             "amount": 9500,
             "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
-            "script": "51207f20d5971d1077e9f98c465fead6a98a58a52c257658033f3d952098689491f4"
+            "script": "51203b007592a29314ff0d509e9dd36baa2552efc0ab06b033bfd2f6240857d00107"
           }
         ]
       }
@@ -1175,18 +1175,18 @@
     },
     {
       "description": "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (NUMS internal key excluded)",
-      "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABASsQJwAAAAAAACJRIFCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAAQ4gYBe1kA+Yvp46bX2crTkCjOrT9SE5p6HZ7FdpPr5smqMBDwQAAAAAARAE/v///wEXIFCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAAAEBH6CGAQAAAAAAFgAUNyH6c8IwXLL4joSJLWvWuXcmHmoiAgJDoNQOneCIJ5QWF1K65CupCVJ4QgnwY0MPCvJWNUqFu0gwRQIhAO0WpquzlGlzstbNkuuIIEIYnLRxCQgyQW7wr3v6HSWoAiA1FLIzGTu4Yav6kSdimxf0vM37oWNLD/S2liY86GL7RQEBAwQBAAAAIgYCQ6DUDp3giCeUFhdSuuQrqQlSeEIJ8GNDDwryVjVKhbsIAAAAgAEAAAABDiDnbAFxCDpMX7Sv4vbWHwCkcwG50B+NLkd4CrdULjd8CAEPBAAAAAABEAT+////Ih0Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GghAuV6etywGNj7MVToDBS5elCZS0I1aEHqn8ExcGFEAOY3Ih4Cekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GhA9/o4HeILO0WcbkJsYhPUF1MI8kgqROMyhCMmJNTa/Vcymb868WqzAsViY2OjfUSHB/fnoevqBke8zUhiA7srpgABAwgcJQAAAAAAAAEEIlEgPyxAG2oKe3La4XJhY5bRV7fyUUpeQT24CXc2wsuWezYBCUICekh/wZ+3aYd7h0LW6hgRjzxOcrHqjG3mAqetSkHb4GgDYeGx6d5eQssgB/fKVLng1X7ROTj61W0/GeV1E6j84DkA",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABASsQJwAAAAAAACJRICG+i0nY1uxr8GEwJe9oKFeYqXr2DtXaB7tet9ZpYewfAQ4gf5Bfm6DLtvgc10oey2Jgyq0+b4BBDkksi/VcCP3O/qIBDwQAAAAAARAE/v///wEXIFCSm3TBoElUt4tLYDXpel4HiloPKOyW1Ue/7prOgDrAARggywLWLIhtqqDoD+Oihy6ICzLHNSrQOqcQ70op/TJd8D4AAQEfoIYBAAAAAAAWABQ3IfpzwjBcsviOhIkta9a5dyYeaiICAkOg1A6d4IgnlBYXUrrkK6kJUnhCCfBjQw8K8lY1SoW7RzBEAiBL4LFduFEaUJtFZy/IjXr8u2zhZRD+5S/lCtDCFfgDtAIgDY/d5W8QN1pvNEvgGJUK2CFUxt9QN4+nfaaF861FNo8BAQMEAQAAACIGAkOg1A6d4IgnlBYXUrrkK6kJUnhCCfBjQw8K8lY1SoW7CAAAAIABAAAAAQ4g52wBcQg6TF+0r+L21h8ApHMBudAfjS5HeAq3VC43fAgBDwQAAAAAARAE/v///yIdAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoIQLlenrcsBjY+zFU6AwUuXpQmUtCNWhB6p/BMXBhRADmNyIeAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoQPf6OB3iCztFnG5CbGIT1BdTCPJIKkTjMoQjJiTU2v1XMpm/OvFqswLFYmNjo31Ehwf356Hr6gZHvM1IYgO7K6YAAQMIHCUAAAAAAAABBCJRIC6iHh59r7TUOzMptavROIoFPuzz2cDR4mpCRHhRNvOAAQlCAnpIf8Gft2mHe4dC1uoYEY88TnKx6oxt5gKnrUpB2+BoA2HhseneXkLLIAf3ylS54NV+0Tk4+tVtPxnldROo/OA5AA==",
       "supplementary": {
         "inputs": [
           {
             "input_index": 0,
-            "private_key": "7e31eeeb1aa2597b6d63b357541461d75ddae76b7603d24619f5ebed9e88ec31",
-            "public_key": "02c817bb7521afc35ea96f3bfb270e6eb50ddffa5560627b961fec00f2996508bf",
-            "prevout_txid": "a39a6cbe3e6957ecd9a1a73921f5d3ea8c0239ad9c7d6d3a9ebe980f90b51760",
+            "private_key": "9dab08c8eb0a4d9984ba709d580d009608f7b117dd4620eb4209c1d67a6c29d0",
+            "public_key": "02d32ca2926b322f145d76cfc8b063ee38f4e984b5275c705c77f369ea2dc198d7",
+            "prevout_txid": "a2fecefd085cf58b2c490e41806f3eadca6062cb1e4ad71cf8b6cba09b5f907f",
             "prevout_index": 0,
             "amount": 10000,
-            "non_witness_utxo": "020000000113f106b64b57b5b1376f9f6c47190f40cc06b3bedcb8aaba97850ab3d7f67d020000000000ffffffff01102700000000000022512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
-            "witness_utxo": "102700000000000022512050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0",
+            "non_witness_utxo": "020000000113f106b64b57b5b1376f9f6c47190f40cc06b3bedcb8aaba97850ab3d7f67d020000000000ffffffff01102700000000000022512021be8b49d8d6ec6bf0613025ef68285798a97af60ed5da07bb5eb7d66961ec1f00000000",
+            "witness_utxo": "102700000000000022512021be8b49d8d6ec6bf0613025ef68285798a97af60ed5da07bb5eb7d66961ec1f",
             "sequence": 4294967294,
             "signed": false
           },
@@ -1216,10 +1216,10 @@
             "output_index": 0,
             "amount": 9500,
             "sp_v0_info": "027a487fc19fb769877b8742d6ea18118f3c4e72b1ea8c6de602a7ad4a41dbe0680361e1b1e9de5e42cb2007f7ca54b9e0d57ed13938fad56d3f19e57513a8fce039",
-            "script": "51203f2c401b6a0a7b72dae172616396d157b7f2514a5e413db8097736c2cb967b36"
+            "script": "51202ea21e1e7dafb4d43b3329b5abd1388a053eecf3d9c0d1e26a4244785136f380"
           }
         ],
-        "psbt_unique_id": "7d4308f042accb4a65d634596a6ba58eb0d7f679256483a8749a8cfb4691f97f"
+        "psbt_unique_id": "0a7b21e411b672e3b35ecaf1d8f2b778e6f285434d1c2951533f3ab88a5ff2fb"
       }
     },
     {
