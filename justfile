@@ -3,7 +3,7 @@ home := env_var("HOME")
 vectors_file := "bip375_test_vectors.json"
 # The standard vectors plus every optional set (see INCLUDE_CHOICES in test_generator.py)
 extended_file := "bip375_test_vectors_extended.json"
-extended_includes := "workflows"
+extended_includes := "workflows,experimental"
 rust_vectors_file := "bip375.json"
 out_dir := project_root + "/out"
 # Generated, not committed: rebuilt by gen-extended before anything reads it

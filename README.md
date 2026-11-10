@@ -46,6 +46,8 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | | Added invalid “ecdh coverage: P2TR input 1 with a NUMS PSBT_IN_TAP_INTERNAL_KEY that does not tweak to scriptPubKey and no ECDH share”. 23 valid, 29 invalid, 17 workflow steps. |
 | | Hardening | Added invalid “ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field when PSBT_OUT_SCRIPT not set for sp output”, “ecdh coverage: global ECDH share proven over a subset of eligible inputs”, and “input eligibility: non-SIGHASH_ALL signature on input with sp output and PSBT_IN_SIGHASH_TYPE omitted”. `notes` gained “Invalid vectors have PSBT_OUT_SCRIPT set on every sp output unless the description says it is not set.” 23 valid, 32 invalid, 17 workflow steps. |
 | | Sighash coverage | Added invalid “input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output” and its PSBT_IN_SIGHASH_TYPE-omitted variant, “SIGHASH_ALL\|ANYONECANPAY sighash type on input with sp output”, “non-SIGHASH_ALL signature on taproot input with sp output” and “SIGHASH_DEFAULT sighash type on non-taproot input with sp output”. Added valid “can finalize: P2WPKH input with ineligible P2SH multisig input declaring SIGHASH_ALL”. 24 valid, 37 invalid, 17 workflow steps. |
+| | Extractor failures | Added invalid finalized NUMS witness claims that do not commit to the prevout, a P2SH-P2WPKH prevout with a non-P2WPKH redeem script and no ECDH share, a signature before the silent payment scripts are set, and the finalized form of that P2SH-P2WPKH input. `fail_extract` is a finalized PSBT an Extractor must reject. 24 valid, 41 invalid, 17 workflow steps. |
+| | Experimental set | Cases marked `experimental` are left out of `bip375_test_vectors.json` and added to `out/bip375_test_vectors_extended.json` with `--include experimental`. The `fail_extract` vectors above are marked experimental. Standard: 24 valid, 39 invalid. Extended: 24 valid, 41 invalid, 17 workflow steps. |
 
 ---
 
@@ -91,7 +93,9 @@ Until the rust-psbt finalizer fix 1.2.5 depends on is published, bip375-examples
 ```bash
 cd bip375-test-generator
 pip install pyyaml
-python test_generator.py
+python test_generator.py                                    # or: just gen
+python test_generator.py --include workflows,experimental \
+  --output out/bip375_test_vectors_extended.json             # or: just gen-extended
 ```
 
 Output:
@@ -103,6 +107,8 @@ Output:
 
 `--include` takes a comma-separated list of optional sets:
 - `workflows`: the step-by-step workflow vectors.
+- `experimental`: test cases marked `experimental: "<what it waits on>"` in their config,
+  for validator behavior not merged yet. Every run prints these cases and their reasons.
 
 `STANDARD_INCLUDES` in `test_generator.py` lists the sets every file includes, and
 `VECTOR_VERSION` names the standard set. Both files report that version. To make workflow
@@ -115,7 +121,7 @@ the checks named in its config's `violates` list.
 
 ```bash
 just gen           # bip375_test_vectors.json, the standard set
-just gen-extended  # out/bip375_test_vectors_extended.json, with --include workflows
+just gen-extended  # out/bip375_test_vectors_extended.json, with --include workflows,experimental
 just gen-all       # both
 ```
 
@@ -236,7 +242,7 @@ Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenari
 One-shot `sign` and `finalize` vectors include `expected.psbt`: for `sign`, it is the PSBT after
 the signer has added every signature it can from the supplied key material.
 For `finalize`, `psbt` is signed and `expected.psbt` is finalized. The valid `deserialize`
-vector and the failure tasks `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
+vector and the failure tasks `fail_sign` and `fail_deserialize` omit `expected`. `fail_extract` is a finalized PSBT: every input has a final scriptSig or witness, and an Extractor must reject it. It also omits `expected`. For one-shot vectors,
 `supplementary.inputs[].signed` describes the input/current `psbt` state.
 
 ---
@@ -270,7 +276,7 @@ test_cases:
     control_override: {...}      # optional — injects faults for invalid cases
 ```
 
-`task` is one of `sign`, `finalize`, `deserialize`, `fail_sign` or `fail_deserialize`,
+`task` is one of `sign`, `finalize`, `deserialize`, `fail_sign`, `fail_deserialize` or `fail_extract`,
 and defaults to `deserialize`. `scan_keys` defaults to a single key with `key_id: "default"`.
 
 `violates` names the checks in `tests/test_compliance.py` that the invalid PSBT breaks:
