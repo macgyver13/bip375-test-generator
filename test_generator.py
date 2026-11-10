@@ -52,6 +52,7 @@ from generator_utils import (
     PrivateKey,
     PublicKey,
     Wallet,
+    WorkflowKeyProfile,
     JadeKeyProfile,
     UTXO,
     apply_label_to_spend_key,
@@ -213,7 +214,9 @@ class OutputSpec:
     label: Optional[int] = None
     force_wrong_script: bool = False  # For testing wrong addresses
     force_k_index: Optional[int] = None
-    spend_derivation_suffix: Optional[str] = None  # Override spend key per output
+    # Give the output its own spend key. Under a seeded profile the value is only a
+    # label: the key is the next BIP-352 account, and how it sorts is not implied.
+    spend_derivation_suffix: Optional[str] = None
     # Regular output specific
     add_bip32_derivation: bool = False  # Add PSBT_OUT_BIP32_DERIVATION for change identification
     derivation_index: Optional[int] = None
@@ -271,6 +274,7 @@ class TestScenario:
     missing_ecdh_for_input_scan_key: Optional[tuple] = None  # (input_index, scan_key_id)
     force_ecdh_for_input_scan_key: Optional[tuple] = None  # (input_index, scan_key_id)
     force_partial_ecdh_output_script: bool = False
+    reverse_k_order: bool = False  # Assign k against the spend-key sort, so every output's k is wrong
     skip_regular_output_script: bool = False
     empty_regular_output_script: bool = False
     input_stage: str = "resolved"  # unresolved | contributed | resolved | malformed
@@ -302,9 +306,14 @@ class InputFactory:
             )
             private_key, public_key = self.wallet.create_key_pair("input", _deterministic_hash(key_suffix))
             return private_key, public_key, None
-        index = spec.derivation_index if spec.derivation_index is not None else input_index
+        # shared_key is one key for every input of this script type, not one key per input index
+        if shared_key:
+            branch, index = 0, 0
+        else:
+            branch = spec.derivation_branch
+            index = spec.derivation_index if spec.derivation_index is not None else input_index
         material = self.jade_profile.derive(
-            purpose, spec.derivation_branch, index, foreign=spec.owner == "foreign"
+            purpose, branch, index, foreign=spec.owner == "foreign"
         )
         return material.private_key, material.public_key, material
 
@@ -370,6 +379,7 @@ class InputFactory:
             )
             result["public_key"] = decoy_pub
             result["private_key"] = decoy_priv
+            result["sp_key_decoy"] = True
             result["skip_signing"] = True
 
         if spec.decoy_first_derivation:
@@ -536,8 +546,13 @@ class InputFactory:
 
         keys = []
         for i in range(pubkey_count):
-            key_suffix = f"{spec.key_derivation_suffix}_{input_index}_{i}"
-            priv_key, pub_key = self.wallet.create_key_pair(purpose, _deterministic_hash(key_suffix))
+            if self.jade_profile is not None:
+                # m/48'/1'/0'/0/index, distinct from the singlesig receive chain
+                material = self.jade_profile.derive(48, 0, input_index * 16 + i)
+                priv_key, pub_key = material.private_key, material.public_key
+            else:
+                key_suffix = f"{spec.key_derivation_suffix}_{input_index}_{i}"
+                priv_key, pub_key = self.wallet.create_key_pair(purpose, _deterministic_hash(key_suffix))
             keys.append((priv_key, pub_key))
 
         script = bytes(keys_to_multisig_script([pub_key.to_bytes_compressed() for _, pub_key in keys], k=threshold))
@@ -755,8 +770,15 @@ class OutputFactory:
         scan_pub, spend_pub = scan_keys[spec.scan_key_id]
 
         if spec.spend_derivation_suffix is not None:
-            spend_seed = _deterministic_hash(f"spend_{spec.spend_derivation_suffix}")
-            _, spend_pub = self.wallet.create_key_pair("spend", spend_seed)
+            if self.jade_profile is not None:
+                # The spend key of the next account after the scan keys, allocated in
+                # output order, so a wallet reaches it the same way as a scan key.
+                _, spend = self.jade_profile.bip352_scan_spend(self.next_account)
+                self.next_account += 1
+                spend_pub = spend.public_key
+            else:
+                spend_seed = _deterministic_hash(f"spend_{spec.spend_derivation_suffix}")
+                _, spend_pub = self.wallet.create_key_pair("spend", spend_seed)
 
         return {
             "output_index": output_index,
@@ -792,10 +814,16 @@ class OutputFactory:
         """Create regular P2WPKH output"""
         # Derive a real key so the scriptPubKey and any PSBT_OUT_BIP32_DERIVATION
         # describe the same output (hash160(change_pub) == witness program).
-        _, change_pub = self.wallet.create_key_pair("change_p2wpkh", output_index)
+        if self.jade_profile is None:
+            _, change_pub = self.wallet.create_key_pair("change_p2wpkh", output_index)
+            material = None
+        else:
+            index = spec.derivation_index if spec.derivation_index is not None else output_index
+            material = self.jade_profile.derive(84, 1, index)
+            change_pub = material.public_key
         output_script = bytes(program_to_witness_script(0, hash160(change_pub.bytes)))
 
-        return {
+        result = {
             "output_index": output_index,
             "output_type": OutputType.REGULAR_P2WPKH,
             "amount": spec.amount,
@@ -803,6 +831,9 @@ class OutputFactory:
             "change_pubkey": change_pub,
             "add_bip32_derivation": spec.add_bip32_derivation,
         }
+        if material is not None:
+            result["key_material"] = material
+        return result
 
     def _create_regular_p2pkh_output(self, spec: OutputSpec, output_index: int) -> Dict[str, Any]:
         if self.jade_profile is None:
@@ -934,9 +965,22 @@ class PSBTBuilder:
         """
         scan_keys = {}
         self.scan_privs: Dict[bytes, PrivateKey] = {}
+        profile = self.input_factory.jade_profile
+        next_account = 1
 
         for spec in scan_key_specs:
-            if spec.key_id == "default":
+            if profile is not None:
+                # default is account 0; every other scan key is the next account
+                # of the same wallet. scan m/352'/1'/account'/1'/0, spend .../0'/0
+                if spec.key_id == "default":
+                    account = 0
+                else:
+                    account = next_account
+                    next_account += 1
+                scan, spend = profile.bip352_scan_spend(account)
+                scan_priv, scan_pub, spend_pub = scan.private_key, scan.public_key, spend.public_key
+                scan_keys[spec.key_id] = (scan_pub, spend_pub)
+            elif spec.key_id == "default":
                 # Use wallet's default keys
                 scan_priv, scan_pub = self.wallet.scan_priv, self.wallet.scan_pub
                 scan_keys[spec.key_id] = (scan_pub, self.wallet.spend_pub)
@@ -949,6 +993,8 @@ class PSBTBuilder:
 
             self.scan_privs[scan_pub.to_bytes_compressed()] = scan_priv
 
+        # Outputs with their own spend key take the accounts after the scan keys
+        self.output_factory.next_account = next_account
         return scan_keys
 
     @staticmethod
@@ -1631,7 +1677,7 @@ class PSBTBuilder:
                     add_raw_input_field(psbt, i, PSBTKeyType.PSBT_IN_SP_DLEQ, scan_pub.bytes, fake_dleq)
                 break
 
-    def _canonical_k_map(self, output_data: List[Dict]) -> Dict[int, int]:
+    def _canonical_k_map(self, output_data: List[Dict], reverse: bool = False) -> Dict[int, int]:
         """Map output_index -> k per the BIP-375 canonical ordering.
 
         Group silent payment outputs by scan key, then within each group sort
@@ -1654,7 +1700,7 @@ class PSBTBuilder:
 
         k_map: Dict[int, int] = {}
         for entries in groups.values():
-            entries.sort()  # (spend_key_bytes, output_index) ascending
+            entries.sort(reverse=reverse)  # by (spend_key_bytes, output_index)
             for k, (_, output_index) in enumerate(entries):
                 k_map[output_index] = k
         return k_map
@@ -1677,6 +1723,13 @@ class PSBTBuilder:
         # BIP-375 canonical k assignment: precompute output_index -> k by sorting
         # each scan-key group's codes lexicographically (tie-break by output index).
         k_map = self._canonical_k_map(output_data)
+        if scenario.reverse_k_order:
+            # Which order is wrong depends on how the profile's spend keys sort, so
+            # reverse the canonical order instead of hardcoding force_k_index values.
+            reversed_k = self._canonical_k_map(output_data, reverse=True)
+            for output_info in output_data:
+                if output_info["output_index"] in reversed_k:
+                    output_info["force_k_index"] = reversed_k[output_info["output_index"]]
         finalized_outputs: List[Dict] = []
 
         for output_info in output_data:
@@ -1877,7 +1930,7 @@ class ConfigBasedTestGenerator:
     """Generates test vectors from YAML configurations"""
 
     def __init__(self, base_seed: str = "bip375_deterministic_seed", key_profile: str = "current"):
-        profiles = {"current": None}
+        profiles = {"current": None, "workflow": WorkflowKeyProfile}
         if key_profile not in profiles:
             raise ValueError(f"Unknown key profile: {key_profile}")
         self.wallet = Wallet(base_seed)
@@ -2060,6 +2113,7 @@ class ConfigBasedTestGenerator:
             force_partial_ecdh_output_script=control_override.get(
                 "force_partial_ecdh_output_script", False
             ),
+            reverse_k_order=control_override.get("reverse_k_order", False),
             skip_regular_output_script=control_override.get(
                 "skip_regular_output_script", False
             ),
@@ -2132,6 +2186,7 @@ class ConfigBasedTestGenerator:
         serialized_psbt: Optional[bytes] = None,
         *,
         signed_input_indices: Optional[set] = None,
+        origin_all: bool = False,
     ) -> Dict[str, Any]:
         """Build the diagnostic supplementary material (inputs, sp_proofs, outputs).
 
@@ -2173,13 +2228,26 @@ class ConfigBasedTestGenerator:
             }
             material = inp.get("key_material")
             if material is not None:
-                input_key.update({
-                    "owner": inp.get("owner", "wallet"),
-                    "master_fingerprint": material.fingerprint.hex(),
-                    "derivation_path": list(material.path),
-                    "derivation_private_key": material.derivation_private_key.hex,
-                    "derivation_public_key": material.derivation_public_key.hex,
-                })
+                # private_key/public_key are the raw key at the path (the P2TR internal key);
+                # a signer applies any BIP-341 tweak itself. A decoy SP key stays as it is,
+                # since the PSBT carries the decoy.
+                if not inp.get("sp_key_decoy"):
+                    if input_key["private_key"]:
+                        input_key["private_key"] = material.derivation_private_key.hex
+                    input_key["public_key"] = material.derivation_public_key.hex
+                # The key origin is only for vectors that use it: a workflow step, the held keys of
+                # a sign vector, a foreign origin, or a decoy derivation.
+                if (
+                    origin_all
+                    or (scenario.task == "sign" and input_key["private_key"])
+                    or "origin_fingerprint" in inp
+                    or "decoy_derivation_pubkey" in inp
+                ):
+                    input_key.update({
+                        "owner": inp.get("owner", "wallet"),
+                        "master_fingerprint": material.fingerprint.hex(),
+                        "derivation_path": material.path_string,
+                    })
             input_keys.append(input_key)
 
         scan_keys = []
@@ -2256,10 +2324,10 @@ class ConfigBasedTestGenerator:
             else:
                 output["script"] = out["script"].hex()
                 material = out.get("key_material")
-                if material is not None:
+                if material is not None and (origin_all or out.get("add_bip32_derivation")):
                     output.update({
                         "master_fingerprint": material.fingerprint.hex(),
-                        "derivation_path": list(material.path),
+                        "derivation_path": material.path_string,
                         "private_key": material.private_key.hex,
                         "public_key": material.public_key.hex,
                     })
@@ -2340,7 +2408,14 @@ class WorkflowVectorGenerator:
         # carried here are Signer material. prevout fields, amount and sequence are set
         # from `create`'s expected.psbt already, so the Updater does not repeat them.
         "update": {
-            "inputs": ["input_index", "public_key", "witness_utxo", "non_witness_utxo"],
+            "inputs": [
+                "input_index",
+                "public_key",
+                "witness_utxo",
+                "non_witness_utxo",
+                "master_fingerprint",
+                "derivation_path",
+            ],
         },
         # signed, sp_proofs and outputs are all derivable from expected.psbt, which the
         # sign step already carries; the Signer needs only the keys it acts with and the
@@ -2385,7 +2460,7 @@ class WorkflowVectorGenerator:
         # Reuse the deterministic build to obtain key material + supplementary.
         psbt_data = self.cfg.builder.build_psbt(scenario)
         serialized_psbt = normalize_psbt_field_order(psbt_data["psbt"].serialize())
-        full_supp = self.cfg._build_supplementary(psbt_data, scenario, serialized_psbt)
+        full_supp = self.cfg._build_supplementary(psbt_data, scenario, serialized_psbt, origin_all=True)
         psbt_unique_id = compute_psbt_unique_id(psbt_data["input_data"], psbt_data["output_data"])
 
         input_data = psbt_data["input_data"]
@@ -2634,11 +2709,11 @@ class TestVectorGenerator:
     def __init__(
         self,
         seed: str = "bip375_deterministic_seed",
-        key_profile: str = "current",
+        key_profile: str = "workflow",
         include: Tuple[str, ...] = (),
     ):
         self.config_generator = ConfigBasedTestGenerator(seed, key_profile)
-        self.workflow_generator = WorkflowVectorGenerator(seed)
+        self.workflow_generator = WorkflowVectorGenerator(seed, key_profile="workflow")
         self.includes = sorted(set(STANDARD_INCLUDES) | set(include))
         self.test_vectors = {
             "description": "BIP-375 Test Vectors",
@@ -2679,6 +2754,28 @@ class TestVectorGenerator:
         # Generate workflow (step-by-step) vectors
         if "workflows" in self.includes:
             self.test_vectors["workflows"] = self.workflow_generator.generate()
+        # The seeded wallets behind every input key, so any implementer can load them.
+        # The current profile's keys come from no wallet, so it lists none, but the
+        # workflow steps always use the workflow wallets.
+        wallets = []
+        profile = self.config_generator.builder.input_factory.jade_profile
+        seeded = isinstance(profile, WorkflowKeyProfile)
+        if seeded:
+            wallets += profile.wallets
+        if "workflows" in self.includes:
+            wallets += [w for w in WorkflowKeyProfile().wallets if w not in wallets]
+        if wallets:
+            self.test_vectors["wallets"] = wallets
+            # With the current profile only the workflow keys come from these wallets
+            if seeded:
+                input_keys, sp_keys = "Input keys", "Silent payment scan and spend keys"
+            else:
+                input_keys, sp_keys = "Workflow input keys", "Workflow silent payment scan and spend keys"
+            self.test_vectors["notes"] += [
+                f"{input_keys} are BIP32 from the wallets in this file: m/purpose'/1'/0'/branch/index",
+                f"{sp_keys} are BIP-352 from the primary wallet: m/352'/1'/account'/1'/0 and m/352'/1'/account'/0'/0",
+                "private_key and public_key are the key at the path (the internal key for P2TR); signers apply any BIP-341 tweak themselves",
+            ]
 
         return self.test_vectors
 
