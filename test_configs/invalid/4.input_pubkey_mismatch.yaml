@@ -119,3 +119,77 @@ test_cases:
         scan_key_id: "default"
     scan_keys:
       - key_id: "default"
+
+  - description: "ecdh coverage: NUMS claim from tapleaf not committed to prevout, input missing ECDH share"
+    experimental: "NUMS claims from PSBT_IN_TAP_LEAF_SCRIPT"
+    violates: [bip352_outputs, bip371_taproot, bip374_dleq, bip375_ecdh, bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2tr"
+        amount: 80000
+        false_nums_leaf: true
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+
+  - description: "input eligibility: P2SH redeem script not matching prevout script with sp output"
+    experimental: "P2SH redeem script must hash to the prevout"
+    violates: [bip352_outputs, bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2sh_p2wpkh"
+        amount: 100000
+        mismatch_redeem_script: true
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
+  - description: "ecdh coverage: finalized NUMS script-path witness not committed to prevout, input missing ECDH share"
+    experimental: "finalized PSBT validation and the fail_extract task"
+    violates: [bip352_outputs, bip374_dleq, bip375_ecdh, bip375_eligibility]
+    task: "fail_extract"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2tr"
+        amount: 80000
+        false_nums_leaf: true
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+
+  - description: "ecdh coverage: finalized P2SH input with final scriptSig redeem script not matching prevout"
+    experimental: "finalized PSBT validation and the fail_extract task"
+    violates: [bip352_outputs, bip375_eligibility, signatures]
+    task: "fail_extract"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2sh_p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      corrupt_final_redeem: true

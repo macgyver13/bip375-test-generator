@@ -1,0 +1,20 @@
+description: "NUMS script path proven only by the tap leaf"
+
+test_cases:
+  - description: "can finalize: NUMS script-path input proven by PSBT_IN_TAP_LEAF_SCRIPT with no internal key or merkle root"
+    experimental: "NUMS claims from PSBT_IN_TAP_LEAF_SCRIPT"
+    task: "finalize"
+    validation_result: "valid"
+    inputs:
+      - type: "p2tr"
+        amount: 10000
+        use_nums_tap_internal_key: true
+        nums_leaf_only: true
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 9500
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"

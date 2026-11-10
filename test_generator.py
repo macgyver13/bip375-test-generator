@@ -23,10 +23,10 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test_framework.crypto.secp256k1 import GE, G
-from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut, hash256, uint256_from_str
+from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxInWitness, CTxOut, hash256, ser_string, uint256_from_str
 from test_framework.script import SIGHASH_ALL, SIGHASH_DEFAULT, SIGHASH_NONE, hash160
-from test_framework.script import CScript, OP_CHECKSIG, hash160, taproot_construct
-from test_framework.key import tweak_add_privkey
+from test_framework.script import CScript, OP_0, OP_CHECKSIG, hash160, taproot_construct
+from test_framework.key import TaggedHash, tweak_add_privkey
 from test_framework.script_util import (
     key_to_p2pkh_script,
     keys_to_multisig_script,
@@ -35,6 +35,7 @@ from test_framework.script_util import (
     script_to_p2sh_script,
     script_to_p2wsh_script,
 )
+from test_framework.psbt import PSBT, PSBT_IN_FINAL_SCRIPTSIG, PSBT_IN_FINAL_SCRIPTWITNESS
 import psbt_backend as spdk_psbt
 from psbt_backend import (
     add_raw_global_field,
@@ -203,6 +204,9 @@ class InputSpec:
     contribute_foreign_share: bool = False  # Let a foreign input carry an ECDH share and DLEQ proof, as a co-signer would supply
     decoy_first_derivation: bool = False  # Inject an extra non-matching PSBT_IN_BIP32_DERIVATION that sorts before the real key (selection test)
     decoy_same_origin: bool = False  # Give that decoy our own fingerprint and a path we really derive, so only the prevout script tells it apart
+    nums_leaf_only: bool = False
+    false_nums_leaf: bool = False
+    mismatch_redeem_script: bool = False
 
 
 @dataclass
@@ -282,6 +286,9 @@ class TestScenario:
     input_stage: str = "resolved"  # unresolved | contributed | resolved | malformed
     omit_output_amount: bool = False
     strip_sp_proofs_after_resolution: bool = False
+    sign_before_scripts: bool = False
+    corrupt_final_redeem: bool = False
+    experimental: Optional[str] = None  # what the vector waits on; included only with --include experimental
 
 
 # ============================================================================
@@ -569,6 +576,8 @@ class InputFactory:
         result["owner"] = spec.owner
         if material:
             result["key_material"] = material
+        if spec.mismatch_redeem_script:
+            result["redeem_script"] = bytes(program_to_witness_script(0, hashlib.sha256(b"mismatch-redeem").digest()[:20]))
         return result
 
     def _generate_multisig_keys_and_script(self, spec: InputSpec, input_index: int, purpose: str) -> Tuple[list, bytes]:
@@ -716,6 +725,7 @@ class InputFactory:
                 "amount": spec.amount,
                 "sequence": spec.sequence,
                 "is_eligible": False,
+                "omit_tap_commitment_fields": spec.nums_leaf_only,
             }
 
         if material is not None:
@@ -770,6 +780,18 @@ class InputFactory:
             "sequence": spec.sequence,
             "is_eligible": is_eligible,
         }
+        if spec.false_nums_leaf:
+            script_priv, script_pub = self.wallet.create_key_pair(
+                "false_nums_leaf", _deterministic_hash(key_suffix + "_leaf")
+            )
+            leaf_script = bytes(CScript([script_pub.bytes_xonly, OP_CHECKSIG]))
+            result["private_key"] = script_priv
+            result["public_key"] = script_pub
+            result["tap_leaf_script"] = leaf_script
+            result["tap_leaf_version"] = 0xC0
+            result["tap_leaf_hash"] = TaggedHash("TapLeaf", bytes([0xC0]) + ser_string(leaf_script))
+            result["tap_control_block"] = bytes([0xC0]) + NUMS_H + hashlib.sha256(b"uncommitted-nums-leaf").digest()
+            result["is_eligible"] = False
         result["owner"] = spec.owner
         if material:
             result["key_material"] = material
@@ -975,7 +997,7 @@ class PSBTBuilder:
                 remove_raw_input_fields_by_type(psbt, idx, PSBTKeyType.PSBT_IN_SP_DLEQ)
 
         # Auto-sign all eligible inputs when output scripts are complete
-        if self._should_auto_sign(scenario):
+        if self._should_auto_sign(scenario) or scenario.sign_before_scripts:
             for input_info in input_data:
                 if self._should_sign_input(input_info):
                     self._sign_single_input(
@@ -1256,23 +1278,24 @@ class PSBTBuilder:
                 "tap_internal_key",
                 material.derivation_public_key.bytes_xonly if material else input_info["public_key"].bytes_xonly,
             )
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_TAP_INTERNAL_KEY,
-                b"",
-                tap_key,
-            )
-            if input_info.get("tap_merkle_root") is not None:
+            if not input_info.get("omit_tap_commitment_fields"):
                 add_raw_input_field(
                     psbt,
                     idx,
-                    PSBTKeyType.PSBT_IN_TAP_MERKLE_ROOT,
+                    PSBTKeyType.PSBT_IN_TAP_INTERNAL_KEY,
                     b"",
-                    input_info["tap_merkle_root"],
+                    tap_key,
                 )
-            if input_info.get("key_material") is not None or tap_key != NUMS_H:
-                self._add_input_derivation(psbt, idx, input_info)
+                if input_info.get("tap_merkle_root") is not None:
+                    add_raw_input_field(
+                        psbt,
+                        idx,
+                        PSBTKeyType.PSBT_IN_TAP_MERKLE_ROOT,
+                        b"",
+                        input_info["tap_merkle_root"],
+                    )
+                if input_info.get("key_material") is not None or tap_key != NUMS_H:
+                    self._add_input_derivation(psbt, idx, input_info)
 
 
     def _dleq_aux_rand(self, scan_key_id: str, input_idx: Optional[int] = None) -> bytes:
@@ -2076,6 +2099,9 @@ class ConfigBasedTestGenerator:
                 contribute_foreign_share=input_config.get("contribute_foreign_share", False),
                 decoy_first_derivation=input_config.get("decoy_first_derivation", False),
                 decoy_same_origin=input_config.get("decoy_same_origin", False),
+                nums_leaf_only=input_config.get("nums_leaf_only", False),
+                false_nums_leaf=input_config.get("false_nums_leaf", False),
+                mismatch_redeem_script=input_config.get("mismatch_redeem_script", False),
             )
 
             # Handle batch creation
@@ -2108,6 +2134,9 @@ class ConfigBasedTestGenerator:
                     contribute_foreign_share=input_spec.contribute_foreign_share,
                     decoy_first_derivation=input_spec.decoy_first_derivation,
                     decoy_same_origin=input_spec.decoy_same_origin,
+                    nums_leaf_only=input_spec.nums_leaf_only,
+                    false_nums_leaf=input_spec.false_nums_leaf,
+                    mismatch_redeem_script=input_spec.mismatch_redeem_script,
                 )
                 inputs.append(batch_spec)
 
@@ -2157,6 +2186,7 @@ class ConfigBasedTestGenerator:
             description=config["description"],
             task=config.get("task", "deserialize"),
             id=config.get("id"),
+            experimental=config.get("experimental"),
             validation_result=ValidationResult(config.get("validation_result", "valid")),
             inputs=inputs,
             outputs=outputs,
@@ -2216,10 +2246,74 @@ class ConfigBasedTestGenerator:
             ),
             input_stage=config.get("input_stage", "resolved"),
             omit_output_amount=control_override.get("omit_output_amount", False),
+            sign_before_scripts=control_override.get("sign_before_scripts", False),
+            corrupt_final_redeem=control_override.get("corrupt_final_redeem", False),
             strip_sp_proofs_after_resolution=control_override.get(
                 "strip_sp_proofs_after_resolution", False
             ),
         )
+
+    def _corrupt_final_redeem(self, serialized_psbt: bytes) -> bytes:
+        """Replace the final P2SH redeem push with one that does not match the prevout."""
+        from io import BytesIO
+
+        parsed = PSBT()
+        parsed.deserialize(BytesIO(serialized_psbt))
+        wrong = bytes(CScript([OP_0, hashlib.sha256(b"mismatch-redeem").digest()[:20]]))
+        script_sig = bytes(CScript([wrong]))
+        replaced = False
+        for inp in parsed.i:
+            if PSBT_IN_FINAL_SCRIPTSIG in inp.map:
+                inp.map[PSBT_IN_FINAL_SCRIPTSIG] = script_sig
+                replaced = True
+        if not replaced:
+            raise AssertionError("corrupt_final_redeem found no final scriptSig")
+        return normalize_psbt_field_order(parsed.serialize())
+
+    def _finalize_uncommitted_leaf(self, signed_psbt: bytes) -> bytes:
+        """Finalize a PSBT whose script-path leaf does not commit to its prevout.
+
+        A validating Finalizer refuses that input, so the witnesses are written here:
+        [sig, pubkey] for P2WPKH and [sig, leaf script, control block] for the leaf. The
+        pre-final fields are dropped as Input::finalize drops them.
+        """
+        from io import BytesIO
+
+        parsed = PSBT()
+        parsed.deserialize(BytesIO(signed_psbt))
+        kept_types = {0x00, 0x01, 0x0E, 0x0F, 0x10, 0x1D, 0x1E}
+        for inp in parsed.i:
+            keyed = {key[0]: (key[1:], value) for key, value in inp.map.items() if not isinstance(key, int)}
+            if 0x15 in keyed:
+                control, leaf = keyed[0x15]
+                stack = [keyed[0x14][1], leaf[:-1], control]
+            elif 0x02 in keyed:
+                pubkey, sig = keyed[0x02]
+                stack = [sig, pubkey]
+            else:
+                raise AssertionError("uncommitted leaf vector has an input that is neither P2WPKH nor script-path P2TR")
+            witness = CTxInWitness()
+            witness.scriptWitness.stack = stack
+            inp.map = {
+                key: value
+                for key, value in inp.map.items()
+                if (key if isinstance(key, int) else key[0]) in kept_types
+                or (key if isinstance(key, int) else key[0]) >= 0xFC
+            }
+            inp.map[PSBT_IN_FINAL_SCRIPTWITNESS] = witness.serialize()
+        return normalize_psbt_field_order(parsed.serialize())
+
+    def _require_final_fields(self, serialized_psbt: bytes, scenario: TestScenario) -> None:
+        from io import BytesIO
+
+        parsed = PSBT()
+        parsed.deserialize(BytesIO(serialized_psbt))
+        for index, inp in enumerate(parsed.i):
+            types = {key if isinstance(key, int) else key[0] for key in inp.map}
+            if 0x07 not in types and 0x08 not in types:
+                raise AssertionError(
+                    f"fail_extract vector {scenario.description!r} input {index} has no final field"
+                )
 
     def _input_psbt_bytes(self, serialized_psbt: bytes) -> bytes:
         """Return the PSBT bytes the task consumer receives."""
@@ -2255,6 +2349,14 @@ class ConfigBasedTestGenerator:
         psbt_data = self.builder.build_psbt(scenario)
         psbt = psbt_data["psbt"]
         serialized_psbt = normalize_psbt_field_order(psbt.serialize())
+        if scenario.task == "fail_extract":
+            if any(spec.false_nums_leaf for spec in scenario.inputs):
+                serialized_psbt = self._finalize_uncommitted_leaf(serialized_psbt)
+            else:
+                serialized_psbt = self._finalized_psbt_bytes(serialized_psbt, psbt_data, scenario)
+            if scenario.corrupt_final_redeem:
+                serialized_psbt = self._corrupt_final_redeem(serialized_psbt)
+            self._require_final_fields(serialized_psbt, scenario)
         input_psbt = self._input_psbt_bytes(serialized_psbt)
 
         # Convert to GenTestVector format for compatibility
@@ -2848,7 +2950,7 @@ def _jade_expectation(psbt_data: Dict[str, Any], scenario: TestScenario, fixture
 
 
 # Optional vector sets, added with --include.
-INCLUDE_CHOICES = ("workflows", "jade")
+INCLUDE_CHOICES = ("workflows", "experimental", "jade")
 # The sets every file includes. When workflow vectors become standard, add
 # "workflows" here and bump VECTOR_VERSION.
 STANDARD_INCLUDES: Tuple[str, ...] = ()
@@ -2867,6 +2969,7 @@ class TestVectorGenerator:
         self.config_generator = ConfigBasedTestGenerator(seed, key_profile)
         self.workflow_generator = WorkflowVectorGenerator(seed, key_profile="workflow")
         self.includes = sorted(set(STANDARD_INCLUDES) | set(include))
+        self.experimental = []  # (description, reason) for every experimental case seen
         self.test_vectors = {
             "description": "BIP-375 Test Vectors",
             "version": VECTOR_VERSION,
@@ -2895,6 +2998,10 @@ class TestVectorGenerator:
         for config_file in sorted(invalid_configs):
             scenarios = self.config_generator.load_test_scenarios_from_config(str(config_file))
             for scenario in scenarios:
+                if scenario.experimental:
+                    self.experimental.append((scenario.description, scenario.experimental))
+                    if "experimental" not in self.includes:
+                        continue
                 test_vector = self.config_generator.generate_test_vector_from_scenario(scenario)
                 self.test_vectors["invalid"].append(test_vector)
 
@@ -2903,6 +3010,10 @@ class TestVectorGenerator:
         for config_file in sorted(valid_configs):
             scenarios = self.config_generator.load_test_scenarios_from_config(str(config_file))
             for scenario in scenarios:
+                if scenario.experimental:
+                    self.experimental.append((scenario.description, scenario.experimental))
+                    if "experimental" not in self.includes:
+                        continue
                 test_vector = self.config_generator.generate_test_vector_from_scenario(scenario)
                 self.test_vectors["valid"].append(test_vector)
 
@@ -2921,6 +3032,10 @@ class TestVectorGenerator:
         # Generate workflow (step-by-step) vectors
         if "workflows" in self.includes:
             self.test_vectors["workflows"] = self.workflow_generator.generate()
+        else:
+            # expected.psbt describes a role transition, so it ships with the workflow set
+            for vector in self.test_vectors["valid"]:
+                vector.pop("expected", None)
         # The seeded wallets behind every input key, so any implementer can load them
         profile = self.config_generator.builder.input_factory.jade_profile
         self.test_vectors["wallets"] = (profile if isinstance(profile, WorkflowKeyProfile) else WorkflowKeyProfile()).wallets
@@ -2981,3 +3096,8 @@ if __name__ == "__main__":
 
     generator = TestVectorGenerator(key_profile=args.key_profile, include=args.include)
     generator.save_test_vectors(str(args.output), include_hex=args.hex)
+    if generator.experimental:
+        state = "included" if "experimental" in generator.includes else "omitted"
+        print(f"Experimental vectors ({len(generator.experimental)}, {state}):")
+        for description, reason in generator.experimental:
+            print(f"  {description} [{reason}]")

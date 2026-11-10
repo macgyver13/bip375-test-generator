@@ -14,7 +14,7 @@ import struct
 from io import BytesIO
 
 from test_framework.crypto.secp256k1 import G, GE
-from test_framework.key import ECKey, TaggedHash
+from test_framework.key import ECKey, TaggedHash, tweak_add_pubkey
 from test_framework.messages import (
     COutPoint,
     CTransaction,
@@ -618,7 +618,7 @@ def _satisfy(psbt_map, script, redeem):
         key_sig = _find(psbt_map, PSBT_IN_TAP_KEY_SIG, b"")
         if key_sig is not None:
             return b"", _witness([key_sig])
-        return b"", _witness(_tapleaf_stack(psbt_map))
+        return b"", _witness(_tapleaf_stack(psbt_map, script))
     raise Bip375Error("cannot finalize input")
 
 
@@ -651,7 +651,20 @@ def _multisig_stack(psbt_map, redeem):
     return stack
 
 
-def _tapleaf_stack(psbt_map):
+def _leaf_commits_to(script, version, control, leaf_hash):
+    """BIP-341 script-path check: the control block and leaf reproduce the prevout's output key."""
+    if len(control) < 33 or (len(control) - 33) % 32 or control[0] & 0xFE != version:
+        return False
+    node = leaf_hash
+    for i in range(33, len(control), 32):
+        sibling = control[i:i + 32]
+        node = TaggedHash("TapBranch", node + sibling if node < sibling else sibling + node)
+    internal = control[1:33]
+    tweaked = tweak_add_pubkey(internal, TaggedHash("TapTweak", internal + node))
+    return tweaked is not None and tweaked[0] == script[2:34] and tweaked[1] == bool(control[0] & 1)
+
+
+def _tapleaf_stack(psbt_map, script_pubkey):
     """The script-path witness: signature, leaf script, control block."""
     leaves = [
         (key[1:], value)
@@ -663,6 +676,9 @@ def _tapleaf_stack(psbt_map):
     control, leaf = leaves[0]
     script, version = leaf[:-1], leaf[-1]
     leaf_hash = TaggedHash("TapLeaf", bytes([version]) + ser_compact_size(len(script)) + script)
+    # rust-psbt's Finalizer runs the interpreter over the result and refuses a leaf the prevout does not commit to
+    if not _leaf_commits_to(script_pubkey, version, control, leaf_hash):
+        raise Bip375Error("taproot control block does not commit to the prevout")
     sigs = _keyed(psbt_map, PSBT_IN_TAP_SCRIPT_SIG, 64)
     sig = next((sig for key, sig in sigs if key[32:] == leaf_hash), None)
     if sig is None:

@@ -45,6 +45,9 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | | Added invalid “ecdh coverage: P2TR input with NUMS internal key claim not matching prevout missing ECDH share”. 23 valid, 29 invalid, 17 workflow steps. |
 | | Hardening | Added invalid “ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field when PSBT_OUT_SCRIPT not set”, “ecdh coverage: global ECDH share proven over a subset of eligible inputs”, and “input eligibility: non-SIGHASH_ALL signature on input with sp output and PSBT_IN_SIGHASH_TYPE omitted”. 23 valid, 32 invalid, 17 workflow steps. |
 | | Sighash coverage | Added invalid “input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output” and its PSBT_IN_SIGHASH_TYPE-omitted variant, “SIGHASH_ALL\|ANYONECANPAY sighash type on input with sp output”, “non-SIGHASH_ALL signature on taproot input with sp output” and “SIGHASH_DEFAULT sighash type on non-taproot input with sp output”. Added valid “can finalize: ineligible P2SH multisig input declaring SIGHASH_ALL”. 24 valid, 37 invalid, 17 workflow steps. |
+| | Extractor failures | Added valid "can finalize: NUMS script-path input proven by PSBT_IN_TAP_LEAF_SCRIPT with no internal key or merkle root". Added invalid NUMS tapleaf and finalized NUMS witness claims that do not commit to the prevout, a P2SH redeem script that does not match its prevout, a signature before the silent payment scripts are set, and a finalized P2SH redeem mismatch. `fail_extract` is a finalized PSBT an Extractor must reject. 25 valid, 42 invalid, 17 workflow steps. |
+| | Experimental set | Cases marked `experimental` are left out of `bip375_test_vectors.json` and added to `out/bip375_test_vectors_extended.json` with `--include experimental`. The tapleaf NUMS, P2SH redeem and `fail_extract` vectors above are marked experimental. Standard: 24 valid, 38 invalid. Extended: 25 valid, 42 invalid, 17 workflow steps. |
+| | | Valid vectors carry `expected.psbt` only with `--include workflows`, since it describes a role transition. `bip375_test_vectors.json` no longer has `expected`. PSBT maps are equivalent. |
 
 ---
 
@@ -90,7 +93,9 @@ Until the rust-psbt finalizer fix 1.2.5 depends on is published, bip375-examples
 ```bash
 cd bip375-test-generator
 pip install pyyaml
-python test_generator.py
+python test_generator.py                                    # or: just gen
+python test_generator.py --include workflows,experimental \
+  --output out/bip375_test_vectors_extended.json             # or: just gen-extended
 ```
 
 Output:
@@ -101,6 +106,8 @@ Output:
 
 `--include` takes a comma-separated list of optional sets:
 - `workflows`: the step-by-step workflow vectors.
+- `experimental`: test cases marked `experimental: "<what it waits on>"` in their config,
+  for validator behavior not merged yet. Every run prints these cases and their reasons.
 
 `STANDARD_INCLUDES` in `test_generator.py` lists the sets every file includes, and
 `VECTOR_VERSION` names the standard set. Both files report that version. To make workflow
@@ -110,6 +117,7 @@ checks both files.
 
 ```bash
 just gen           # bip375_test_vectors.json, the standard set
+just gen-extended  # out/bip375_test_vectors_extended.json, with --include workflows,experimental
 just gen-extended  # out/bip375_test_vectors_extended.json, with --include workflows
 just gen-all       # both
 ```
@@ -227,10 +235,10 @@ what the acting role can't read from `psbt` or `expected.psbt`:
 It is diagnostic only. `expected.psbt` is the base64 PSBT after that role runs.
 
 Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenario PSBT.
-Successful one-shot vectors include `expected.psbt`: for `sign`, it is the PSBT after
+In the extended file, successful one-shot vectors include `expected.psbt`: for `sign`, it is the PSBT after
 the signer has added every signature it can from the supplied key material.
 For `finalize`, `psbt` is signed and `expected.psbt` is finalized. Failure tasks such
-as `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
+as `fail_sign` and `fail_deserialize` omit `expected`. `fail_extract` is a finalized PSBT: every input has a final scriptSig or witness, and an Extractor must reject it. It also omits `expected`. For one-shot vectors,
 `supplementary.inputs[].signed` describes the input/current `psbt` state.
 
 ---
