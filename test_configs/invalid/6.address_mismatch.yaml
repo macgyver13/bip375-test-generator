@@ -43,15 +43,15 @@ test_cases:
       - type: "silent_payment"
         amount: 90000
         scan_key_id: "default"
-        spend_derivation_suffix: "low_lex_key"
-        force_k_index: 1
+        spend_derivation_suffix: "first"
       - type: "silent_payment"
         amount: 10000
         scan_key_id: "default"
-        spend_derivation_suffix: "high_lex_key"
-        force_k_index: 0
+        spend_derivation_suffix: "second"
     scan_keys:
       - key_id: "default"
+    control_override:
+      reverse_k_order: true
 
   - description: "output scripts: k values assigned to wrong output indices with three sp outputs (same scan / spend keys)"
     violates: [bip352_outputs]

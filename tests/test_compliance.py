@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, str(ROOT))
 
 from dleq import dleq_verify_proof
-from test_generator import ConfigBasedTestGenerator, ScanKeySpec
+from generator_utils import WorkflowKeyProfile
 from test_framework.crypto.secp256k1 import G, GE
 from test_framework.key import ECPubKey, TaggedHash, tweak_add_pubkey, verify_schnorr
 from test_framework.messages import (
@@ -361,19 +361,13 @@ def _outpoint(inp):
 
 
 def _scan_privs():
-    """Scan private keys of every scan key the configs declare, by compressed pubkey."""
     if getattr(_scan_privs, "cache", None) is None:
-        generator = ConfigBasedTestGenerator()
+        profile = WorkflowKeyProfile()
         found = {}
-        for path in sorted((ROOT / "test_configs").glob("*/*.yaml")):
-            for case in yaml.safe_load(path.read_text()).get("test_cases", []):
-                specs = [
-                    ScanKeySpec(key["key_id"], key.get("derivation_suffix", ""))
-                    for key in case.get("scan_keys", [{"key_id": "default"}])
-                ]
-                generator.builder._generate_scan_keys(specs)
-                for pub, priv in generator.builder.scan_privs.items():
-                    found[pub] = int(priv)
+        for foreign in (False, True):
+            for account in range(8):
+                scan, _spend = profile.bip352_scan_spend(account, foreign=foreign)
+                found[scan.public_key.bytes] = int(scan.private_key)
         _scan_privs.cache = found
     return _scan_privs.cache
 

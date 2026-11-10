@@ -39,6 +39,9 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | | Added invalid “ecdh coverage: P2WPKH PSBT_IN_BIP32_DERIVATION pubkey does not match scriptPubKey”, its P2PKH and P2SH-P2WPKH variants, and “ecdh coverage: global ECDH share computed from a PSBT_IN_BIP32_DERIVATION pubkey not matching scriptPubKey”. 21 valid, 28 invalid. |
 | | Input derivation | Added valid “can finalize: P2WPKH with decoy PSBT_IN_BIP32_DERIVATION before the matching key” and its P2PKH variant. 23 valid, 28 invalid. |
 | | Reference runner | One-shot sign and fail_sign vectors disclose only the acting signer's `private_key`. Key-path P2TR inputs gained `PSBT_IN_TAP_BIP32_DERIVATION`. The large PSBT's acting party holds only its two P2TR inputs, so its `expected.psbt` adds their `PSBT_IN_TAP_KEY_SIG`. |
+| | | Added top-level `wallets` to both files, two seeded wallets for the workflow parties. Workflow inputs gained `master_fingerprint` and `derivation_path`. |
+| | BIP32 input keys | One-shot input keys are BIP32 from the workflow wallets (m/purpose'/1'/0'/branch/index), with taproot output keys negated to even y. Inputs that use the key origin (the keys a sign vector holds, foreign origins and decoy derivations) gained `master_fingerprint` and `derivation_path`. P2TR `private_key` and `public_key` are now the internal key, and `notes` describe the key paths. |
+| | BIP-352 wallet | Scan and spend keys for an account come from the primary wallet (m/352'/1'/account'/1'/0 and m/352'/1'/account'/0'/0). The default scan key is account 0, and other scan keys, then outputs with their own spend key, take the next accounts in order. |
 
 ---
 
@@ -153,6 +156,7 @@ specifics remain custom in `generator_utils.py`.
 ### Output sections
 
 The extended file has three vector arrays; the standard file has `valid` and `invalid`.
+Both carry `wallets`, the seeded wallets behind every input key.
 
 - `valid` / `invalid` — one-shot config-driven PSBTs (see YAML config below).
 - `workflows` — a single PSBT walked **step by step** through the BIP-375 roles.
@@ -203,7 +207,7 @@ Each workflow entry is an **atomic step vector**:
 what the acting role can't read from `psbt` or `expected.psbt`:
 
 - `create`: the outpoint and sequence of each input, and the outputs.
-- `update`: the UTXOs and public key of each input.
+- `update`: the UTXOs, public key and key origin of each input.
 - `sign`: `private_key` for the inputs the acting party owns (blank for the others), and
   `dleq_aux_rand` for the proofs that party adds.
 - `finalize` and `extract`: nothing.
