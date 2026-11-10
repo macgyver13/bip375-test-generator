@@ -119,3 +119,72 @@ test_cases:
         scan_key_id: "default"
     scan_keys:
       - key_id: "default"
+
+  # Input 1 spends a P2SH-P2WPKH prevout, but its PSBT_IN_REDEEM_SCRIPT is a
+  # 1-of-1 multisig that does not hash to the prevout. A Signer that reads
+  # eligibility from the redeem script alone takes input 1 as ineligible, and the
+  # share and output script are computed without its key. The receiver sums
+  # input 1's key and does not find the payment.
+  - description: "ecdh coverage: P2SH-P2WPKH prevout with non-P2WPKH redeem script and no ECDH share when PSBT_OUT_SCRIPT set for sp output"
+    violates: [bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        skip_signing: true
+      - type: "p2sh_p2wpkh"
+        amount: 10000
+        mismatch_redeem_script: true
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 105000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
+  - description: "ecdh coverage: finalized NUMS script-path witness not committed to prevout, input missing ECDH share"
+    experimental: "finalized PSBT validation and the fail_extract task"
+    violates: [bip352_outputs, bip374_dleq, bip375_ecdh, bip375_eligibility]
+    task: "fail_extract"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2tr"
+        amount: 80000
+        false_nums_leaf: true
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+
+  # The finalized form of the vector above. Input 1 is signed for its real
+  # P2SH-P2WPKH prevout, then its final scriptSig redeem push is replaced with a
+  # 1-of-1 multisig that does not hash to the prevout. The share and output script
+  # leave input 1 out, as an Extractor would that reads eligibility from the final
+  # scriptSig alone.
+  - description: "ecdh coverage: finalized P2SH-P2WPKH input with non-P2WPKH final scriptSig redeem script and no ECDH share"
+    experimental: "finalized PSBT validation and the fail_extract task"
+    violates: [bip375_eligibility]
+    task: "fail_extract"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2sh_p2wpkh"
+        amount: 10000
+        eligible_override: false
+    outputs:
+      - type: "silent_payment"
+        amount: 105000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      corrupt_final_redeem: true

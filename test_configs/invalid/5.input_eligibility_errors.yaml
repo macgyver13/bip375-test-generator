@@ -192,3 +192,21 @@ test_cases:
       - key_id: "default"
     control_override:
       set_tx_modifiable: true
+
+
+  - description: "input eligibility: input signed before every sp output has PSBT_OUT_SCRIPT"
+    violates: [bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 90000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      missing_ecdh_for_input: 0
+      sign_before_scripts: true
