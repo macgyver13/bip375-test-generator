@@ -91,6 +91,77 @@ test_cases:
     control_override:
       wrong_dleq_proof_size: true
 
+  # Bitcoin Core and rust-psbt reject keys and ECDH shares that are 33 bytes but
+  # not valid points when they deserialize the PSBT.
+  # The valid share stays; the extra one has no DLEQ proof and no wallet scan key.
+  - description: "psbt structure: PSBT_IN_SP_ECDH_SHARE scan key is not a valid point"
+    violates: [bip174_framing, bip374_dleq, bip375_ecdh]
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_point: "ecdh_scan_key"
+
+  - description: "psbt structure: PSBT_IN_SP_ECDH_SHARE value is not a valid point"
+    violates: [bip174_framing, bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_point: "ecdh_share"
+
+  - description: "psbt structure: PSBT_OUT_SP_V0_INFO scan key is not a valid point"
+    violates: [bip174_framing, bip352_outputs]
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_point: "sp_info_scan_key"
+
+  - description: "psbt structure: PSBT_OUT_SP_V0_INFO spend key is not a valid point"
+    violates: [bip174_framing, bip352_outputs]
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_point: "sp_info_spend_key"
+
   - description: "psbt structure: missing PSBT_OUT_SCRIPT field when sending to non-sp output"
     violates: [bip370_outputs]
     task: "fail_deserialize"
