@@ -1134,6 +1134,17 @@ class PSBTBuilder:
         )
 
         if input_type == InputType.P2WPKH:
+            # A segwit v0 signature commits only to its own input's amount, so
+            # signers want the full previous transaction too (BIP174). A segwit
+            # v2 injection keeps the witness UTXO alone.
+            if input_info["script_pubkey"][0] == 0x00:
+                self._add_input_utxo(
+                    psbt,
+                    idx,
+                    input_info,
+                    PSBTKeyType.PSBT_IN_NON_WITNESS_UTXO,
+                    input_info["non_witness_utxo"],
+                )
             # Add witness UTXO and BIP32 derivation
             self._add_input_utxo(
                 psbt,
