@@ -139,6 +139,24 @@ test_cases:
     control_override:
       wrong_sighash_for_input: 0
 
+  - description: "input eligibility: non-SIGHASH_ALL signature on taproot input with sp output and PSBT_IN_SIGHASH_TYPE omitted"
+    violates: [bip375_sighash_all]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["sp_proofs", "outputs"]
+    inputs:
+      - type: "p2tr"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      wrong_sighash_for_input: 0
+      no_sighash_for_input: 0
+
   # A check that masks the sighash type with 0x1f reads 0x81 as SIGHASH_ALL.
   - description: "input eligibility: SIGHASH_ALL|ANYONECANPAY sighash type on input with sp output"
     violates: [bip375_sighash_all]

@@ -140,7 +140,7 @@ test_cases:
     control_override:
       use_global_ecdh: true
 
-  - description: "input eligibility: P2SH redeem script not matching prevout script with sp output"
+  - description: "ecdh coverage: P2SH redeem script not matching prevout script with sp output"
     experimental: "P2SH redeem script must hash to the prevout"
     violates: [bip352_outputs, bip375_eligibility]
     task: "fail_sign"
