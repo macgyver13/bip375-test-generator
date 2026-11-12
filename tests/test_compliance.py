@@ -458,6 +458,14 @@ def _framing(b64):
     if encoded != raw:
         errors.append("re-serialization does not reproduce the original bytes")
     errors.extend(_length_errors(psbt))
+    if psbt.version != 2:
+        bip375 = [
+            *(typ for typ, _kd, _v in _entries(psbt.g) if typ in (PSBT_GLOBAL_SP_ECDH_SHARE, PSBT_GLOBAL_SP_DLEQ)),
+            *(typ for m in psbt.i for typ, _kd, _v in _entries(m) if typ in (PSBT_IN_SP_ECDH_SHARE, PSBT_IN_SP_DLEQ)),
+            *(typ for m in psbt.o for typ, _kd, _v in _entries(m) if typ in (PSBT_OUT_SP_V0_INFO, PSBT_OUT_SP_V0_LABEL)),
+        ]
+        if bip375:
+            errors.append(f"BIP-375 fields in a version {psbt.version} PSBT")
     return psbt, errors
 
 
@@ -941,8 +949,11 @@ def _check_eligibility(psbt, sigs):
             for index, _info, script, _label in outputs:
                 if script is not None and len(script) > 0:
                     errors.append(f"output {index} has script set but TX_MODIFIABLE flags are not cleared")
+        scripts_set = any(script is not None for _index, _info, script, _label in outputs)
         for index, inp in enumerate(psbt.i):
             script = _spent_script(inp)
+            if script is None and scripts_set:
+                errors.append(f"input {index} has no UTXO, so its eligibility is unknown once an output script is set")
             program = _witness_program(script) if script else None
             if program is not None and program[0] > 1:
                 errors.append(f"input {index} spends witness version {program[0]}")
