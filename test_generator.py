@@ -289,6 +289,7 @@ class TestScenario:
     sign_before_scripts: bool = False
     corrupt_final_redeem: bool = False
     experimental: Optional[str] = None  # what the vector waits on; included only with --include experimental
+    as_psbt_v0: bool = False
 
 
 # ============================================================================
@@ -2248,10 +2249,52 @@ class ConfigBasedTestGenerator:
             omit_output_amount=control_override.get("omit_output_amount", False),
             sign_before_scripts=control_override.get("sign_before_scripts", False),
             corrupt_final_redeem=control_override.get("corrupt_final_redeem", False),
+            as_psbt_v0=control_override.get("as_psbt_v0", False),
             strip_sp_proofs_after_resolution=control_override.get(
                 "strip_sp_proofs_after_resolution", False
             ),
         )
+
+    def _as_psbt_v0(self, serialized_psbt: bytes) -> bytes:
+        """Re-encode a v2 PSBT as v0, keeping every other field, BIP-375 ones included.
+
+        The v2 transaction fields move into PSBT_GLOBAL_UNSIGNED_TX.
+        """
+        from io import BytesIO
+        from test_framework.psbt import (
+            PSBT_GLOBAL_FALLBACK_LOCKTIME,
+            PSBT_GLOBAL_INPUT_COUNT,
+            PSBT_GLOBAL_OUTPUT_COUNT,
+            PSBT_GLOBAL_TX_MODIFIABLE,
+            PSBT_GLOBAL_TX_VERSION,
+            PSBT_GLOBAL_UNSIGNED_TX,
+            PSBT_GLOBAL_VERSION,
+            PSBT_IN_OUTPUT_INDEX,
+            PSBT_IN_PREVIOUS_TXID,
+            PSBT_IN_SEQUENCE,
+            PSBT_OUT_AMOUNT,
+            PSBT_OUT_SCRIPT,
+        )
+
+        psbt = PSBT()
+        psbt.deserialize(BytesIO(serialized_psbt))
+        g = psbt.g.map
+        tx = CTransaction()
+        tx.version = struct.unpack("<I", g.pop(PSBT_GLOBAL_TX_VERSION))[0]
+        tx.nLockTime = struct.unpack("<I", g.pop(PSBT_GLOBAL_FALLBACK_LOCKTIME, bytes(4)))[0]
+        for key in (PSBT_GLOBAL_INPUT_COUNT, PSBT_GLOBAL_OUTPUT_COUNT, PSBT_GLOBAL_TX_MODIFIABLE, PSBT_GLOBAL_VERSION):
+            g.pop(key, None)
+        for inp in psbt.i:
+            txid = int.from_bytes(inp.map.pop(PSBT_IN_PREVIOUS_TXID), "little")
+            index = struct.unpack("<I", inp.map.pop(PSBT_IN_OUTPUT_INDEX))[0]
+            sequence = struct.unpack("<I", inp.map.pop(PSBT_IN_SEQUENCE, b"\xff" * 4))[0]
+            tx.vin.append(CTxIn(COutPoint(txid, index), b"", sequence))
+        for out in psbt.o:
+            amount = struct.unpack("<q", out.map.pop(PSBT_OUT_AMOUNT))[0]
+            tx.vout.append(CTxOut(amount, out.map.pop(PSBT_OUT_SCRIPT, b"")))
+        g[PSBT_GLOBAL_UNSIGNED_TX] = tx.serialize_without_witness()
+        psbt.version = 0
+        return normalize_psbt_field_order(psbt.serialize())
 
     def _corrupt_final_redeem(self, serialized_psbt: bytes) -> bytes:
         """Replace the final P2SH redeem push with one that does not match the prevout."""
@@ -2357,6 +2400,8 @@ class ConfigBasedTestGenerator:
             if scenario.corrupt_final_redeem:
                 serialized_psbt = self._corrupt_final_redeem(serialized_psbt)
             self._require_final_fields(serialized_psbt, scenario)
+        if scenario.as_psbt_v0:
+            serialized_psbt = self._as_psbt_v0(serialized_psbt)
         input_psbt = self._input_psbt_bytes(serialized_psbt)
 
         # Convert to GenTestVector format for compatibility
