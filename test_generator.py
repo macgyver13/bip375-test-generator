@@ -290,7 +290,13 @@ class TestScenario:
     corrupt_final_redeem: bool = False
     experimental: Optional[str] = None  # what the vector waits on; included only with --include experimental
     as_psbt_v0: bool = False
+    # Replace a 33-byte key or share with OFF_CURVE_POINT: ecdh_scan_key (an extra
+    # PSBT_IN_SP_ECDH_SHARE keyed by it), ecdh_share, sp_info_scan_key or sp_info_spend_key
+    invalid_point: Optional[str] = None
 
+
+# Compressed encoding whose x-coordinate (5) is not on secp256k1
+OFF_CURVE_POINT = b"\x02" + (5).to_bytes(32, "big")
 
 # ============================================================================
 # Specialized Input Factories
@@ -1441,8 +1447,13 @@ class PSBTBuilder:
             ecdh_bytes = ecdh_result.to_bytes_compressed()
             if scenario.wrong_ecdh_share_size:
                 ecdh_bytes = ecdh_bytes[:32]  # Wrong size: 32 instead of 33 bytes
+            if scenario.invalid_point == "ecdh_share":
+                ecdh_bytes = OFF_CURVE_POINT
 
             add_raw_input_field(psbt, input_idx, PSBTKeyType.PSBT_IN_SP_ECDH_SHARE, scan_pub.bytes, ecdh_bytes)
+            if scenario.invalid_point == "ecdh_scan_key":
+                # Extra share whose scan key keydata is not a point; the valid share stays
+                add_raw_input_field(psbt, input_idx, PSBTKeyType.PSBT_IN_SP_ECDH_SHARE, OFF_CURVE_POINT, ecdh_bytes)
 
             # Add DLEQ proof (if not missing due to Error injection)
             if dleq_proof is not None:
@@ -1982,6 +1993,10 @@ class PSBTBuilder:
             output_info["sp_v0_info"] = sp_info
             if scenario.wrong_sp_info_size:
                 sp_info = sp_info[:65]  # Wrong size (65 instead of 66)
+            if scenario.invalid_point == "sp_info_scan_key":
+                sp_info = OFF_CURVE_POINT + sp_info[33:]
+            elif scenario.invalid_point == "sp_info_spend_key":
+                sp_info = sp_info[:33] + OFF_CURVE_POINT
 
             add_raw_output_field(psbt, idx, PSBTKeyType.PSBT_OUT_SP_V0_INFO, b"", sp_info)
 
@@ -2250,6 +2265,7 @@ class ConfigBasedTestGenerator:
             sign_before_scripts=control_override.get("sign_before_scripts", False),
             corrupt_final_redeem=control_override.get("corrupt_final_redeem", False),
             as_psbt_v0=control_override.get("as_psbt_v0", False),
+            invalid_point=control_override.get("invalid_point"),
             strip_sp_proofs_after_resolution=control_override.get(
                 "strip_sp_proofs_after_resolution", False
             ),
