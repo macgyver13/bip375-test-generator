@@ -66,6 +66,17 @@ python test_generator.py
 
 Output: `bip375_test_vectors.json`
 
+### Regenerating vectors across a jj stack
+
+```bash
+just regen-stack '@::<revision tip>'
+```
+
+Edits each mutable revision from `@` through `<revision tip>`, oldest first, and regenerates
+`bip375_test_vectors.json` with the `spdk` backend. This replaces conflicted copies of the
+file left by a rebase. It stops at the first revision where the generator fails and returns
+to the starting revision when done.
+
 ### Vendored Bitcoin Core test_framework
 
 Bitcoin transaction, script, sighash, signing, and secp256k1 primitives are

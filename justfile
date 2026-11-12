@@ -40,6 +40,17 @@ sync-all:
   @just sync-bip
   @just sync-spdk
 
+# Regenerate the vectors in each mutable revision of revs, oldest first, overwriting any conflicted copy.
+regen-stack revs="@::":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  start=$(jj log --no-graph -r @ -T change_id)
+  for rev in $(jj log --no-graph --reversed -r 'mutable() & ({{revs}})' -T 'change_id ++ "\n"'); do
+    jj edit "$rev"
+    python {{project_root}}/test_generator.py
+  done
+  jj edit "$start"
+
 # Report semantic PSBT field changes between two jj revisions.
 diff-vectors from="@-" to="@" verbosity="":
   python {{project_root}}/psbt_diff.py {{verbosity}} --jj "{{from}}" "{{to}}"
