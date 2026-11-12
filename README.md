@@ -48,6 +48,8 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | Extractor failures | Added valid "can finalize: NUMS script-path input proven by PSBT_IN_TAP_LEAF_SCRIPT with no internal key or merkle root". Added invalid NUMS tapleaf and finalized NUMS witness claims that do not commit to the prevout, a P2SH redeem script that does not match its prevout, a signature before the silent payment scripts are set, and a finalized P2SH redeem mismatch. `fail_extract` is a finalized PSBT an Extractor must reject. 25 valid, 42 invalid, 17 workflow steps. |
 | | Experimental set | Cases marked `experimental` are left out of `bip375_test_vectors.json` and added to `out/bip375_test_vectors_extended.json` with `--include experimental`. The tapleaf NUMS, P2SH redeem and `fail_extract` vectors above are marked experimental. Standard: 24 valid, 38 invalid. Extended: 25 valid, 42 invalid, 17 workflow steps. |
 | | | Valid vectors carry `expected.psbt` only with `--include workflows`, since it describes a role transition. `bip375_test_vectors.json` no longer has `expected`. PSBT maps are equivalent. |
+| | BIP-375 scope audit | Added invalid “psbt structure: PSBT_OUT_SP_V0_INFO and PSBT_IN_SP_ECDH_SHARE in a version 0 PSBT”, “ecdh coverage: input 1 with no PSBT_IN_WITNESS_UTXO or PSBT_IN_NON_WITNESS_UTXO and no ECDH share when PSBT_OUT_SCRIPT set for sp output”, “ecdh coverage: missing PSBT_IN_SP_DLEQ field for input when PSBT_IN_SP_ECDH_SHARE set and PSBT_OUT_SCRIPT not set”, and “input eligibility: non-SIGHASH_ALL signature on taproot input with sp output and PSBT_IN_SIGHASH_TYPE omitted”. Invalid “input eligibility: P2SH redeem script not matching prevout script with sp output” is renamed “ecdh coverage: P2SH redeem script not matching prevout script with sp output”. Other PSBT maps are unchanged. Standard: 24 valid, 42 invalid. Extended: 25 valid, 46 invalid, 17 workflow steps. |
+| | Vector order | Each prefix names the check that rejects the vector, and vectors with the same prefix are listed together. Invalid order is psbt structure, ecdh coverage (missing shares, then DLEQ proofs, then multiple scan keys, then input public keys that do not match the prevout), input eligibility (segwit version, then sighash, then signing order), output scripts. Valid `can finalize` vectors come before `in progress`. The input derivation and pubkey mismatch vectors, previously prefixed “input derivation:” and “input pubkey mismatch:”, are prefixed “ecdh coverage:”. PSBT maps are unchanged. Standard: 24 valid, 42 invalid. Extended: 25 valid, 46 invalid, 17 workflow steps. |
 
 ---
 
@@ -247,8 +249,8 @@ as `fail_sign` and `fail_deserialize` omit `expected`. `fail_extract` is a final
 
 Test scenarios are defined in YAML files under three directories:
 
-- `test_configs/valid/` — scenarios expected to produce well-formed PSBTs (6 files)
-- `test_configs/invalid/` — scenarios designed to exercise validation failures (5 files)
+- `test_configs/valid/` — scenarios expected to produce well-formed PSBTs (8 files)
+- `test_configs/invalid/` — scenarios designed to exercise validation failures (6 files)
 - `test_configs/workflows/`: PSBTs walked through the roles one step at a time (2 files)
 
 Each file maps to a logical test category (e.g. ECDH coverage, PSBT structure errors, signer constraints).

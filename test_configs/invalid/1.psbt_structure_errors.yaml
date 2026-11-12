@@ -109,3 +109,22 @@ test_cases:
       - key_id: "default"
     control_override:
       skip_regular_output_script: true
+
+  # BIP-375's field tables allow its fields only in a version 2 PSBT. This is a
+  # complete, unsigned one-input silent payment PSBT re-encoded as version 0.
+  - description: "psbt structure: PSBT_OUT_SP_V0_INFO and PSBT_IN_SP_ECDH_SHARE in a version 0 PSBT"
+    violates: [bip174_framing]
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      as_psbt_v0: true
