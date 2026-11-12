@@ -445,6 +445,31 @@ def _length_errors(psbt):
     return errors
 
 
+def _point_errors(psbt):
+    """BIP-375 scan keys, ECDH shares and SP_V0_INFO keys of the right length
+    must also be valid compressed points"""
+    points = []
+    for psbt_map, types in [(psbt.g, (PSBT_GLOBAL_SP_ECDH_SHARE, PSBT_GLOBAL_SP_DLEQ))] + [
+        (m, (PSBT_IN_SP_ECDH_SHARE, PSBT_IN_SP_DLEQ)) for m in psbt.i
+    ]:
+        for typ, keydata, value in _entries(psbt_map):
+            if typ in types:
+                points.append((keydata, f"type {typ:#x} scan key"))
+            if typ == types[0]:
+                points.append((value, f"type {typ:#x} ECDH share"))
+    for m in psbt.o:
+        info = _one(m, PSBT_OUT_SP_V0_INFO)
+        if info is not None and len(info) == 66:
+            points += [(info[:33], "SP_V0_INFO scan key"), (info[33:], "SP_V0_INFO spend key")]
+    errors = []
+    for point, name in points:
+        if len(point) != 33:
+            continue  # reported by _length_errors
+        if GE.from_bytes(point) is None:
+            errors.append(f"{name} is not a valid point")
+    return errors
+
+
 def _framing(b64):
     raw = base64.b64decode(b64, validate=True)
     if not raw.startswith(b"psbt\xff"):
@@ -458,6 +483,7 @@ def _framing(b64):
     if encoded != raw:
         errors.append("re-serialization does not reproduce the original bytes")
     errors.extend(_length_errors(psbt))
+    errors.extend(_point_errors(psbt))
     if psbt.version != 2:
         bip375 = [
             *(typ for typ, _kd, _v in _entries(psbt.g) if typ in (PSBT_GLOBAL_SP_ECDH_SHARE, PSBT_GLOBAL_SP_DLEQ)),
