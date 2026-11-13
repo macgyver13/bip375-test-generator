@@ -27,6 +27,7 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | Valid vectors gained `supplementary.psbt_unique_id`, computed as BIP-375 specifies. PSBT maps are equivalent. |
 | | | NUMS inputs are built from a script tree and carry `PSBT_IN_TAP_MERKLE_ROOT`. Two PSBT maps changed. |
 | | SIGHASH_DEFAULT | Added valid “can finalize: one P2TR input signed with SIGHASH_DEFAULT”. 21 valid, 24 invalid. |
+| | | Removed the per-vector `checks` field: every check applies to every vector. One invalid vector and the notes changed. |
 
 ---
 
@@ -114,7 +115,6 @@ description: "Human-readable description of this config file"
 
 test_cases:
   - description: "Specific scenario"
-    checks: [] # psbt_structure, ecdh_coverage, input_eligibility, output_scripts
     validation_result: "valid"   # or "invalid"
     inputs: [...]
     outputs: [...]
