@@ -1075,6 +1075,22 @@ class ComplianceTest(unittest.TestCase):
         if failures:
             self.fail("\n".join(failures[:50]))
 
+    def test_invalid_configs_declare_known_violates(self):
+        known = set(PROPERTIES)
+        failures = []
+        for path in sorted(INVALID_CONFIGS.glob("*.yaml")):
+            config = yaml.safe_load(path.read_text())
+            for case in config.get("test_cases", []):
+                declared = case.get("violates")
+                if not declared:
+                    failures.append(f"{path.name} {case['description']}: missing violates")
+                    continue
+                unknown = set(declared) - known
+                if unknown:
+                    failures.append(f"{path.name} {case['description']}: unknown checks {sorted(unknown)}")
+        if failures:
+            self.fail("\n".join(failures))
+
 
 if __name__ == "__main__":
     unittest.main()

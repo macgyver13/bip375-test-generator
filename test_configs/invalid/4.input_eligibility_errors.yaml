@@ -4,7 +4,6 @@ test_cases:
   - description: "input eligibility: segwit version greater than 1 in transaction inputs with sp output"
     violates: [bip352_outputs, bip375_eligibility]
     validation_result: "invalid"
-    checks: ["input_eligibility"]
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
       - type: "p2wpkh"
