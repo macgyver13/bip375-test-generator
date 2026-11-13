@@ -177,11 +177,11 @@ Each workflow entry is an **atomic step vector**:
 {
   "psbt": "<base64>",        // the PSBT this role received
   "description": "Two-input workflow: Updater adds UTXO and BIP32 derivation data",
-  "task": "updater",         // BIP-375 role that acted, in workflows[]
+  "task": "update",          // BIP-375 role that acted, in workflows[]
   "supplementary": {
     "inputs": [...], "outputs": [...]
   },
-  "expected": { "psbt": "<base64>" }   // plus "tx": "<hex>" on the extractor step
+  "expected": { "psbt": "<base64>", "psbt_unique_id": "<hex>" }   // plus "tx": "<hex>" on the extractor step
 }
 ```
 
@@ -189,10 +189,15 @@ Each workflow entry is an **atomic step vector**:
 `valid`/`invalid` vectors, where it instead records an expected outcome (`sign`, `fail_sign`,
 …) rather than a role.
 
-`supplementary` otherwise uses the same field shapes as the `valid`/`invalid` vectors, but
-is **scoped to the material that has become meaningful at that step** — `sp_proofs` list
-only the shares already present in `expected.psbt`, output `script` appears only once the
-Signer has computed it, and `private_key` is shown only for the party acting in that step.
+`supplementary` uses the same field shapes as the `valid`/`invalid` vectors. It only holds
+what the acting role can't read from `psbt` or `expected.psbt`:
+
+- `create`: the outpoint and sequence of each input, and the outputs.
+- `update`: the UTXOs and public key of each input.
+- `sign`: `private_key` for the inputs the acting party owns (blank for the others), and
+  `dleq_aux_rand` for the proofs that party adds.
+- `finalize` and `extract`: nothing.
+
 It is diagnostic only. `expected.psbt` is the base64 PSBT after that role runs.
 
 Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenario PSBT.
@@ -206,10 +211,11 @@ as `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
 
 ## YAML Test Configuration
 
-Test scenarios are defined in YAML files under two directories:
+Test scenarios are defined in YAML files under three directories:
 
 - `test_configs/valid/` — scenarios expected to produce well-formed PSBTs (6 files)
 - `test_configs/invalid/` — scenarios designed to exercise validation failures (5 files)
+- `test_configs/workflows/`: PSBTs walked through the roles one step at a time (2 files)
 
 Each file maps to a logical test category (e.g. ECDH coverage, PSBT structure errors, signer constraints).
 
