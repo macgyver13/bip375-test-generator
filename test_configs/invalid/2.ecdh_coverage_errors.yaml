@@ -3,6 +3,7 @@ description: "ECDH coverage validation errors"
 test_cases:
   - description: "ecdh coverage: only one ineligible P2SH multisig input when PSBT_OUT_SCRIPT set for sp output"
     violates: [bip352_outputs]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
@@ -20,6 +21,7 @@ test_cases:
 
   - description: "ecdh coverage: missing PSBT_IN_SP_ECDH_SHARE field for input 0 when PSBT_OUT_SCRIPT set for sp output"
     violates: [bip352_outputs]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
@@ -39,6 +41,7 @@ test_cases:
 
   - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input when PSBT_IN_SP_ECDH_SHARE set"
     violates: [bip374_dleq]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
@@ -55,6 +58,7 @@ test_cases:
 
   - description: "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field when PSBT_GLOBAL_SP_ECDH_SHARE set"
     violates: [bip374_dleq]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
@@ -72,6 +76,7 @@ test_cases:
 
   - description: "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field"
     violates: [bip374_dleq]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
@@ -88,6 +93,7 @@ test_cases:
 
   - description: "ecdh coverage: invalid proof in PSBT_GLOBAL_SP_DLEQ field"
     violates: [bip374_dleq]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:
@@ -105,6 +111,7 @@ test_cases:
 
   - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
     inputs:

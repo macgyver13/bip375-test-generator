@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline through `v1.2.0`. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to the vector files from the `v1.1.1` baseline. From the Workflows row on, `just gen-extended` also writes `out/bip375_test_vectors_extended.json`, which is not committed. Rows describe the committed standard file unless they say otherwise. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -28,6 +28,12 @@ Significant changes to `bip375_test_vectors.json` from the `v1.1.1` baseline thr
 | | | NUMS inputs are built from a script tree and carry `PSBT_IN_TAP_MERKLE_ROOT`. Two PSBT maps changed. |
 | | SIGHASH_DEFAULT | Added valid “can finalize: one P2TR input signed with SIGHASH_DEFAULT”. 21 valid, 24 invalid. |
 | | | Removed the per-vector `checks` field: every check applies to every vector. One invalid vector and the notes changed. |
+| | | `--hex` adds `supplementary.hex`, the serialized PSBT, for diagnostics. Default output is unchanged. |
+| | | Vectors gained a top-level `task`, the operation or expected failure for each vector. Invalid “psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output” is renamed “input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output”. PSBT maps are equivalent. |
+| | Workflows | Added the generated `out/bip375_test_vectors_extended.json`: the standard vectors plus `workflows`, step vectors for a single-input global-share, a two-input global-share and a two-input per-input-share scenario, each step with `expected.psbt` and supplementary scoped to that step. `bip375_test_vectors.json` stays the standard set with no workflow steps. Both files report version 1.2.0. Standard: 21 valid, 24 invalid. Extended: 21 valid, 24 invalid, 17 workflow steps. |
+| | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Three PSBT maps changed. |
+| | rust-psbt | Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
+| | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. PSBT maps are equivalent. |
 
 ---
 
@@ -47,8 +53,9 @@ via `just backend=spdk <recipe>` (or `BIP375_PSBT_BACKEND=spdk`).
 just test-parity
 ```
 
-Generates the vectors with both backends under `out/parity/` and fails unless they
-produce identical files. This needs `spdk_psbt` installed.
+Generates the vectors and the rust-psbt `bip375.json` with both backends under
+`out/parity/` and fails unless they produce identical files. This needs `spdk_psbt`
+installed.
 
 ### Installing `spdk_psbt`
 
@@ -75,7 +82,43 @@ pip install pyyaml
 python test_generator.py
 ```
 
-Output: `bip375_test_vectors.json`
+Output:
+- `bip375_test_vectors.json`: the standard vectors, what a validator for the merged
+  BIP-375 text should accept and reject.
+- `out/bip375_test_vectors_extended.json`: the standard vectors plus the optional sets
+  named in its `includes` field. It is generated, not committed.
+
+`--include` takes a comma-separated list of optional sets:
+- `workflows`: the step-by-step workflow vectors.
+
+`STANDARD_INCLUDES` in `test_generator.py` lists the sets every file includes, and
+`VECTOR_VERSION` names the standard set. Both files report that version. To make workflow
+vectors standard, add `"workflows"` to `STANDARD_INCLUDES` and bump `VECTOR_VERSION`.
+`just test` regenerates the standard file, requires the committed copy to match, and
+checks both files.
+
+```bash
+just gen           # bip375_test_vectors.json, the standard set
+just gen-extended  # out/bip375_test_vectors_extended.json, with --include workflows
+just gen-all       # both
+```
+
+Syncing: `just sync-bip` copies the standard file into bips, and `just sync-bip-extended`
+copies the extended file under the standard name for a bips branch that runs workflows.
+`sync-rust`, `sync-spdk` and `sync-jade` use the extended file. Each of these runs
+`gen-extended` first.
+
+Pass `--hex` to also write each serialized PSBT as `supplementary.hex`, for
+diagnostics.
+
+### rust-psbt Format Helper
+```bash
+just gen-rust
+```
+
+Writes `out/bip375.json` from the extended file. Generated artifacts other than
+`bip375_test_vectors.json` live in the untracked `out/` directory and can be
+regenerated at any revision.
 
 ### Regenerating vectors across a jj stack
 
@@ -97,14 +140,82 @@ in `test_framework/` (origin commit `d7ed2840ac`). `util.py` is trimmed to the
 helpers the vendored modules actually use. Only the BIP-375 silent-payment
 specifics remain custom in `generator_utils.py`.
 
+### Output sections
+
+The extended file has three vector arrays; the standard file has `valid` and `invalid`.
+
+- `valid` / `invalid` — one-shot config-driven PSBTs (see YAML config below).
+- `workflows` — a single PSBT walked **step by step** through the BIP-375 roles.
+  Generated by `WorkflowVectorGenerator` using the PSBT backend's high-level role methods.
+
+BIP-375 gives the **Signer** the ECDH shares, the DLEQ proofs and the silent payment
+output scripts. It may only set `PSBT_OUT_SCRIPT` once every eligible input carries a
+share, and it must not sign before those scripts are set. So the number of Signer steps
+depends on how the shares are contributed.
+
+A global ECDH share means one party owns every input, and it acts once:
+
+```text
+creator → updater → signer → finalizer → extractor
+```
+
+With per-input shares and `n` signers, no party can compute the output scripts until the
+last share lands. The `n`-th signer therefore computes the scripts, clears the modifiable
+flags and signs its own input; the others return in a second round to sign:
+
+```text
+creator → updater
+        → signer × (n-1)   share + DLEQ proof, cannot yet sign
+        → signer           final share → output scripts, flags cleared, signs its input
+        → signer × (n-1)   scripts are set, signs its input
+        → finalizer → extractor
+```
+
+Each workflow entry is an **atomic step vector**:
+
+```jsonc
+{
+  "psbt": "<base64>",        // the PSBT this role received
+  "description": "Two-input workflow: Updater adds UTXO and BIP32 derivation data",
+  "task": "update",          // BIP-375 role that acted, in workflows[]
+  "supplementary": {
+    "inputs": [...], "outputs": [...]
+  },
+  "expected": { "psbt": "<base64>", "psbt_unique_id": "<hex>" }   // plus "tx": "<hex>" on the extractor step
+}
+```
+
+`task` names the BIP-375 role that acted. The same `task` key is reused by the
+`valid`/`invalid` vectors, where it instead records an expected outcome (`sign`, `fail_sign`,
+…) rather than a role.
+
+`supplementary` uses the same field shapes as the `valid`/`invalid` vectors. It only holds
+what the acting role can't read from `psbt` or `expected.psbt`:
+
+- `create`: the outpoint and sequence of each input, and the outputs.
+- `update`: the UTXOs and public key of each input.
+- `sign`: `private_key` for the inputs the acting party owns (blank for the others), and
+  `dleq_aux_rand` for the proofs that party adds.
+- `finalize` and `extract`: nothing.
+
+It is diagnostic only. `expected.psbt` is the base64 PSBT after that role runs.
+
+Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenario PSBT.
+Successful one-shot vectors include `expected.psbt`: for `sign`, it is the PSBT after
+the signer has added every signature it can from the supplied key material.
+For `finalize`, `psbt` is signed and `expected.psbt` is finalized. Failure tasks such
+as `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
+`supplementary.inputs[].signed` describes the input/current `psbt` state.
+
 ---
 
 ## YAML Test Configuration
 
-Test scenarios are defined in YAML files under two directories:
+Test scenarios are defined in YAML files under three directories:
 
 - `test_configs/valid/` — scenarios expected to produce well-formed PSBTs (6 files)
 - `test_configs/invalid/` — scenarios designed to exercise validation failures (5 files)
+- `test_configs/workflows/`: PSBTs walked through the roles one step at a time (2 files)
 
 Each file maps to a logical test category (e.g. ECDH coverage, PSBT structure errors, signer constraints).
 
@@ -115,6 +226,7 @@ description: "Human-readable description of this config file"
 
 test_cases:
   - description: "Specific scenario"
+    task: "sign"                 # operation or expected failure mode for the case
     validation_result: "valid"   # or "invalid"
     inputs: [...]
     outputs: [...]
@@ -218,5 +330,5 @@ python psbt_diff.py old.json new.json
 ### Display supplementary data
 
 ```sh
-jq -r '(.valid[], .invalid[]) | select(.supplementary.inputs != null) | .description, .supplementary.task, (.supplementary.inputs[] | "  input \(.input_index): signed=\(.signed)")' bip375_test_vectors.json
+jq -r '(.valid[], .invalid[]) | select(.supplementary.inputs != null) | .description, .task, (.supplementary.inputs[] | "  input \(.input_index): signed=\(.signed)")' bip375_test_vectors.json
 ```

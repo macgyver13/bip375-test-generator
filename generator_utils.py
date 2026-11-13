@@ -35,6 +35,7 @@ from test_framework.messages import (
     uint256_from_str,
 )
 from test_framework.script import (
+    CScript,
     SIGHASH_ALL,
     SIGHASH_DEFAULT,
     LegacySignatureHash,
@@ -74,8 +75,12 @@ class PSBTKeyType:
     PSBT_IN_OUTPUT_INDEX = _tf_psbt.PSBT_IN_OUTPUT_INDEX
     PSBT_IN_SEQUENCE = _tf_psbt.PSBT_IN_SEQUENCE
     PSBT_IN_TAP_KEY_SIG = _tf_psbt.PSBT_IN_TAP_KEY_SIG
+    PSBT_IN_TAP_SCRIPT_SIG = _tf_psbt.PSBT_IN_TAP_SCRIPT_SIG
+    PSBT_IN_TAP_LEAF_SCRIPT = _tf_psbt.PSBT_IN_TAP_LEAF_SCRIPT
     PSBT_IN_TAP_INTERNAL_KEY = _tf_psbt.PSBT_IN_TAP_INTERNAL_KEY
     PSBT_IN_TAP_MERKLE_ROOT = _tf_psbt.PSBT_IN_TAP_MERKLE_ROOT
+    PSBT_IN_FINAL_SCRIPTSIG = _tf_psbt.PSBT_IN_FINAL_SCRIPTSIG
+    PSBT_IN_FINAL_SCRIPTWITNESS = _tf_psbt.PSBT_IN_FINAL_SCRIPTWITNESS
 
     PSBT_OUT_BIP32_DERIVATION = _tf_psbt.PSBT_OUT_BIP32_DERIVATION
     PSBT_OUT_AMOUNT = _tf_psbt.PSBT_OUT_AMOUNT
@@ -403,6 +408,57 @@ def verify_no_empty_output_script_headers(serialized_psbt: bytes, description: s
     )
 
 
+def _key_types(field_map) -> set:
+    """Key types present in a PSBTMap.
+
+    PSBTMap stores a bare key as an int and a keydata-bearing key as the raw bytes
+    (type_value || key_data), so `PSBT_IN_PARTIAL_SIG in field_map.map` is always False.
+    """
+    return {k if isinstance(k, int) else k[0] for k in field_map.map}
+
+
+# An input is signed whether it still carries a partial signature or the Input Finalizer
+# has already consumed that signature into a final scriptSig/scriptWitness.
+_SIGNED_KEY_TYPES = frozenset(
+    {
+        PSBTKeyType.PSBT_IN_PARTIAL_SIG,
+        PSBTKeyType.PSBT_IN_TAP_KEY_SIG,
+        PSBTKeyType.PSBT_IN_TAP_SCRIPT_SIG,
+        PSBTKeyType.PSBT_IN_FINAL_SCRIPTSIG,
+        PSBTKeyType.PSBT_IN_FINAL_SCRIPTWITNESS,
+    }
+)
+
+
+@dataclass(frozen=True)
+class PsbtDisclosureState:
+    """Which facts a serialized PSBT actually carries."""
+
+    signed: frozenset  # input indices holding a signature
+    shares: frozenset  # input indices holding a PSBT_IN_SP_ECDH_SHARE
+    global_share: bool  # PSBT_GLOBAL_SP_ECDH_SHARE is present
+    scripts: frozenset  # output indices holding a PSBT_OUT_SCRIPT
+
+
+def psbt_disclosure_state(serialized_psbt: bytes) -> PsbtDisclosureState:
+    """Read back what a serialized PSBT contains.
+
+    Lets a test vector's diagnostic block be derived from the bytes it ships with rather
+    than maintained alongside them, so the two cannot disagree.
+
+    An unset output script is the *absence* of PSBT_OUT_SCRIPT, never a present-but-empty
+    header, so script presence is a key-presence test. Pair with
+    verify_no_empty_output_script_headers to reject the malformed encoding outright.
+    """
+    psbt = _tf_psbt.PSBT().deserialize(BytesIO(serialized_psbt))
+    return PsbtDisclosureState(
+        signed=frozenset(i for i, m in enumerate(psbt.i) if _key_types(m) & _SIGNED_KEY_TYPES),
+        shares=frozenset(i for i, m in enumerate(psbt.i) if PSBTKeyType.PSBT_IN_SP_ECDH_SHARE in _key_types(m)),
+        global_share=PSBTKeyType.PSBT_GLOBAL_SP_ECDH_SHARE in _key_types(psbt.g),
+        scripts=frozenset(i for i, m in enumerate(psbt.o) if PSBTKeyType.PSBT_OUT_SCRIPT in m.map),
+    )
+
+
 def _field_sort_key(item: Tuple) -> Tuple[int, bytes]:
     """Sort key for a PSBT map entry: (type_value, key_data).
 
@@ -521,6 +577,28 @@ def sign_p2pkh_input(
     return sig + bytes([sighash_type])
 
 
+def sign_p2sh_multisig_input(
+    private_keys: List[int],
+    inputs: List[UTXO],
+    outputs: List[dict],
+    input_index: int,
+    redeem_script: bytes,
+    threshold: int,
+    sighash_type: int = SIGHASH_ALL,
+) -> List[bytes]:
+    """Sign a legacy P2SH multisig input."""
+    tx = _build_tx(inputs, outputs)
+    sighash, err = LegacySignatureHash(CScript(redeem_script), tx, input_index, sighash_type)
+    assert err is None
+
+    signatures = []
+    for private_key in private_keys[:threshold]:
+        sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
+        signatures.append(sig + bytes([sighash_type]))
+
+    return signatures
+
+
 def sign_p2tr_input(
     private_key: int,
     inputs: List[UTXO],
@@ -544,6 +622,37 @@ def sign_p2tr_input(
         tx, spent_utxos, sighash_type, input_index=input_index
     )
 
+    sig = sign_schnorr(int(private_key).to_bytes(32, "big"), sighash)
+    if sighash_type == SIGHASH_DEFAULT:
+        return sig
+    return sig + bytes([sighash_type])
+
+
+def sign_p2tr_script_path_input(
+    private_key: int,
+    inputs: List[UTXO],
+    outputs: List[dict],
+    input_index: int,
+    leaf_script: bytes,
+    sighash_type: int = SIGHASH_ALL,
+) -> bytes:
+    """Sign a P2TR script-path input with a tapscript CHECKSIG leaf.
+
+    As for the key path, SIGHASH_DEFAULT is encoded by omitting the sighash byte.
+    """
+    tx = _build_tx(inputs, outputs)
+    spent_utxos = [
+        CTxOut(inp.amount, bytes.fromhex(inp.script_pubkey)) for inp in inputs
+    ]
+    sighash = TaprootSignatureHash(
+        tx,
+        spent_utxos,
+        sighash_type,
+        input_index=input_index,
+        scriptpath=True,
+        leaf_script=leaf_script,
+        codeseparator_pos=0xFFFFFFFF,
+    )
     sig = sign_schnorr(int(private_key).to_bytes(32, "big"), sighash)
     if sighash_type == SIGHASH_DEFAULT:
         return sig

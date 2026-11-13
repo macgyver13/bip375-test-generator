@@ -3,6 +3,7 @@ description: "Signer constraint validation errors"
 test_cases:
   - description: "input eligibility: segwit version greater than 1 in transaction inputs with sp output"
     violates: [bip352_outputs, bip375_eligibility]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
@@ -23,6 +24,7 @@ test_cases:
   # because the segwit version check reads the script from either UTXO field.
   - description: "input eligibility: segwit version greater than 1 supplied via PSBT_IN_NON_WITNESS_UTXO with sp output"
     violates: [bip375_eligibility]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
@@ -39,6 +41,7 @@ test_cases:
 
   - description: "input eligibility: non-SIGHASH_ALL signature on input with sp output"
     violates: [bip375_sighash_all]
+    task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["sp_proofs", "outputs"]
     inputs:
@@ -52,3 +55,20 @@ test_cases:
       - key_id: "default"
     control_override:
       wrong_sighash_for_input: 0
+
+  - description: "input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output"
+    violates: [bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      set_tx_modifiable: true
