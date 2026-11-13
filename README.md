@@ -35,6 +35,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Three PSBT maps changed. |
 | | rust-psbt | Workflow update steps gained `non_witness_utxo`. |
 | | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. |
+| | | The single-input workflow's output amount changed. Four workflow steps changed. |
 
 ---
 
@@ -249,7 +250,7 @@ and defaults to `deserialize`. `scan_keys` defaults to a single key with `key_id
 
 `violates` names the checks in `tests/test_compliance.py` that the invalid PSBT breaks:
 `bip174_framing`, `bip352_outputs`, `bip370_modifiable`, `bip370_outputs`,
-`bip371_taproot`, `bip374_dleq`, `bip375_ecdh` and `bip375_eligibility`. Generation
+`bip371_taproot`, `bip374_dleq`, `bip375_ecdh`, `bip375_eligibility` and `bip375_sighash_all`. Generation
 fails if an invalid case has no `violates` list. The list is not written to the JSON.
 
 `exclude_material` lists supplementary sections to omit from the vector, such as

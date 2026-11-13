@@ -8,7 +8,7 @@ test_cases:
         amount: 100000
     outputs:
       - type: "silent_payment"
-        amount: 90000
+        amount: 95000
         scan_key_id: "default"
     scan_keys:
       - key_id: "default"
