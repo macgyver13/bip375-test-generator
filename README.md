@@ -20,7 +20,6 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | bips#2286 | Added invalid “psbt structure: incorrect byte length for PSBT_OUT_SP_V0_LABEL field”. 20 valid, 23 invalid. |
 | | bips#2310 | Added invalid “input eligibility: segwit version greater than 1 supplied via PSBT_IN_NON_WITNESS_UTXO with sp output”. 20 valid, 24 invalid. |
 | | bips#2315 | Valid “input eligibility: bare OP_2 script is not a segwit v2 witness program” replaced by “in progress: two mixed input types - only eligible inputs contribute ECDH shares (bare OP_2 excluded, not a segwit v2 witness program)”. 20 valid, 24 invalid. |
-| | | Grind ECDSA signatures for a low R like Bitcoin Core |
 | | | Change `scriptPubKey` matches `PSBT_OUT_BIP32_DERIVATION`. Three PSBT maps changed. |
 | | | Signatures use the declared sighash type. The invalid non-`SIGHASH_ALL` and segwit version greater than 1 PSBT maps changed. |
 | | | P2TR inputs derived from the tweaked output key. Four PSBT maps changed. |
@@ -29,6 +28,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | | NUMS inputs are built from a script tree and carry `PSBT_IN_TAP_MERKLE_ROOT`. Two PSBT maps changed. |
 | | SIGHASH_DEFAULT | Added valid “can finalize: one P2TR input signed with SIGHASH_DEFAULT”. 21 valid, 24 invalid. |
 | | | Removed the per-vector `checks` field: every check applies to every vector. One invalid vector and the notes changed. |
+| | | ECDSA signatures are ground for a low R like Bitcoin Core. |
 | | | `--hex` adds `supplementary.hex`, the serialized PSBT, for diagnostics. Default output is unchanged. |
 | | | Vectors gained a top-level `task`, the operation or expected failure for each vector. Invalid “psbt structure: PSBT_GLOBAL_TX_MODIFIABLE field is non-zero when PSBT_OUT_SCRIPT set for sp output” is renamed “input eligibility: PSBT_GLOBAL_TX_MODIFIABLE Inputs/Outputs Modifiable flags not cleared when PSBT_OUT_SCRIPT set for sp output”. PSBT maps are equivalent. |
 | | Workflows | Added the generated `out/bip375_test_vectors_extended.json`: the standard vectors plus `workflows`, step vectors for a single-input global-share, a two-input global-share and a two-input per-input-share scenario, each step with `expected.psbt` and supplementary scoped to that step. `bip375_test_vectors.json` stays the standard set with no workflow steps. Both files report version 1.2.0. Standard: 21 valid, 24 invalid. Extended: 21 valid, 24 invalid, 17 workflow steps. |
@@ -40,7 +40,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 
 ## Prerequisites
 
-- Python ≥ 3.8
+- Python ≥ 3.10
 - `pyyaml`
 
 No Rust toolchain is needed. The generator defaults to a pure-Python PSBT
@@ -87,7 +87,8 @@ Output:
 - `bip375_test_vectors.json`: the standard vectors, what a validator for the merged
   BIP-375 text should accept and reject.
 - `out/bip375_test_vectors_extended.json`: the standard vectors plus the optional sets
-  named in its `includes` field. It is generated, not committed.
+  named in its `includes` field. It is generated, not committed. The standard file has
+  no `includes` field.
 
 `--include` takes a comma-separated list of optional sets:
 - `workflows`: the step-by-step workflow vectors.
@@ -96,7 +97,10 @@ Output:
 `VECTOR_VERSION` names the standard set. Both files report that version. To make workflow
 vectors standard, add `"workflows"` to `STANDARD_INCLUDES` and bump `VECTOR_VERSION`.
 `just test` regenerates the standard file, requires the committed copy to match, and
-checks both files.
+checks both files with `tests/test_compliance.py`. Those checks parse each PSBT with the
+vendored `test_framework`, not `py_spdk.py`, so the parser is not the code that built
+the PSBT. Every valid vector must pass every check. Each invalid vector must fail exactly
+the checks named in its config's `violates` list.
 
 ```bash
 just gen           # bip375_test_vectors.json, the standard set
@@ -107,7 +111,8 @@ just gen-all       # both
 Syncing: `just sync-bip` copies the standard file into bips, and `just sync-bip-extended`
 copies the extended file under the standard name for a bips branch that runs workflows.
 `sync-rust`, `sync-spdk` and `sync-jade` use the extended file. Each of these runs
-`gen-extended` first.
+`gen-extended` first. `just sync <bip|rust|spdk>` runs one of them by name, and
+`just sync-all` runs `sync-bip`, `sync-rust` and `sync-spdk`.
 
 Pass `--hex` to also write each serialized PSBT as `supplementary.hex`, for
 diagnostics.
@@ -178,11 +183,11 @@ Each workflow entry is an **atomic step vector**:
 {
   "psbt": "<base64>",        // the PSBT this role received
   "description": "Two-input workflow: Updater adds UTXO and BIP32 derivation data",
-  "task": "updater",         // BIP-375 role that acted, in workflows[]
+  "task": "update",          // BIP-375 role that acted, in workflows[]
   "supplementary": {
     "inputs": [...], "outputs": [...]
   },
-  "expected": { "psbt": "<base64>" }   // plus "tx": "<hex>" on the extractor step
+  "expected": { "psbt": "<base64>", "psbt_unique_id": "<hex>" }   // no psbt_unique_id on the create step; plus "tx": "<hex>" on the extractor step
 }
 ```
 
@@ -190,29 +195,37 @@ Each workflow entry is an **atomic step vector**:
 `valid`/`invalid` vectors, where it instead records an expected outcome (`sign`, `fail_sign`,
 …) rather than a role.
 
-`supplementary` otherwise uses the same field shapes as the `valid`/`invalid` vectors, but
-is **scoped to the material that has become meaningful at that step** — `sp_proofs` list
-only the shares already present in `expected.psbt`, output `script` appears only once the
-Signer has computed it, and `private_key` is shown only for the party acting in that step.
+`supplementary` uses the same field shapes as the `valid`/`invalid` vectors. It only holds
+what the acting role can't read from `psbt` or `expected.psbt`:
+
+- `create`: the outpoint and sequence of each input, and the outputs.
+- `update`: the UTXOs and public key of each input.
+- `sign`: `private_key` for the inputs the acting party owns (blank for the others), and
+  `dleq_aux_rand` for the proofs that party adds.
+- `finalize` and `extract`: nothing.
+
 It is diagnostic only. `expected.psbt` is the base64 PSBT after that role runs.
 
 Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenario PSBT.
-Successful one-shot vectors include `expected.psbt`: for `sign`, it is the PSBT after
+One-shot `sign` and `finalize` vectors include `expected.psbt`: for `sign`, it is the PSBT after
 the signer has added every signature it can from the supplied key material.
-For `finalize`, `psbt` is signed and `expected.psbt` is finalized. Failure tasks such
-as `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
+For `finalize`, `psbt` is signed and `expected.psbt` is finalized. The valid `deserialize`
+vector and the failure tasks `fail_sign` and `fail_deserialize` omit `expected`. For one-shot vectors,
 `supplementary.inputs[].signed` describes the input/current `psbt` state.
 
 ---
 
 ## YAML Test Configuration
 
-Test scenarios are defined in YAML files under two directories:
+Test scenarios are defined in YAML files under three directories:
 
-- `test_configs/valid/` — scenarios expected to produce well-formed PSBTs (6 files)
-- `test_configs/invalid/` — scenarios designed to exercise validation failures (5 files)
+- `test_configs/valid/` — scenarios expected to produce well-formed PSBTs
+- `test_configs/invalid/` — scenarios designed to exercise validation failures
+- `test_configs/workflows/`: PSBTs walked through the roles one step at a time
 
 Each file maps to a logical test category (e.g. ECDH coverage, PSBT structure errors, signer constraints).
+Workflow configs use the same schema. They do not list roles: the steps follow from the
+share mode, a global share with `use_global_ecdh` or per-input shares without it.
 
 ### Top-level structure
 
@@ -223,11 +236,24 @@ test_cases:
   - description: "Specific scenario"
     task: "sign"                 # operation or expected failure mode for the case
     validation_result: "valid"   # or "invalid"
+    violates: [bip375_ecdh]      # required when invalid: the checks this case must fail
     inputs: [...]
     outputs: [...]
     scan_keys: [...]
+    exclude_material: [...]      # optional: supplementary sections to leave out
     control_override: {...}      # optional — injects faults for invalid cases
 ```
+
+`task` is one of `sign`, `finalize`, `deserialize`, `fail_sign` or `fail_deserialize`,
+and defaults to `deserialize`. `scan_keys` defaults to a single key with `key_id: "default"`.
+
+`violates` names the checks in `tests/test_compliance.py` that the invalid PSBT breaks:
+`bip174_framing`, `bip352_outputs`, `bip370_modifiable`, `bip370_outputs`,
+`bip371_taproot`, `bip374_dleq`, `bip375_ecdh` and `bip375_eligibility`. Generation
+fails if an invalid case has no `violates` list. The list is not written to the JSON.
+
+`exclude_material` lists supplementary sections to omit from the vector, such as
+`inputs`, `sp_proofs` or `outputs`.
 
 ### `inputs`
 
@@ -235,13 +261,18 @@ Each entry defines a UTXO contributing to the PSBT:
 
 ```yaml
 inputs:
-  - type: "p2wpkh"               # p2wpkh | p2sh_multisig | p2wsh_multisig | p2tr
+  - type: "p2wpkh"               # p2wpkh | p2pkh | p2sh_p2wpkh | p2sh_multisig | p2wsh_multisig | p2tr
     amount: 100000               # satoshis
     key_derivation_suffix: "id"  # string seed for deterministic key generation
     count: 2                     # optional: repeat N identical inputs
     sequence: 0xFFFFFFFE         # optional
     multisig_threshold: 2        # required for multisig types
     multisig_pubkey_count: 3     # required for multisig types
+    script_pubkey: "52"          # optional: hex prevout scriptPubKey override (p2wpkh or p2pkh)
+    keyless: true                # optional: no generated key controls the script (p2pkh only)
+    eligible_override: false     # optional: force silent payment eligibility either way
+    skip_signing: true           # optional: leave the input unsigned even if eligible
+    use_nums_tap_internal_key: true  # optional: p2tr with a NUMS internal key and a script tree
 ```
 
 ### `outputs`
@@ -253,10 +284,15 @@ outputs:
   - type: "silent_payment"       # silent_payment | regular_p2wpkh | regular_p2tr
     amount: 95000
     scan_key_id: "default"       # references a key_id in scan_keys (silent_payment only)
-    spend_key_id: "optional_id"  # optional override
+    spend_derivation_suffix: "other"  # optional: derive this output's spend key from another seed
     label: 1                     # optional BIP-352 label integer
+    force_k_index: 1             # optional: build the output with this k
+    force_wrong_script: true     # optional: write a script that does not match the derivation
+    count: 2                     # optional: repeat N identical outputs
     add_bip32_derivation: true   # for regular outputs
 ```
+
+`spend_key_id` is parsed but has no effect yet.
 
 ### `scan_keys`
 
@@ -289,7 +325,16 @@ Optional section for injecting intentional faults into invalid test cases. Commo
 | `wrong_sp_info_size: true` | Malform the PSBT_OUT_SP_V0_INFO field size |
 | `missing_sp_info_field: true` | Omit PSBT_OUT_SP_V0_INFO from a labeled output |
 | `wrong_sighash_for_input: N` | Set invalid sighash type for input N |
-| `use_global_ecdh: ["key_id"]` | Use global ECDH share for listed scan key IDs |
+| `use_global_ecdh: ["key_id"]` | Use global ECDH share for listed scan key IDs, or for every scan key with `true` |
+| `single_signer_shared_key: true` | Derive one key for every input, so a single signer owns them all |
+| `missing_ecdh_for_input_scan_key: {input_index: N, scan_key_id: "key_id"}` | Omit the ECDH share for one input and scan key pair |
+| `force_ecdh_for_input_scan_key: {input_index: N, scan_key_id: "key_id"}` | Also add a per-input ECDH share for one pair whose scan key uses a global share |
+| `force_partial_ecdh_output_script: true` | Set the output script although ECDH coverage is incomplete |
+| `wrong_sp_label_size: true` | Malform the PSBT_OUT_SP_V0_LABEL field size |
+| `no_sighash_for_input: N` | Omit PSBT_IN_SIGHASH_TYPE for input N |
+| `default_sighash_for_input: N` | Sign P2TR input N with SIGHASH_DEFAULT |
+| `skip_regular_output_script: true` | Omit PSBT_OUT_SCRIPT from a regular output |
+| `empty_regular_output_script: true` | Write an empty PSBT_OUT_SCRIPT for a regular output |
 | `use_segwit_v2_input: true` | Include a segwit v2 (ineligible) input |
 | `set_tx_modifiable: true` | Set the PSBT_GLOBAL_TX_MODIFIABLE flag |
 | `force_output_script: true` | Inject wrong output script |

@@ -2085,6 +2085,9 @@ class WorkflowVectorGenerator:
         are reproducible.
         """
         steps: List[Dict[str, Any]] = []
+        # The backend's global-share call covers every scan key, so a workflow cannot mix share modes.
+        if scenario.use_global_ecdh and set(scenario.use_global_ecdh) != {sk.key_id for sk in scenario.scan_keys}:
+            raise ValueError(f"{scenario.description}: workflow use_global_ecdh must cover every scan key")
 
         # Reuse the deterministic build to obtain key material + supplementary.
         psbt_data = self.cfg.builder.build_psbt(scenario)
@@ -2205,9 +2208,9 @@ class WorkflowVectorGenerator:
         # must not sign before the scripts are set.
         psbt_in = snapshot(p)
         if scenario.use_global_ecdh:
-            # One signer owns every input (shared-key flag), so the global share (N*a*B),
+            # One signer owns every input and holds each input's key, so the global share,
             # the output scripts and every signature all land in a single step.
-            p.generate_single_signer_ecdh_shares(input_data[0]["private_key"].bytes)
+            p.generate_single_signer_ecdh_shares_with_keys([inp["private_key"].bytes for inp in input_data])
             for proof in global_proofs:
                 inject_deterministic_dleq(proof)
             p.compute_sp_output_scripts()
