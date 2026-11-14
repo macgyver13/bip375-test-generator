@@ -44,12 +44,14 @@ test_cases:
         amount: 90000
         scan_key_id: "default"
         spend_derivation_suffix: "low_lex_key"
-        force_k_index: 1
+        # Canonical k follows spend-key order. These BIP-352 spend keys sort the
+        # other way, so k 0 here (and k 1 on the next output) is the swapped assignment.
+        force_k_index: 0
       - type: "silent_payment"
         amount: 10000
         scan_key_id: "default"
         spend_derivation_suffix: "high_lex_key"
-        force_k_index: 0
+        force_k_index: 1
     scan_keys:
       - key_id: "default"
 
@@ -64,7 +66,6 @@ test_cases:
       - type: "silent_payment"
         amount: 75000
         scan_key_id: "default"
-        force_k_index: 0
       - type: "silent_payment"
         amount: 10000
         scan_key_id: "default"
