@@ -34,6 +34,10 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | | Successful one-shot vectors gained `expected.psbt`. P2SH multisig and P2TR script-path inputs are now signed. Three PSBT maps changed. |
 | | rust-psbt | Workflow update steps gained `non_witness_utxo`. PSBT maps are equivalent. |
 | | | Workflow supplementary gained `dleq_aux_rand` and dropped fields the step PSBT already carries. PSBT maps are equivalent. |
+| | | The single-input workflow's output amount changed. Four workflow steps changed. One-shot PSBT maps are equivalent. |
+| | | Added invalid “ecdh coverage: P2WPKH BIP32_DERIVATION pubkey does not match prevout script”, its P2PKH and P2SH-P2WPKH variants, and “ecdh coverage: global ECDH share computed from decoy pubkey not matching prevout script”. 21 valid, 28 invalid. |
+| | Input derivation | Added valid “can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key” and its P2PKH variant. 23 valid, 28 invalid. |
+| | Reference runner | One-shot sign vectors disclose only the acting signer's `private_key`. Key-path P2TR inputs gained `PSBT_IN_TAP_BIP32_DERIVATION`. The large PSBT's acting party holds only its two P2TR inputs, so its `expected.psbt` adds their `PSBT_IN_TAP_KEY_SIG`. Four PSBT maps changed. |
 
 ---
 

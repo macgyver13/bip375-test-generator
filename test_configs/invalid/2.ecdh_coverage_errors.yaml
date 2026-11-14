@@ -56,6 +56,23 @@ test_cases:
     control_override:
       missing_dleq_for_input: 0
 
+  - description: "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field"
+    violates: [bip374_dleq]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_dleq_for_input: 0
+
   - description: "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field when PSBT_GLOBAL_SP_ECDH_SHARE set"
     violates: [bip374_dleq]
     task: "fail_sign"
@@ -73,23 +90,6 @@ test_cases:
     control_override:
       use_global_ecdh: true
       missing_global_dleq: true
-
-  - description: "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field"
-    violates: [bip374_dleq]
-    task: "fail_sign"
-    validation_result: "invalid"
-    exclude_material: ["outputs"]
-    inputs:
-      - type: "p2wpkh"
-        amount: 100000
-    outputs:
-      - type: "silent_payment"
-        amount: 95000
-        scan_key_id: "default"
-    scan_keys:
-      - key_id: "default"
-    control_override:
-      invalid_dleq_for_input: 0
 
   - description: "ecdh coverage: invalid proof in PSBT_GLOBAL_SP_DLEQ field"
     violates: [bip374_dleq]
