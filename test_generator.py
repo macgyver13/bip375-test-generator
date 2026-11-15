@@ -207,6 +207,9 @@ class InputSpec:
     nums_leaf_only: bool = False
     false_nums_leaf: bool = False
     mismatch_redeem_script: bool = False
+    omit_redeem_script: bool = False  # Leave PSBT_IN_REDEEM_SCRIPT out of a P2SH-P2WPKH input
+    prevout_index: Optional[int] = None  # Spend this output of the funding transaction, which has outputs 0 and 1
+    negate_key_of: Optional[int] = None  # Use the negation of input N's key, so the two keys sum to the point at infinity (p2wpkh only)
 
 
 @dataclass
@@ -291,7 +294,9 @@ class TestScenario:
     experimental: Optional[str] = None  # what the vector waits on; included only with --include experimental
     as_psbt_v0: bool = False
     # Replace a 33-byte key or share with OFF_CURVE_POINT: ecdh_scan_key (an extra
-    # PSBT_IN_SP_ECDH_SHARE keyed by it), ecdh_share, sp_info_scan_key or sp_info_spend_key
+    # PSBT_IN_SP_ECDH_SHARE keyed by it), ecdh_share, sp_info_scan_key or sp_info_spend_key.
+    # derivation_key and hybrid_derivation_key add a PSBT_IN_BIP32_DERIVATION to input 0,
+    # keyed by OFF_CURVE_POINT or by its own key in hybrid form with the wrong parity prefix.
     invalid_point: Optional[str] = None
 
 
@@ -342,14 +347,20 @@ class InputFactory:
         spec: InputSpec,
         input_index: int,
         scenario: Optional["TestScenario"] = None,
+        private_key: Optional[PrivateKey] = None,
     ) -> Dict[str, Any]:
-        """Create input based on specification"""
+        """Create input based on specification; private_key replaces the derived key"""
         if scenario and scenario.use_segwit_v2_input:
             spec.use_segwit_v2 = True
 
+        if private_key is not None and spec.input_type != InputType.P2WPKH:
+            raise ValueError(f"a given private key is only supported for p2wpkh inputs, got {spec.input_type.value}")
+        if spec.omit_redeem_script and spec.input_type != InputType.P2SH_P2WPKH:
+            raise ValueError(f"omit_redeem_script is only supported for p2sh_p2wpkh inputs, got {spec.input_type.value}")
+
         shared_key = bool(scenario and scenario.single_signer_shared_key)
         if spec.input_type == InputType.P2WPKH:
-            result = self._create_p2wpkh_input(spec, input_index, shared_key)
+            result = self._create_p2wpkh_input(spec, input_index, shared_key, private_key)
         elif spec.input_type == InputType.P2PKH:
             result = self._create_p2pkh_input(spec, input_index)
         elif spec.input_type == InputType.P2SH_P2WPKH:
@@ -385,6 +396,10 @@ class InputFactory:
             result["origin_fingerprint"] = JadeKeyProfile.FOREIGN_FINGERPRINT
         if spec.omit_utxo:
             result["omit_utxo"] = True
+        if spec.omit_redeem_script:
+            result["omit_redeem_script"] = True
+        if spec.prevout_index is not None:
+            result["prevout_index"] = spec.prevout_index
         if spec.mismatch_utxo_script:
             self._replace_utxo_script(result, input_index)
         if spec.mismatch_sp_pubkey:
@@ -480,12 +495,16 @@ class InputFactory:
             result["witness_utxo"] = CTxOut(result["amount"], script).serialize()
 
     def _create_p2wpkh_input(
-        self, spec: InputSpec, input_index: int, shared_key: bool = False
+        self, spec: InputSpec, input_index: int, shared_key: bool = False, private_key: Optional[PrivateKey] = None
     ) -> Dict[str, Any]:
         """Create P2WPKH input"""
-        input_priv, input_pub, material = self._input_key(
-            spec, input_index, 84, shared_key
-        )
+        if private_key is not None:
+            # Not derived from a wallet, so the input has no key origin
+            input_priv, input_pub, material = private_key, PublicKey(int(private_key) * G), None
+        else:
+            input_priv, input_pub, material = self._input_key(
+                spec, input_index, 84, shared_key
+            )
 
         # Create prevout
         prev_input_txid = hashlib.sha256(f"{self.base_seed}_prevout_{input_index}".encode()).digest()
@@ -969,9 +988,15 @@ class PSBTBuilder:
         # Create inputs
         input_data = []
         for i, input_spec in enumerate(scenario.inputs):
-            input_info = self.input_factory.create_input(input_spec, i, scenario)
+            private_key = None
+            if input_spec.negate_key_of is not None:
+                negated = input_data[input_spec.negate_key_of]["private_key"]
+                private_key = PrivateKey(GE.ORDER - int(negated))
+            input_info = self.input_factory.create_input(input_spec, i, scenario, private_key)
             input_data.append(input_info)
             self._add_input_to_psbt(psbt, input_info)
+        if scenario.invalid_point in ("derivation_key", "hybrid_derivation_key"):
+            self._add_invalid_derivation(psbt, input_data[0], scenario.invalid_point)
 
         # Create outputs
         output_data = []
@@ -1144,6 +1169,23 @@ class PSBTBuilder:
             self._input_origin_value(input_info),
         )
 
+    def _add_invalid_derivation(self, psbt: SilentPaymentPsbt, input_info: Dict[str, Any], kind: str):
+        """Add a PSBT_IN_BIP32_DERIVATION keyed by a key Bitcoin Core rejects, beside the input's own.
+
+        It takes the decoy origin, not the input's: a decoder may refuse two derivations
+        with one origin, and must reject this one for its key.
+        """
+        if kind == "derivation_key":
+            key = OFF_CURVE_POINT
+        else:
+            # Hybrid encoding of the input's own key, with prefix 06 (even y) or 07 (odd y) swapped
+            point = input_info["public_key"]
+            key = bytes([0x07 if point.y.is_even() else 0x06]) + point.to_bytes_uncompressed()[1:]
+        add_raw_input_field(
+            psbt, input_info["input_index"], PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
+            key, struct.pack("<I", 0x80000000) + struct.pack("<I", 0xFF),
+        )
+
     def _add_input_utxo(self, psbt, idx: int, input_info: Dict[str, Any], key_type, value: bytes):
         """Add a UTXO field, unless the scenario omits the input's UTXO.
 
@@ -1228,13 +1270,14 @@ class PSBTBuilder:
                 PSBTKeyType.PSBT_IN_WITNESS_UTXO,
                 input_info["witness_utxo"],
             )
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_REDEEM_SCRIPT,
-                b"",
-                input_info["redeem_script"],
-            )
+            if not input_info.get("omit_redeem_script"):
+                add_raw_input_field(
+                    psbt,
+                    idx,
+                    PSBTKeyType.PSBT_IN_REDEEM_SCRIPT,
+                    b"",
+                    input_info["redeem_script"],
+                )
             self._add_input_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2SH_MULTISIG:
@@ -1938,9 +1981,18 @@ class PSBTBuilder:
             # Compute proper BIP-352 script
             eligible_inputs = [inp for inp in input_data if inp.get("is_eligible", False)]
 
+            summed_pubkey = None
             if eligible_inputs and ecdh_data:
                 outpoints, outpoint_to_input = _sorted_outpoints_and_input_map(input_data, eligible_inputs)
                 summed_pubkey = _sum_pubkeys_in_outpoint_order(outpoints, outpoint_to_input)
+
+            if summed_pubkey is not None and summed_pubkey.infinity:
+                # BIP-352 has the sender fail when the input keys sum to zero, so
+                # no output script exists. force_output_script sets one anyway.
+                if scenario.force_output_script:
+                    output_script = bytes([0x51, 0x20]) + hashlib.sha256(b"wrong_address").digest()
+                    add_raw_output_field(psbt, idx, PSBTKeyType.PSBT_OUT_SCRIPT, b"", output_script)
+            elif summed_pubkey is not None:
                 summed_pubkey_bytes = summed_pubkey.to_bytes_compressed()
 
                 # Find the scan key ID for this output's scan pub
@@ -2118,6 +2170,9 @@ class ConfigBasedTestGenerator:
                 nums_leaf_only=input_config.get("nums_leaf_only", False),
                 false_nums_leaf=input_config.get("false_nums_leaf", False),
                 mismatch_redeem_script=input_config.get("mismatch_redeem_script", False),
+                omit_redeem_script=input_config.get("omit_redeem_script", False),
+                prevout_index=input_config.get("prevout_index"),
+                negate_key_of=input_config.get("negate_key_of"),
             )
 
             # Handle batch creation
@@ -2153,6 +2208,9 @@ class ConfigBasedTestGenerator:
                     nums_leaf_only=input_spec.nums_leaf_only,
                     false_nums_leaf=input_spec.false_nums_leaf,
                     mismatch_redeem_script=input_spec.mismatch_redeem_script,
+                    omit_redeem_script=input_spec.omit_redeem_script,
+                    prevout_index=input_spec.prevout_index,
+                    negate_key_of=input_spec.negate_key_of,
                 )
                 inputs.append(batch_spec)
 

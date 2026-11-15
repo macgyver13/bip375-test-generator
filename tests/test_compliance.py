@@ -468,7 +468,20 @@ def _point_errors(psbt):
             continue  # reported by _length_errors
         if GE.from_bytes(point) is None:
             errors.append(f"{name} is not a valid point")
+    for index, m in enumerate(psbt.i):
+        for keydata, _value in _all(m, PSBT_IN_BIP32_DERIVATION):
+            if len(keydata) in (33, 65) and not _valid_pubkey(keydata):
+                errors.append(f"input {index} PSBT_IN_BIP32_DERIVATION key is not a valid public key")
     return errors
+
+
+def _valid_pubkey(key):
+    """Whether Bitcoin Core accepts a 33- or 65-byte public key. A hybrid key, prefix
+    06 or 07, is accepted where the prefix matches the parity of y."""
+    if len(key) == 65 and key[0] in (6, 7):
+        point = GE.from_bytes(b"\x04" + key[1:])
+        return point is not None and point.y.is_even() == (key[0] == 6)
+    return GE.from_bytes(key) is not None
 
 
 def _framing(b64):
@@ -762,7 +775,10 @@ def _share_for(psbt, scan, covered_pubkeys):
         return None, "scan key is not from the vector wallets"
     if not covered_pubkeys:
         return None, "share covers no input key"
-    point = priv * _add_points(covered_pubkeys)
+    summed = _add_points(covered_pubkeys)
+    if summed.infinity:
+        return None, "share covers input keys that sum to the point at infinity"
+    point = priv * summed
     return point.to_bytes_compressed(), None
 
 
@@ -866,6 +882,8 @@ def _check_outputs(psbt):
     summed = _add_points([pubkey for _op, pubkey in eligible])
     if summed is None:
         return ["output script is set but there is no eligible input"]
+    if summed.infinity:
+        return ["output script is set but the eligible input keys sum to the point at infinity"]
     shares = {scan: share for scan, share in _all(psbt.g, PSBT_GLOBAL_SP_ECDH_SHARE)}
     per_scan = {}
     for inp in psbt.i:
@@ -997,6 +1015,8 @@ def _check_eligibility(psbt, sigs):
                 errors.append(f"input {index} spends witness version {program[0]}")
             if script and _is_p2sh(script):
                 redeem = _redeem_script(inp)
+                if redeem is None and scripts_set:
+                    errors.append(f"input {index} is P2SH with no redeem script, so its eligibility is unknown once an output script is set")
                 if redeem is not None and _p2sh_script(redeem) != script:
                     errors.append(f"input {index} redeem script does not match the prevout")
             if script and _is_p2tr(script):

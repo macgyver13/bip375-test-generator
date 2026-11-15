@@ -76,3 +76,25 @@ test_cases:
         force_k_index: 1
     scan_keys:
       - key_id: "default"
+
+  # Input 1's key is the negation of input 0's. Each input carries its share and a
+  # valid DLEQ proof, but BIP-352 has the sender fail when the keys sum to zero,
+  # so no output script exists for the one set here.
+  - description: "output scripts: PSBT_OUT_SCRIPT set for sp output when the eligible input keys sum to the point at infinity"
+    violates: [bip352_outputs]
+    task: "fail_sign"
+    validation_result: "invalid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2wpkh"
+        amount: 10000
+        negate_key_of: 0
+    outputs:
+      - type: "silent_payment"
+        amount: 105000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      force_output_script: true

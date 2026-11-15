@@ -162,6 +162,45 @@ test_cases:
     control_override:
       invalid_point: "sp_info_spend_key"
 
+  # Bitcoin Core rejects a PSBT_IN_BIP32_DERIVATION key that is not a valid
+  # public key when it decodes the PSBT. Input 0 keeps its own derivation too,
+  # so only that check rejects these.
+  - description: "psbt structure: PSBT_IN_BIP32_DERIVATION key is not a valid point"
+    violates: [bip174_framing]
+    experimental: "PSBT_IN_BIP32_DERIVATION keys must be valid public keys"
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_point: "derivation_key"
+
+  - description: "psbt structure: PSBT_IN_BIP32_DERIVATION hybrid key prefix does not match the parity of y"
+    violates: [bip174_framing]
+    experimental: "PSBT_IN_BIP32_DERIVATION keys must be valid public keys"
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_point: "hybrid_derivation_key"
+
   - description: "psbt structure: missing PSBT_OUT_SCRIPT field when sending to non-sp output"
     violates: [bip370_outputs]
     task: "fail_deserialize"

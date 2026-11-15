@@ -64,6 +64,44 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
+  # The funding transaction has outputs 0 and 1, so input 0's scriptPubKey,
+  # and with it its eligibility, cannot be read.
+  - description: "ecdh coverage: PSBT_IN_OUTPUT_INDEX beyond the outputs of PSBT_IN_NON_WITNESS_UTXO for input 0 when PSBT_OUT_SCRIPT set for sp output"
+    violates: [bip352_outputs, bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2pkh"
+        amount: 100000
+        prevout_index: 2
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
+  # Without the redeem script, a P2SH input may or may not be P2SH-P2WPKH, so its
+  # eligibility is unknown.
+  - description: "ecdh coverage: P2SH input 0 with no PSBT_IN_REDEEM_SCRIPT when PSBT_OUT_SCRIPT set for sp output"
+    violates: [bip352_outputs, bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2sh_p2wpkh"
+        amount: 100000
+        omit_redeem_script: true
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
   - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input when PSBT_IN_SP_ECDH_SHARE set"
     violates: [bip374_dleq]
     task: "fail_sign"
@@ -203,6 +241,53 @@ test_cases:
       missing_ecdh_for_input: 1
       strip_input_pubkeys_for_input: 1
 
+  # The generator takes the NUMS input as eligible, as a Signer that ignores the
+  # NUMS claim would, and sets a global share and an output script from its
+  # script key. The claim commits to the prevout, so no input is eligible.
+  - description: "ecdh coverage: PSBT_GLOBAL_SP_ECDH_SHARE set with no eligible inputs"
+    violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2tr"
+        amount: 100000
+        use_nums_tap_internal_key: true
+        eligible_override: true
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+
+  # Input 1's key is the negation of input 0's, so no global share exists: BIP-374
+  # GenerateProof fails on a zero key. The share and proof are input 0's alone.
+  # VerifyProof fails on the sum of the eligible input keys, the point at infinity.
+  - description: "ecdh coverage: eligible input keys sum to the point at infinity when PSBT_GLOBAL_SP_ECDH_SHARE set"
+    violates: [bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2wpkh"
+        amount: 10000
+        negate_key_of: 0
+    outputs:
+      - type: "silent_payment"
+        amount: 105000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+      missing_ecdh_for_input: 1
+
   - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
     task: "fail_sign"
@@ -219,4 +304,41 @@ test_cases:
     scan_keys:
       - key_id: "default"
     control_override:
+      strip_input_pubkeys_for_input: 0
+
+  - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for P2PKH input when PSBT_IN_SP_DLEQ set"
+    violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2pkh"
+        amount: 100000
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      strip_input_pubkeys_for_input: 0
+
+  - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for P2PKH input when PSBT_GLOBAL_SP_DLEQ set"
+    violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2pkh"
+        amount: 100000
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
       strip_input_pubkeys_for_input: 0
