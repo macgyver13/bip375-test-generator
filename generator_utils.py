@@ -500,7 +500,7 @@ def sign_p2wpkh_input(
     tx = _build_tx(inputs, outputs)
     script_code = keyhash_to_p2pkh_script(pubkey_hash)
     sighash = SegwitV0SignatureHash(script_code, tx, input_index, sighash_type, amount)
-    sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
+    sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True, grind=True)
     return sig + bytes([sighash_type])
 
 
@@ -517,7 +517,7 @@ def sign_p2pkh_input(
     script = keyhash_to_p2pkh_script(pubkey_hash)
     sighash, err = LegacySignatureHash(script, tx, input_index, sighash_type)
     assert err is None
-    sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True)
+    sig = _eckey(private_key).sign_ecdsa(sighash, low_s=True, rfc6979=True, grind=True)
     return sig + bytes([sighash_type])
 
 
