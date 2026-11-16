@@ -164,20 +164,30 @@ class ECKey:
         ret.compressed = self.compressed
         return ret
 
-    def sign_ecdsa(self, msg, low_s=True, rfc6979=False):
+    def sign_ecdsa(self, msg, low_s=True, rfc6979=False, grind=False):
         """Construct a DER-encoded ECDSA signature with this key.
+
+        With grind, retry until r < 2^255 the way Bitcoin Core's CKey::Sign does:
+        each retry passes 32 bytes of extra entropy (a little-endian counter from 1,
+        then zeros) to RFC6979 after the key and message, as libsecp256k1 does.
 
         See https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm for the
         ECDSA signer algorithm."""
         assert self.valid
         z = int.from_bytes(msg, 'big')
-        # Note: no RFC6979 by default, but a simple random nonce (some tests rely on distinct transactions for the same operation)
-        if rfc6979:
-            k = int.from_bytes(rfc6979_nonce(self.secret.to_bytes(32, 'big') + msg), 'big')
-        else:
-            k = random.randrange(1, ORDER)
-        R = k * secp256k1.G
-        r = int(R.x) % ORDER
+        counter = 0
+        while True:
+            # Note: no RFC6979 by default, but a simple random nonce (some tests rely on distinct transactions for the same operation)
+            if rfc6979:
+                extra = counter.to_bytes(4, 'little') + bytes(28) if counter else b''
+                k = int.from_bytes(rfc6979_nonce(self.secret.to_bytes(32, 'big') + msg + extra), 'big')
+            else:
+                k = random.randrange(1, ORDER)
+            R = k * secp256k1.G
+            r = int(R.x) % ORDER
+            if not grind or r < 2**255:
+                break
+            counter += 1
         s = (pow(k, -1, ORDER) * (z + self.secret * r)) % ORDER
         if low_s and s > secp256k1.GE.ORDER_HALF:
             s = ORDER - s

@@ -502,7 +502,7 @@ def _ecdsa_sighash(psbt, index, script_code, sighash_type):
 def _ecdsa_signature(secret, sighash, sighash_type):
     key = ECKey()
     key.set(secret.to_bytes(32, "big"), True)
-    return key.sign_ecdsa(sighash, low_s=True, rfc6979=True) + bytes([sighash_type & 0xFF])
+    return key.sign_ecdsa(sighash, low_s=True, rfc6979=True, grind=True) + bytes([sighash_type & 0xFF])
 
 
 def _sign_input(psbt, index, secret):
