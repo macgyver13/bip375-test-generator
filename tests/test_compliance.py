@@ -762,7 +762,10 @@ def _share_for(psbt, scan, covered_pubkeys):
         return None, "scan key is not from the vector wallets"
     if not covered_pubkeys:
         return None, "share covers no input key"
-    point = priv * _add_points(covered_pubkeys)
+    summed = _add_points(covered_pubkeys)
+    if summed.infinity:
+        return None, "share covers input keys that sum to the point at infinity"
+    point = priv * summed
     return point.to_bytes_compressed(), None
 
 
@@ -866,6 +869,8 @@ def _check_outputs(psbt):
     summed = _add_points([pubkey for _op, pubkey in eligible])
     if summed is None:
         return ["output script is set but there is no eligible input"]
+    if summed.infinity:
+        return ["output script is set but the eligible input keys sum to the point at infinity"]
     shares = {scan: share for scan, share in _all(psbt.g, PSBT_GLOBAL_SP_ECDH_SHARE)}
     per_scan = {}
     for inp in psbt.i:
