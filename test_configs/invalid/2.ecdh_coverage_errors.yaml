@@ -183,6 +183,29 @@ test_cases:
       missing_ecdh_for_input: 1
       strip_input_pubkeys_for_input: 1
 
+  # The generator takes the NUMS input as eligible, as a Signer that ignores the
+  # NUMS claim would, and sets a global share and an output script from its
+  # script key. The claim commits to the prevout, so no input is eligible.
+  - description: "ecdh coverage: PSBT_GLOBAL_SP_ECDH_SHARE set with no eligible inputs"
+    violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2tr"
+        amount: 100000
+        use_nums_tap_internal_key: true
+        eligible_override: true
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+
   # Input 1's key is the negation of input 0's, so no global share exists: BIP-374
   # GenerateProof fails on a zero key. The share and proof are input 0's alone.
   # VerifyProof fails on the sum of the eligible input keys, the point at infinity.

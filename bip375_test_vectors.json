@@ -367,6 +367,34 @@
       }
     },
     {
+      "description": "ecdh coverage: PSBT_GLOBAL_SP_ECDH_SHARE set with no eligible inputs",
+      "task": "fail_sign",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAIgcDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yEhA6LNbZHtukMEwIdGB+0PS7wHU2bKNQEVVgvM8u0XHbpfIggDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yFAV9jzE641QxmSpBWVc6L6OlVTPbx64RIwHiHQzmI/hnHL8dKKsS7mpgvFSkGWOAgBCr8OO3PAghx+SRrdZxxb/wH7BAIAAAAAAQEroIYBAAAAAAAiUSAhvotJ2Nbsa/BhMCXvaChXmKl69g7V2ge7XrfWaWHsHwEOIGKFGTaBwd952Do48v6JzrseNtoF8JTRB4Gdu/RvtuLcAQ8EAQAAAAEQBP7///8BFyBQkpt0waBJVLeLS2A16XpeB4paDyjsltVHv+6azoA6wAEYIMsC1iyIbaqg6A/joocuiAsyxzUq0DqnEO9KKf0yXfA+AAEDCBhzAQAAAAAAAQQiUSBaIgDYKHmC3pLh3hd2QizG8Q2GDDsNbgmvsx4GH3hZdwEJQgNDn8IwGCtG/yIDLKeuLf8ylYyaDRd8e3CW3w1LcUHrIQKDMIXJpxbTa0Z1UsANaqi9QuOa2+mLBbwgMRAXcZL3AgA=",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "9dab08c8eb0a4d9984ba709d580d009608f7b117dd4620eb4209c1d67a6c29d0",
+            "public_key": "02d32ca2926b322f145d76cfc8b063ee38f4e984b5275c705c77f369ea2dc198d7",
+            "prevout_txid": "dce2b66ff4bb9d8107d194f005da361ebbce89fef2383ad879dfc18136198562",
+            "prevout_index": 1,
+            "amount": 100000,
+            "non_witness_utxo": "020000000113f106b64b57b5b1376f9f6c47190f40cc06b3bedcb8aaba97850ab3d7f67d020000000000feffffff02b0ad010000000000160014415d08c871cb8e7e77011315259257264889516ca08601000000000022512021be8b49d8d6ec6bf0613025ef68285798a97af60ed5da07bb5eb7d66961ec1f00000000",
+            "witness_utxo": "a08601000000000022512021be8b49d8d6ec6bf0613025ef68285798a97af60ed5da07bb5eb7d66961ec1f",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb21",
+            "ecdh_share": "03a2cd6d91edba4304c0874607ed0f4bbc075366ca350115560bccf2ed171dba5f",
+            "dleq_proof": "57d8f313ae35431992a4159573a2fa3a55533dbc7ae112301e21d0ce623f8671cbf1d28ab12ee6a60bc54a41963808010abf0e3b73c0821c7e491add671c5bff"
+          }
+        ]
+      }
+    },
+    {
       "description": "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set",
       "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAHECAAAAARinF2Y7C6sUsSoadxMj/x5Aed1TLl3RPijqEIHHAJhKAAAAAAD+////ArCtAQAAAAAAFgAU7TjbCZtVOTtHiU9JCKBAQl1915ughgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhAAAAAAEBH6CGAQAAAAAAFgAU0MSj7wnpl7bpnjl+UY/j5BoRjKEBAwQBAAAAAQ4gJBV8HHllOP+9Onj45x9vzzwoHmp8s2t71Gtx8eBGCc8BDwQBAAAAARAE/v///yIdA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshIQIYU8t+y4/zaLEGGbkkA454cGVw7538ViMHIlg/8F7CTiIeA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshQHcqM927F307xtwQjz4XcMJo4VqLAeIxh2qngnijPo24ktWgXOZaScUJ032sRXoh6b+BwvQplzKWsqqO8uAw7Z0AAQMIGHMBAAAAAAABBCJRIBuDR8zgDyyudr8nbcbmWg+AE1/EoEREDR1UlcxrAlCAAQlCA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshAoMwhcmnFtNrRnVSwA1qqL1C45rb6YsFvCAxEBdxkvcCAA==",
