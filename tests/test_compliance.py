@@ -346,7 +346,11 @@ def _eligible_template(inp):
     if _is_p2tr(script):
         committed, _uncommitted = _nums_claims(inp, script)
         return not committed
-    if _is_p2pkh(script) or _is_p2wpkh(script):
+    if _is_p2pkh(script):
+        # BIP-352 skips a P2PKH input whose key is uncompressed
+        pubkey = _pubkey(inp)
+        return pubkey is None or len(pubkey) == 33
+    if _is_p2wpkh(script):
         return True
     redeem = _redeem_script(inp)
     return bool(redeem is not None and _is_p2sh(script) and _is_p2wpkh(redeem) and _p2sh_script(redeem) == script)

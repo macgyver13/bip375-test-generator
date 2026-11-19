@@ -208,6 +208,7 @@ class InputSpec:
     false_nums_leaf: bool = False
     mismatch_redeem_script: bool = False  # P2SH-P2WPKH prevout with a 1-of-1 multisig redeem script, so the input looks ineligible
     negate_key_of: Optional[int] = None  # Use the negation of input N's key, so the two keys sum to the point at infinity (p2wpkh only)
+    uncompressed_key: bool = False  # P2PKH prevout committed to the 65-byte key, which BIP-352 leaves out
 
 
 @dataclass
@@ -358,6 +359,8 @@ class InputFactory:
             raise ValueError(f"a given private key is only supported for p2wpkh inputs, got {spec.input_type.value}")
 
         shared_key = bool(scenario and scenario.single_signer_shared_key)
+        if spec.uncompressed_key and spec.input_type != InputType.P2PKH:
+            raise ValueError(f"uncompressed_key is only supported for p2pkh inputs, got {spec.input_type.value}")
         if spec.input_type == InputType.P2WPKH:
             result = self._create_p2wpkh_input(spec, input_index, shared_key, private_key)
         elif spec.input_type == InputType.P2PKH:
@@ -547,6 +550,8 @@ class InputFactory:
         input_priv, input_pub, material = self._input_key(spec, input_index, 44)
 
         script_pubkey = bytes(key_to_p2pkh_script(input_pub.bytes))
+        if spec.uncompressed_key:
+            script_pubkey = bytes(key_to_p2pkh_script(input_pub.to_bytes_uncompressed()))
         if spec.script_pubkey_override is not None:
             script_pubkey = spec.script_pubkey_override
 
@@ -565,8 +570,10 @@ class InputFactory:
             "non_witness_utxo": prev_tx,
             "amount": spec.amount,
             "sequence": spec.sequence,
-            "is_eligible": True,
+            "is_eligible": not spec.uncompressed_key,
         }
+        if spec.uncompressed_key:
+            result["uncompressed_key"] = True
         result["owner"] = spec.owner
         if material:
             result["key_material"] = material
@@ -1171,9 +1178,16 @@ class PSBTBuilder:
             )
         add_raw_input_field(
             psbt, idx, PSBTKeyType.PSBT_IN_BIP32_DERIVATION,
-            input_info["public_key"].bytes,
+            self._input_pubkey_bytes(input_info),
             self._input_origin_value(input_info),
         )
+
+    @staticmethod
+    def _input_pubkey_bytes(input_info: Dict[str, Any]) -> bytes:
+        """The serialized key the prevout script commits to."""
+        if input_info.get("uncompressed_key"):
+            return input_info["public_key"].to_bytes_uncompressed()
+        return input_info["public_key"].bytes
 
     def _add_input_utxo(self, psbt, idx: int, input_info: Dict[str, Any], key_type, value: bytes):
         """Add a UTXO field, unless the scenario omits the input's UTXO.
@@ -1574,6 +1588,7 @@ class PSBTBuilder:
         return (
             input_info.get("is_eligible", False)
             or input_info.get("input_type") in (InputType.P2SH_MULTISIG, InputType.P2SH_P2WPKH)
+            or input_info.get("uncompressed_key", False)
             or "tap_leaf_script" in input_info
         )
 
@@ -1742,12 +1757,12 @@ class PSBTBuilder:
                 sighash_type=sighash_type,
             )
 
-        compressed_pubkey = input_info["public_key"].to_bytes_compressed()
+        pubkey = self._input_pubkey_bytes(input_info)
         add_raw_input_field(
             psbt,
             input_idx,
             PSBTKeyType.PSBT_IN_PARTIAL_SIG,
-            compressed_pubkey,
+            pubkey,
             signature,
         )
 
@@ -2160,6 +2175,7 @@ class ConfigBasedTestGenerator:
                 foreign_origin=input_config.get("foreign_origin", False),
                 omit_utxo=input_config.get("omit_utxo", False),
                 omit_redeem_script=input_config.get("omit_redeem_script", False),
+                uncompressed_key=input_config.get("uncompressed_key", False),
                 mismatch_sp_pubkey=input_config.get("mismatch_sp_pubkey", False),
                 contribute_foreign_share=input_config.get("contribute_foreign_share", False),
                 decoy_first_derivation=input_config.get("decoy_first_derivation", False),
@@ -2196,6 +2212,7 @@ class ConfigBasedTestGenerator:
                     foreign_origin=input_spec.foreign_origin,
                     omit_utxo=input_spec.omit_utxo,
                     omit_redeem_script=input_spec.omit_redeem_script,
+                    uncompressed_key=input_spec.uncompressed_key,
                     mismatch_sp_pubkey=input_spec.mismatch_sp_pubkey,
                     contribute_foreign_share=input_spec.contribute_foreign_share,
                     decoy_first_derivation=input_spec.decoy_first_derivation,

@@ -53,6 +53,25 @@ test_cases:
         amount: 9500
         scan_key_id: "default"
 
+  # BIP-352 takes a P2PKH input's key only when it is compressed. Input 1's
+  # prevout commits to its 65-byte key, so it carries no share and its key is
+  # left out of the output script.
+  - description: "can finalize: two mixed input types - only eligible inputs contribute ECDH shares (uncompressed P2PKH excluded)"
+    task: "finalize"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2pkh"
+        amount: 50000
+        uncompressed_key: true
+    outputs:
+      - type: "silent_payment"
+        amount: 140000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
   # An ineligible input may declare SIGHASH_ALL; only other sighash types are rejected.
   - description: "can finalize: ineligible P2SH multisig input declaring SIGHASH_ALL"
     task: "finalize"
