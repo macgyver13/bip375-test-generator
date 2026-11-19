@@ -273,6 +273,7 @@ class TestScenario:
     set_tx_modifiable: bool = False
     missing_sp_info_field: bool = False
     wrong_ecdh_share_size: bool = False
+    short_ecdh_scan_key: bool = False  # Add a PSBT_IN_SP_ECDH_SHARE keyed by the 32-byte x-only scan key; the valid share stays
     wrong_dleq_proof_size: bool = False
     missing_ecdh_for_scan_key: Optional[str] = None
     missing_dleq_for_scan_key: Optional[str] = None
@@ -1483,6 +1484,8 @@ class PSBTBuilder:
             if scenario.invalid_point == "ecdh_scan_key":
                 # Extra share whose scan key keydata is not a point; the valid share stays
                 add_raw_input_field(psbt, input_idx, PSBTKeyType.PSBT_IN_SP_ECDH_SHARE, OFF_CURVE_POINT, ecdh_bytes)
+            if scenario.short_ecdh_scan_key:
+                add_raw_input_field(psbt, input_idx, PSBTKeyType.PSBT_IN_SP_ECDH_SHARE, scan_pub.bytes[1:], ecdh_bytes)
 
             # Add DLEQ proof (if not missing due to Error injection)
             if dleq_proof is not None:
@@ -2272,6 +2275,7 @@ class ConfigBasedTestGenerator:
             set_tx_modifiable=control_override.get("set_tx_modifiable", False),
             missing_sp_info_field=control_override.get("missing_sp_info_field", False),
             wrong_ecdh_share_size=control_override.get("wrong_ecdh_share_size", False),
+            short_ecdh_scan_key=control_override.get("short_ecdh_scan_key", False),
             wrong_dleq_proof_size=control_override.get("wrong_dleq_proof_size", False),
             missing_ecdh_for_scan_key=control_override.get("missing_ecdh_for_scan_key"),
             missing_dleq_for_scan_key=control_override.get("missing_dleq_for_scan_key"),

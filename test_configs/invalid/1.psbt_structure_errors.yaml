@@ -74,6 +74,25 @@ test_cases:
     control_override:
       wrong_ecdh_share_size: true
 
+  # The keydata of a second PSBT_IN_SP_ECDH_SHARE is the 32-byte x-only form of the
+  # scan key, not the 33-byte compressed key. The valid share stays.
+  - description: "psbt structure: incorrect byte length for PSBT_IN_SP_ECDH_SHARE scan key"
+    violates: [bip174_framing, bip374_dleq, bip375_ecdh]
+    task: "fail_deserialize"
+    validation_result: "invalid"
+    exclude_material: ["inputs", "sp_proofs", "outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      short_ecdh_scan_key: true
+
   - description: "psbt structure: incorrect byte length for PSBT_IN_SP_DLEQ field"
     violates: [bip174_framing, bip374_dleq]
     task: "fail_deserialize"

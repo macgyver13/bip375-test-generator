@@ -56,6 +56,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | No eligible inputs | Added invalid “ecdh coverage: PSBT_GLOBAL_SP_ECDH_SHARE set with no eligible inputs”. Its only input is a P2TR input whose NUMS internal key claim commits to the prevout, yet it carries a global share and an output script computed from its key. Standard: 24 valid, 46 invalid. Extended: 24 valid, 51 invalid, 17 workflow steps. |
 | | Missing redeem script | Added invalid “ecdh coverage: P2SH input 1 with no PSBT_IN_REDEEM_SCRIPT and no ECDH share when PSBT_OUT_SCRIPT set for sp output”. Input 1 spends a P2SH-P2WPKH prevout, and the share and output script are computed as if it were ineligible. Inputs gained `omit_redeem_script`. Standard: 24 valid, 47 invalid. Extended: 24 valid, 52 invalid, 17 workflow steps. |
 | | TX_MODIFIABLE omitted | Added valid “can finalize: one P2WPKH input with PSBT_GLOBAL_TX_MODIFIABLE omitted”. BIP-370 reads the omitted field as 0, so the Modifiable flags are clear once the output script is set. `control_override` gained `omit_tx_modifiable`. Standard: 25 valid, 47 invalid. Extended: 25 valid, 52 invalid, 17 workflow steps. |
+| | Scan key length | Added invalid “psbt structure: incorrect byte length for PSBT_IN_SP_ECDH_SHARE scan key”. A second share is keyed by the 32-byte x-only scan key; the valid share stays. `control_override` gained `short_ecdh_scan_key`. Standard: 25 valid, 48 invalid. Extended: 25 valid, 53 invalid, 17 workflow steps. |
 
 ---
 
