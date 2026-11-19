@@ -294,6 +294,7 @@ class TestScenario:
     corrupt_final_redeem: bool = False
     experimental: Optional[str] = None  # what the vector waits on; included only with --include experimental
     as_psbt_v0: bool = False
+    omit_tx_modifiable: bool = False  # Leave PSBT_GLOBAL_TX_MODIFIABLE out, which BIP-370 reads as 0
     # Replace a 33-byte key or share with OFF_CURVE_POINT: ecdh_scan_key (an extra
     # PSBT_IN_SP_ECDH_SHARE keyed by it), ecdh_share, sp_info_scan_key or sp_info_spend_key
     invalid_point: Optional[str] = None
@@ -2312,6 +2313,7 @@ class ConfigBasedTestGenerator:
             sign_before_scripts=control_override.get("sign_before_scripts", False),
             corrupt_final_redeem=control_override.get("corrupt_final_redeem", False),
             as_psbt_v0=control_override.get("as_psbt_v0", False),
+            omit_tx_modifiable=control_override.get("omit_tx_modifiable", False),
             invalid_point=control_override.get("invalid_point"),
             strip_sp_proofs_after_resolution=control_override.get(
                 "strip_sp_proofs_after_resolution", False
@@ -2358,6 +2360,16 @@ class ConfigBasedTestGenerator:
         g[PSBT_GLOBAL_UNSIGNED_TX] = tx.serialize_without_witness()
         psbt.version = 0
         return normalize_psbt_field_order(psbt.serialize())
+
+    def _omit_tx_modifiable(self, serialized_psbt: bytes) -> bytes:
+        """Drop PSBT_GLOBAL_TX_MODIFIABLE, keeping every other field."""
+        from io import BytesIO
+        from test_framework.psbt import PSBT_GLOBAL_TX_MODIFIABLE
+
+        parsed = PSBT()
+        parsed.deserialize(BytesIO(serialized_psbt))
+        parsed.g.map.pop(PSBT_GLOBAL_TX_MODIFIABLE, None)
+        return normalize_psbt_field_order(parsed.serialize())
 
     def _corrupt_final_redeem(self, serialized_psbt: bytes) -> bytes:
         """Replace the final P2SH redeem push with a 1-of-1 multisig of the witness key.
@@ -2438,7 +2450,11 @@ class ConfigBasedTestGenerator:
 
         psbt = SilentPaymentPsbt.deserialize(signed_psbt)
         psbt.finalize()
-        return normalize_psbt_field_order(psbt.serialize())
+        finalized = normalize_psbt_field_order(psbt.serialize())
+        # spdk writes TX_MODIFIABLE even when the input left it out
+        if scenario.omit_tx_modifiable:
+            finalized = self._omit_tx_modifiable(finalized)
+        return finalized
 
     def _expected_psbt_bytes(
         self, input_psbt: bytes, serialized_psbt: bytes, psbt_data: Dict[str, Any], scenario: TestScenario
@@ -2461,6 +2477,8 @@ class ConfigBasedTestGenerator:
         psbt_data = self.builder.build_psbt(scenario)
         psbt = psbt_data["psbt"]
         serialized_psbt = normalize_psbt_field_order(psbt.serialize())
+        if scenario.omit_tx_modifiable:
+            serialized_psbt = self._omit_tx_modifiable(serialized_psbt)
         if scenario.task == "fail_extract":
             if any(spec.false_nums_leaf for spec in scenario.inputs):
                 serialized_psbt = self._finalize_uncommitted_leaf(serialized_psbt)

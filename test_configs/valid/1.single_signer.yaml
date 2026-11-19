@@ -14,6 +14,23 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
+  # BIP-370 reads an omitted PSBT_GLOBAL_TX_MODIFIABLE as 0, so the Inputs and
+  # Outputs Modifiable flags are clear once PSBT_OUT_SCRIPT is set.
+  - description: "can finalize: one P2WPKH input with PSBT_GLOBAL_TX_MODIFIABLE omitted"
+    task: "finalize"
+    validation_result: "valid"
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      omit_tx_modifiable: true
+
   - description: "can finalize: two inputs single-signer using global ECDH share"
     task: "finalize"
     validation_result: "valid"
