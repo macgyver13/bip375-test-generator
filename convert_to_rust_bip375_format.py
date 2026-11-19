@@ -31,6 +31,8 @@ Transformation rules:
   update entry, and is "m" when neither gives one. A P2TR key-path key is the internal secret,
   recovered from the disclosed output secret
 - All other supplementary data is dropped
+- Valid and invalid cases marked experimental in test_configs are dropped, since the vectors
+  carry no marker of their own
 """
 
 import argparse
@@ -38,6 +40,9 @@ import base64
 import hashlib
 import json
 import sys
+from pathlib import Path
+
+import yaml
 
 from psbt_backend import SilentPaymentPsbt
 from test_framework.crypto.secp256k1 import G, GE
@@ -51,6 +56,21 @@ B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 # Testnet WIF, matching the keys already used by the rust-psbt BIP-174 vectors.
 WIF_PREFIX = 0xEF
+
+TEST_CONFIGS_DIR = Path(__file__).parent / "test_configs"
+
+
+def experimental_descriptions() -> set:
+    """The descriptions of the valid and invalid cases marked experimental in test_configs."""
+    descriptions = set()
+    for section in ("valid", "invalid"):
+        for config_file in TEST_CONFIGS_DIR.glob(f"{section}/**/*.yaml"):
+            with open(config_file) as f:
+                config = yaml.safe_load(f)
+            for case in config.get("test_cases", []):
+                if case.get("experimental"):
+                    descriptions.add(case["description"])
+    return descriptions
 
 
 def base58check(payload: bytes) -> str:
@@ -350,10 +370,12 @@ def convert(src: dict) -> dict:
             "task": {task: payload},
         }
 
+    experimental = experimental_descriptions()
     cases = []
     for section, prefix in (("valid", "Valid: "), ("invalid", "Invalid: ")):
         for entry in src.get(section, []):
-            cases.append(convert_entry(entry, prefix))
+            if entry["description"] not in experimental:
+                cases.append(convert_entry(entry, prefix))
     cases.extend(SYNTHESIZED_CASES)
     for entry in src.get("workflows", []):
         cases.append(convert_entry(entry, workflow=True))

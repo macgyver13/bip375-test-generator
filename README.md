@@ -149,7 +149,8 @@ diagnostics.
 just gen-rust
 ```
 
-Writes `out/bip375.json` from the extended file. Generated artifacts other than
+Writes `out/bip375.json` from the extended file, leaving out the cases marked
+`experimental`. Generated artifacts other than
 `bip375_test_vectors.json` live in the untracked `out/` directory and can be
 regenerated at any revision.
 
