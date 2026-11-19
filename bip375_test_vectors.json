@@ -442,6 +442,46 @@
       }
     },
     {
+      "description": "ecdh coverage: eligible input keys sum to the point at infinity when PSBT_GLOBAL_SP_ECDH_SHARE set",
+      "task": "fail_sign",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAIgcDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yEhAhhTy37Lj/NosQYZuSQDjnhwZXDvnfxWIwciWD/wXsJOIggDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yFALJDWsETXa1f6YsSi4E0sTMjjz1xDrQxYQeJ6q31J1lwvDQ8Z3sHGSBIkcrfKH0HDZ9VfubdbA5MQvXA+XKPrzQH7BAIAAAAAAQBxAgAAAAEYpxdmOwurFLEqGncTI/8eQHndUy5d0T4o6hCBxwCYSgAAAAAA/v///wKwrQEAAAAAABYAFO042wmbVTk7R4lPSQigQEJdfdeboIYBAAAAAAAWABTQxKPvCemXtumeOX5Rj+PkGhGMoQAAAAABAR+ghgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhIgYC56slN7XUnpcDCargbp5J82zhyf671E7I4NHMoLT5wxkYc8XaClQAAIABAACAAAAAgAAAAAAAAAAAAQ4gJBV8HHllOP+9Onj45x9vzzwoHmp8s2t71Gtx8eBGCc8BDwQBAAAAARAE/v///wABAHECAAAAAb6dZcg5FfsJJIq738qMo+7mzjUMVU9l6NUm5d9SerUiAAAAAAD+////AiBOAAAAAAAAFgAUo0Ii4tbz0yV9tT7zxSvKIKTIOSoQJwAAAAAAABYAFD9tJuanovWKACJUQeyczPc7rCrPAAAAAAEBHxAnAAAAAAAAFgAUP20m5qei9YoAIlRB7JzM9zusKs8iBgPnqyU3tdSelwMJquBunknzbOHJ/rvUTsjg0cygtPnDGQgAAACAAQAAAAEOIF30rcgWmUDhoAvrHf5mVyAlTGJ1IyPnrUJ+lCRJeVF/AQ8EAQAAAAEQBP7///8AAQMIKJoBAAAAAAABCUIDQ5/CMBgrRv8iAyynri3/MpWMmg0XfHtwlt8NS3FB6yECgzCFyacW02tGdVLADWqovULjmtvpiwW8IDEQF3GS9wIA",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "a9c4134b73560f43fc5c081e5c1daa7ce068adc806d80e1f37cb658e0fea4c8d",
+            "public_key": "02e7ab2537b5d49e970309aae06e9e49f36ce1c9febbd44ec8e0d1cca0b4f9c319",
+            "prevout_txid": "cf0946e0f1716bd47b6bb37c6a1e283ccf6f1fe7f8783abdff3865791c7c1524",
+            "prevout_index": 1,
+            "amount": 100000,
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000feffffff02b0ad010000000000160014ed38db099b55393b47894f4908a040425d7dd79ba086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca100000000",
+            "witness_utxo": "a086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca1",
+            "sequence": 4294967294,
+            "signed": false
+          },
+          {
+            "input_index": 1,
+            "private_key": "563becb48ca9f0bc03a3f7e1a3e25581da462f1ea870921c8806f8fec04bf4b4",
+            "public_key": "03e7ab2537b5d49e970309aae06e9e49f36ce1c9febbd44ec8e0d1cca0b4f9c319",
+            "prevout_txid": "7f51794924947e42ade7232375624c25205766fe1deb0ba0e1409916c8adf45d",
+            "prevout_index": 1,
+            "amount": 10000,
+            "non_witness_utxo": "0200000001be9d65c83915fb09248abbdfca8ca3eee6ce350c554f65e8d526e5df527ab5220000000000feffffff02204e000000000000160014a34222e2d6f3d3257db53ef3c52bca20a4c8392a10270000000000001600143f6d26e6a7a2f58a00225441ec9cccf73bac2acf00000000",
+            "witness_utxo": "10270000000000001600143f6d26e6a7a2f58a00225441ec9cccf73bac2acf",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb21",
+            "ecdh_share": "021853cb7ecb8ff368b10619b924038e78706570ef9dfc56230722583ff05ec24e",
+            "dleq_proof": "2c90d6b044d76b57fa62c4a2e04d2c4cc8e3cf5c43ad0c5841e27aab7d49d65c2f0d0f19dec1c648122472b7ca1f41c367d55fb9b75b039310bd703e5ca3ebcd"
+          }
+        ]
+      }
+    },
+    {
       "description": "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set",
       "task": "fail_sign",
       "psbt": "cHNidP8BAgQCAAAAAQQBAQEFAQEBBgEAAfsEAgAAAAABAHECAAAAARinF2Y7C6sUsSoadxMj/x5Aed1TLl3RPijqEIHHAJhKAAAAAAD+////ArCtAQAAAAAAFgAU7TjbCZtVOTtHiU9JCKBAQl1915ughgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhAAAAAAEBH6CGAQAAAAAAFgAU0MSj7wnpl7bpnjl+UY/j5BoRjKEBAwQBAAAAAQ4gJBV8HHllOP+9Onj45x9vzzwoHmp8s2t71Gtx8eBGCc8BDwQBAAAAARAE/v///yIdA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshIQIYU8t+y4/zaLEGGbkkA454cGVw7538ViMHIlg/8F7CTiIeA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshQHcqM927F307xtwQjz4XcMJo4VqLAeIxh2qngnijPo24ktWgXOZaScUJ032sRXoh6b+BwvQplzKWsqqO8uAw7Z0AAQMIGHMBAAAAAAABBCJRIBuDR8zgDyyudr8nbcbmWg+AE1/EoEREDR1UlcxrAlCAAQlCA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshAoMwhcmnFtNrRnVSwA1qqL1C45rb6YsFvCAxEBdxkvcCAA==",
@@ -1368,6 +1408,61 @@
             "amount": 10000,
             "sp_v0_info": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb2102833085c9a716d36b467552c00d6aa8bd42e39adbe98b05bc203110177192f702",
             "script": "51207394e15a13c80989e0a4ad5cefcc5eceb60a9f80b6a0a0045b99e96cb7414b4c"
+          }
+        ]
+      }
+    },
+    {
+      "description": "output scripts: PSBT_OUT_SCRIPT set for sp output when the eligible input keys sum to the point at infinity",
+      "task": "fail_sign",
+      "psbt": "cHNidP8BAgQCAAAAAQQBAgEFAQEBBgEAAfsEAgAAAAABAHECAAAAARinF2Y7C6sUsSoadxMj/x5Aed1TLl3RPijqEIHHAJhKAAAAAAD+////ArCtAQAAAAAAFgAU7TjbCZtVOTtHiU9JCKBAQl1915ughgEAAAAAABYAFNDEo+8J6Ze26Z45flGP4+QaEYyhAAAAAAEBH6CGAQAAAAAAFgAU0MSj7wnpl7bpnjl+UY/j5BoRjKEBAwQBAAAAIgYC56slN7XUnpcDCargbp5J82zhyf671E7I4NHMoLT5wxkYc8XaClQAAIABAACAAAAAgAAAAAAAAAAAAQ4gJBV8HHllOP+9Onj45x9vzzwoHmp8s2t71Gtx8eBGCc8BDwQBAAAAARAE/v///yIdA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshIQIYU8t+y4/zaLEGGbkkA454cGVw7538ViMHIlg/8F7CTiIeA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshQHcqM927F307xtwQjz4XcMJo4VqLAeIxh2qngnijPo24ktWgXOZaScUJ032sRXoh6b+BwvQplzKWsqqO8uAw7Z0AAQBxAgAAAAG+nWXIORX7CSSKu9/KjKPu5s41DFVPZejVJuXfUnq1IgAAAAAA/v///wIgTgAAAAAAABYAFKNCIuLW89MlfbU+88UryiCkyDkqECcAAAAAAAAWABQ/bSbmp6L1igAiVEHsnMz3O6wqzwAAAAABAR8QJwAAAAAAABYAFD9tJuanovWKACJUQeyczPc7rCrPAQMEAQAAACIGA+erJTe11J6XAwmq4G6eSfNs4cn+u9ROyODRzKC0+cMZCAAAAIABAAAAAQ4gXfStyBaZQOGgC+sd/mZXICVMYnUjI+etQn6UJEl5UX8BDwQBAAAAARAE/v///yIdA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshIQMYU8t+y4/zaLEGGbkkA454cGVw7538ViMHIlg/8F7CTiIeA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshQCV3Nx0CAMvKSGe/Zwob/eSgCd2hlR6wcudpDhZZSVD0nV0xmbOOowoyS2un90nwmbq7EcGPmKd1w2QsFOKWTT4AAQMIKJoBAAAAAAABBCJRIM3jnYsFtJb48Y8gsn0K+aMjMwngRyIZ4IE/87XTeH4pAQlCA0OfwjAYK0b/IgMsp64t/zKVjJoNF3x7cJbfDUtxQeshAoMwhcmnFtNrRnVSwA1qqL1C45rb6YsFvCAxEBdxkvcCAA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "a9c4134b73560f43fc5c081e5c1daa7ce068adc806d80e1f37cb658e0fea4c8d",
+            "public_key": "02e7ab2537b5d49e970309aae06e9e49f36ce1c9febbd44ec8e0d1cca0b4f9c319",
+            "prevout_txid": "cf0946e0f1716bd47b6bb37c6a1e283ccf6f1fe7f8783abdff3865791c7c1524",
+            "prevout_index": 1,
+            "amount": 100000,
+            "non_witness_utxo": "020000000118a717663b0bab14b12a1a771323ff1e4079dd532e5dd13e28ea1081c700984a0000000000feffffff02b0ad010000000000160014ed38db099b55393b47894f4908a040425d7dd79ba086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca100000000",
+            "witness_utxo": "a086010000000000160014d0c4a3ef09e997b6e99e397e518fe3e41a118ca1",
+            "sequence": 4294967294,
+            "signed": false
+          },
+          {
+            "input_index": 1,
+            "private_key": "563becb48ca9f0bc03a3f7e1a3e25581da462f1ea870921c8806f8fec04bf4b4",
+            "public_key": "03e7ab2537b5d49e970309aae06e9e49f36ce1c9febbd44ec8e0d1cca0b4f9c319",
+            "prevout_txid": "7f51794924947e42ade7232375624c25205766fe1deb0ba0e1409916c8adf45d",
+            "prevout_index": 1,
+            "amount": 10000,
+            "non_witness_utxo": "0200000001be9d65c83915fb09248abbdfca8ca3eee6ce350c554f65e8d526e5df527ab5220000000000feffffff02204e000000000000160014a34222e2d6f3d3257db53ef3c52bca20a4c8392a10270000000000001600143f6d26e6a7a2f58a00225441ec9cccf73bac2acf00000000",
+            "witness_utxo": "10270000000000001600143f6d26e6a7a2f58a00225441ec9cccf73bac2acf",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb21",
+            "ecdh_share": "021853cb7ecb8ff368b10619b924038e78706570ef9dfc56230722583ff05ec24e",
+            "dleq_proof": "772a33ddbb177d3bc6dc108f3e1770c268e15a8b01e231876aa78278a33e8db892d5a05ce65a49c509d37dac457a21e9bf81c2f429973296b2aa8ef2e030ed9d",
+            "input_index": 0
+          },
+          {
+            "scan_key": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb21",
+            "ecdh_share": "031853cb7ecb8ff368b10619b924038e78706570ef9dfc56230722583ff05ec24e",
+            "dleq_proof": "2577371d0200cbca4867bf670a1bfde4a009dda1951eb072e7690e16594950f49d5d3199b38ea30a324b6ba7f749f099babb11c18f98a775c3642c14e2964d3e",
+            "input_index": 1
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 105000,
+            "sp_v0_info": "03439fc230182b46ff22032ca7ae2dff32958c9a0d177c7b7096df0d4b7141eb2102833085c9a716d36b467552c00d6aa8bd42e39adbe98b05bc203110177192f702",
+            "script": "5120cde39d8b05b496f8f18f20b27d0af9a3233309e0472219e0813ff3b5d3787e29"
           }
         ]
       }

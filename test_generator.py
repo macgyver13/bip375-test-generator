@@ -295,6 +295,7 @@ class TestScenario:
     sign_before_scripts: bool = False
     corrupt_final_redeem: bool = False
     experimental: Optional[str] = None  # what the vector waits on; included only with --include experimental
+    include: Optional[str] = None  # an optional set from INCLUDE_CHOICES; included only with --include <set>
     as_psbt_v0: bool = False
     omit_tx_modifiable: bool = False  # Leave PSBT_GLOBAL_TX_MODIFIABLE out, which BIP-370 reads as 0
     # Replace a 33-byte key or share with OFF_CURVE_POINT: ecdh_scan_key (an extra
@@ -2147,6 +2148,8 @@ class ConfigBasedTestGenerator:
         """Parse a single test configuration into TestScenario"""
         if require_violates and config.get("validation_result") == "invalid" and not config.get("violates"):
             raise ValueError(f"{config['description']}: invalid case needs a non-empty violates list")
+        if config.get("include") not in (None, *INCLUDE_CHOICES):
+            raise ValueError(f"{config['description']}: include must be one of {INCLUDE_CHOICES}")
 
         # Parse inputs
         inputs = []
@@ -2270,6 +2273,7 @@ class ConfigBasedTestGenerator:
             task=config.get("task", "deserialize"),
             id=config.get("id"),
             experimental=config.get("experimental"),
+            include=config.get("include"),
             validation_result=ValidationResult(config.get("validation_result", "valid")),
             inputs=inputs,
             outputs=outputs,
@@ -3153,6 +3157,8 @@ class TestVectorGenerator:
                     self.experimental.append((scenario.description, scenario.experimental))
                     if "experimental" not in self.includes:
                         continue
+                if scenario.include and scenario.include not in self.includes:
+                    continue
                 test_vector = self.config_generator.generate_test_vector_from_scenario(scenario)
                 self.test_vectors["invalid"].append(test_vector)
 
@@ -3165,6 +3171,8 @@ class TestVectorGenerator:
                     self.experimental.append((scenario.description, scenario.experimental))
                     if "experimental" not in self.includes:
                         continue
+                if scenario.include and scenario.include not in self.includes:
+                    continue
                 test_vector = self.config_generator.generate_test_vector_from_scenario(scenario)
                 self.test_vectors["valid"].append(test_vector)
 

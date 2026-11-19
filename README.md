@@ -58,6 +58,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | TX_MODIFIABLE omitted | Added valid “can finalize: one P2WPKH input with PSBT_GLOBAL_TX_MODIFIABLE omitted”. BIP-370 reads the omitted field as 0, so the Modifiable flags are clear once the output script is set. `control_override` gained `omit_tx_modifiable`. Standard: 25 valid, 47 invalid. Extended: 25 valid, 52 invalid, 17 workflow steps. |
 | | Scan key length | Added invalid “psbt structure: incorrect byte length for PSBT_IN_SP_ECDH_SHARE scan key”. A second share is keyed by the 32-byte x-only scan key; the valid share stays. `control_override` gained `short_ecdh_scan_key`. Standard: 25 valid, 48 invalid. Extended: 25 valid, 53 invalid, 17 workflow steps. |
 | | Uncompressed P2PKH | Added valid “can finalize: two mixed input types - only eligible inputs contribute ECDH shares (uncompressed P2PKH excluded)”. Input 1's P2PKH prevout commits to its 65-byte key, which BIP-352 leaves out, so it has no share and its key is not in the output script. Inputs gained `uncompressed_key`, and the compliance suite treats such an input as ineligible. Standard: 26 valid, 48 invalid. Extended: 26 valid, 53 invalid, 17 workflow steps. |
+| | Core and workflow sets | The two infinity vectors are no longer experimental and join the standard set. The finalized NUMS witness and finalized P2SH-P2WPKH `fail_extract` vectors move from `experimental` to `include: "workflows"`, so they stay in the extended file and the rust-psbt export. Only the version 0 vector stays experimental. Standard: 26 valid, 50 invalid. Extended: 26 valid, 53 invalid, 17 workflow steps. |
 
 ---
 
@@ -119,6 +120,9 @@ Output:
 - `workflows`: the step-by-step workflow vectors.
 - `experimental`: test cases marked `experimental: "<what it waits on>"` in their config,
   for validator behavior not merged yet. Every run prints these cases and their reasons.
+
+A valid or invalid case marked `include: "<set>"` in its config is generated only when that
+set is included, for example a `fail_extract` case that ships with `workflows`.
 
 `STANDARD_INCLUDES` in `test_generator.py` lists the sets every file includes, and
 `VECTOR_VERSION` names the standard set. Both files report that version. To make workflow

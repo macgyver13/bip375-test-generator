@@ -145,7 +145,8 @@ test_cases:
       - key_id: "default"
 
   - description: "ecdh coverage: finalized NUMS script-path witness not committed to prevout, input missing ECDH share"
-    experimental: "finalized PSBT validation and the fail_extract task"
+    # Ships with the workflows, which bring finalized PSBT validation and the fail_extract task.
+    include: "workflows"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh, bip375_eligibility]
     task: "fail_extract"
     validation_result: "invalid"
@@ -170,7 +171,8 @@ test_cases:
   # leave input 1 out, as an Extractor would that reads eligibility from the final
   # scriptSig alone.
   - description: "ecdh coverage: finalized P2SH-P2WPKH input with non-P2WPKH final scriptSig redeem script and no ECDH share"
-    experimental: "finalized PSBT validation and the fail_extract task"
+    # Ships with the workflows, which bring finalized PSBT validation and the fail_extract task.
+    include: "workflows"
     violates: [bip375_eligibility]
     task: "fail_extract"
     validation_result: "invalid"

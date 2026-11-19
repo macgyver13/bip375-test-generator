@@ -80,7 +80,6 @@ test_cases:
   # so no output script exists for the one set here.
   - description: "output scripts: PSBT_OUT_SCRIPT set for sp output when the eligible input keys sum to the point at infinity"
     violates: [bip352_outputs]
-    experimental: "eligible input keys that sum to the point at infinity"
     task: "fail_sign"
     validation_result: "invalid"
     inputs:

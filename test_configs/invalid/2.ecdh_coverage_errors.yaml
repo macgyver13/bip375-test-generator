@@ -238,7 +238,6 @@ test_cases:
   # VerifyProof fails on the sum of the eligible input keys, the point at infinity.
   - description: "ecdh coverage: eligible input keys sum to the point at infinity when PSBT_GLOBAL_SP_ECDH_SHARE set"
     violates: [bip374_dleq, bip375_ecdh]
-    experimental: "eligible input keys that sum to the point at infinity"
     task: "fail_sign"
     validation_result: "invalid"
     exclude_material: ["outputs"]
