@@ -1002,6 +1002,8 @@ def _check_eligibility(psbt, sigs):
                 errors.append(f"input {index} spends witness version {program[0]}")
             if script and _is_p2sh(script):
                 redeem = _redeem_script(inp)
+                if redeem is None and scripts_set:
+                    errors.append(f"input {index} is P2SH with no redeem script, so its eligibility is unknown once an output script is set")
                 if redeem is not None and _p2sh_script(redeem) != script:
                     errors.append(f"input {index} redeem script does not match the prevout")
             if script and _is_p2tr(script):

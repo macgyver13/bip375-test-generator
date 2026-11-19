@@ -64,6 +64,33 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
+  # Input 1 spends a P2SH-P2WPKH prevout but omits PSBT_IN_REDEEM_SCRIPT, so it
+  # may or may not be P2SH-P2WPKH and its eligibility cannot be established. The
+  # share and output script are computed as if input 1 were ineligible, as a
+  # Signer would that treats a P2SH input with no redeem script like the common
+  # ineligible P2SH case. The receiver sums input 1's key and does not find the
+  # payment.
+  - description: "ecdh coverage: P2SH input 1 with no PSBT_IN_REDEEM_SCRIPT and no ECDH share when PSBT_OUT_SCRIPT set for sp output"
+    violates: [bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        skip_signing: true
+      - type: "p2sh_p2wpkh"
+        amount: 10000
+        omit_redeem_script: true
+        eligible_override: false
+        skip_signing: true
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
   - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input when PSBT_IN_SP_ECDH_SHARE set"
     violates: [bip374_dleq]
     task: "fail_sign"

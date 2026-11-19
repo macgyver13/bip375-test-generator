@@ -200,6 +200,7 @@ class InputSpec:
     mismatch_utxo_script: bool = False
     foreign_origin: bool = False
     omit_utxo: bool = False
+    omit_redeem_script: bool = False  # Leave PSBT_IN_REDEEM_SCRIPT out of a P2SH-P2WPKH input
     mismatch_sp_pubkey: bool = False  # Inject a decoy SP pubkey (BIP32_DERIVATION/ECDH/DLEQ/output) that does not match the prevout script
     contribute_foreign_share: bool = False  # Let a foreign input carry an ECDH share and DLEQ proof, as a co-signer would supply
     decoy_first_derivation: bool = False  # Inject an extra non-matching PSBT_IN_BIP32_DERIVATION that sorts before the real key (selection test)
@@ -392,6 +393,12 @@ class InputFactory:
             result["origin_fingerprint"] = JadeKeyProfile.FOREIGN_FINGERPRINT
         if spec.omit_utxo:
             result["omit_utxo"] = True
+        if spec.omit_redeem_script:
+            if spec.input_type != InputType.P2SH_P2WPKH:
+                raise ValueError(
+                    f"omit_redeem_script is only supported for p2sh_p2wpkh inputs, got {spec.input_type.value}"
+                )
+            result["omit_redeem_script"] = True
         if spec.mismatch_utxo_script:
             self._replace_utxo_script(result, input_index)
         if spec.mismatch_sp_pubkey:
@@ -1250,13 +1257,14 @@ class PSBTBuilder:
                 PSBTKeyType.PSBT_IN_WITNESS_UTXO,
                 input_info["witness_utxo"],
             )
-            add_raw_input_field(
-                psbt,
-                idx,
-                PSBTKeyType.PSBT_IN_REDEEM_SCRIPT,
-                b"",
-                input_info["redeem_script"],
-            )
+            if not input_info.get("omit_redeem_script"):
+                add_raw_input_field(
+                    psbt,
+                    idx,
+                    PSBTKeyType.PSBT_IN_REDEEM_SCRIPT,
+                    b"",
+                    input_info["redeem_script"],
+                )
             self._add_input_derivation(psbt, idx, input_info)
 
         elif input_type == InputType.P2SH_MULTISIG:
@@ -2147,6 +2155,7 @@ class ConfigBasedTestGenerator:
                 mismatch_utxo_script=input_config.get("mismatch_utxo_script", False),
                 foreign_origin=input_config.get("foreign_origin", False),
                 omit_utxo=input_config.get("omit_utxo", False),
+                omit_redeem_script=input_config.get("omit_redeem_script", False),
                 mismatch_sp_pubkey=input_config.get("mismatch_sp_pubkey", False),
                 contribute_foreign_share=input_config.get("contribute_foreign_share", False),
                 decoy_first_derivation=input_config.get("decoy_first_derivation", False),
@@ -2182,6 +2191,7 @@ class ConfigBasedTestGenerator:
                     mismatch_utxo_script=input_spec.mismatch_utxo_script,
                     foreign_origin=input_spec.foreign_origin,
                     omit_utxo=input_spec.omit_utxo,
+                    omit_redeem_script=input_spec.omit_redeem_script,
                     mismatch_sp_pubkey=input_spec.mismatch_sp_pubkey,
                     contribute_foreign_share=input_spec.contribute_foreign_share,
                     decoy_first_derivation=input_spec.decoy_first_derivation,
