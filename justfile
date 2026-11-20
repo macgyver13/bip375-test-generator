@@ -6,8 +6,6 @@ extended_file := "bip375_test_vectors_extended.json"
 extended_includes := "workflows,experimental"
 rust_vectors_file := "bip375.json"
 out_dir := project_root + "/out"
-# Generated, not committed: rebuilt by gen-extended before anything reads it
-extended_path := out_dir + "/" + extended_file
 bips_dir := home + "/src/bips/bip-0375"
 rust_psbt_dir := home + "/src/rust-psbt"
 spdk_dir := home + "/src/spdk/psbt/tests"
@@ -17,84 +15,79 @@ convert_script := project_root + "/convert_to_rust_bip375_format.py"
 # PSBT backend for every recipe: python (default) or spdk. Override with `just backend=spdk gen`.
 backend := env_var_or_default("BIP375_PSBT_BACKEND", "py")
 export BIP375_PSBT_BACKEND := backend
+# Revision (bookmark or change id) whose scripts gen and sync run, e.g. `just rev=bips/validator-hardening sync bip`.
+# Empty means the working copy.
+rev := ""
 
 _default:
   @just --list
 
-gen:
-  @echo "Generating {{vectors_file}} (standard)"
-  python {{project_root}}/test_generator.py
+# extended is standard plus extended_includes. jade is Jade's keys and device cases, plus one
+# fixture file per case. standard and extended also get the rust-psbt export. With rev set, the
+# scripts come from that revision's tree and the output goes to out/at/<rev>/<tier>.
+[doc("Generate a tier (standard, extended, jade) into out/<tier>, from rev when given. Plain `just gen` also rewrites the committed file.")]
+gen tier="standard":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  root={{project_root}}
+  dir={{out_dir}}/{{tier}}
+  if [ -n "{{rev}}" ]; then
+    commit=$(jj log --no-graph -r '{{rev}}' -T commit_id)
+    root=$(mktemp -d)
+    trap 'rm -rf "$root"' EXIT
+    git --git-dir="$(jj git root)" archive "$commit" | tar -x -C "$root"
+    dir={{out_dir}}/at/{{rev}}/{{tier}}
+  fi
+  case "{{tier}}" in
+    standard) flags="" ;;
+    extended) flags="--include {{extended_includes}}" ;;
+    jade) flags="--key-profile jade --include jade" ;;
+    *) echo "Invalid tier: {{tier}}. Expected one of: standard, extended, jade" >&2; exit 1 ;;
+  esac
+  mkdir -p "$dir"
+  echo "Generating $dir/{{vectors_file}} ({{tier}}) from ${commit:-the working copy}"
+  python "$root/test_generator.py" $flags --output "$dir/{{vectors_file}}"
+  if [ "{{tier}}" = jade ]; then
+    rm -f "$dir"/psbt_sp_375_*.json
+    python "$root/convert_to_jade_fixtures.py" "$dir/{{vectors_file}}" -o "$dir"
+  else
+    python "$root/convert_to_rust_bip375_format.py" "$dir/{{vectors_file}}" -o "$dir/{{rust_vectors_file}}"
+  fi
+  if [ "{{tier}}" = standard ] && [ -z "{{rev}}" ]; then
+    cp "$dir/{{vectors_file}}" {{project_root}}/{{vectors_file}}
+  fi
 
-gen-extended:
-  @mkdir -p {{out_dir}}
-  @echo "Generating {{extended_path}} (standard plus {{extended_includes}})"
-  python {{project_root}}/test_generator.py --include {{extended_includes}} --output {{extended_path}}
-
-gen-all:
-  @just gen
-  @just gen-extended
-
-# Jade's keys and the jade set, then one fixture file per case for Jade's device test.
-gen-jade:
-  @mkdir -p {{out_dir}}/jade
-  rm -f {{out_dir}}/jade/psbt_sp_375_*.json
-  python {{project_root}}/test_generator.py --key-profile jade --include jade --output {{out_dir}}/jade/bip375_test_vectors_jade.json
-  python {{project_root}}/convert_to_jade_fixtures.py {{out_dir}}/jade/bip375_test_vectors_jade.json -o {{out_dir}}/jade
-
-gen-rust: gen-extended
-  @mkdir -p {{out_dir}}
-  @if [ ! -f {{convert_script}} ]; then echo "Missing conversion script: {{convert_script}}" >&2; exit 1; fi
-  @echo "Generating {{out_dir}}/{{rust_vectors_file}} from {{extended_path}}"
-  python {{convert_script}} {{extended_path}} -o {{out_dir}}/{{rust_vectors_file}}
-
-sync target:
-  @case "{{target}}" in bip) just sync-bip ;; rust) just sync-rust ;; spdk) just sync-spdk ;; *) echo "Invalid sync target: {{target}}. Expected one of: bip, rust, spdk" >&2; exit 1 ;; esac
-
-# The workflow PR in bips takes the extended file under the standard name.
-sync-bip-extended: gen-extended
-  @if [ ! -d {{bips_dir}} ]; then echo "Missing destination directory: {{bips_dir}}" >&2; exit 1; fi
-  @echo "Copying {{extended_path}} -> {{bips_dir}}/{{vectors_file}}"
-  cp {{extended_path}} {{bips_dir}}/{{vectors_file}}
-
-sync-bip:
-  @if [ ! -f {{project_root}}/{{vectors_file}} ]; then echo "Missing source file: {{project_root}}/{{vectors_file}}" >&2; exit 1; fi
-  @if [ ! -d {{bips_dir}} ]; then echo "Missing destination directory: {{bips_dir}}" >&2; exit 1; fi
-  @echo "Copying {{project_root}}/{{vectors_file}} -> {{bips_dir}}/{{vectors_file}}"
-  cp {{project_root}}/{{vectors_file}} {{bips_dir}}/{{vectors_file}}
-
-sync-rust: gen-extended
-  @mkdir -p {{out_dir}}
-  @if [ ! -f {{convert_script}} ]; then echo "Missing conversion script: {{convert_script}}" >&2; exit 1; fi
-  @if [ ! -d {{rust_psbt_dir}}/tests/data ]; then echo "Missing destination directory: {{rust_psbt_dir}}/tests/data" >&2; exit 1; fi
-  @echo "Generating {{out_dir}}/{{rust_vectors_file}} from {{extended_path}}"
-  python {{convert_script}} {{extended_path}} -o {{out_dir}}/{{rust_vectors_file}}
-  @if [ ! -f {{out_dir}}/{{rust_vectors_file}} ]; then echo "Missing generated file: {{out_dir}}/{{rust_vectors_file}}" >&2; exit 1; fi
-  @echo "Copying {{out_dir}}/{{rust_vectors_file}} -> {{rust_psbt_dir}}/tests/data/{{rust_vectors_file}}"
-  cp {{out_dir}}/{{rust_vectors_file}} {{rust_psbt_dir}}/tests/data/{{rust_vectors_file}}
-
-sync-spdk: gen-extended
-  @if [ ! -d {{spdk_dir}} ]; then echo "Missing destination directory: {{spdk_dir}}" >&2; exit 1; fi
-  @echo "Copying {{extended_path}} -> {{spdk_dir}}/{{vectors_file}}"
-  cp {{extended_path}} {{spdk_dir}}/{{vectors_file}}
-
-sync-jade: gen-extended
-  @if [ ! -d {{jade_dir}} ]; then echo "Missing destination directory: {{jade_dir}}" >&2; exit 1; fi
-  @echo "Copying {{extended_path}} -> {{jade_dir}}/{{vectors_file}}"
-  cp {{extended_path}} {{jade_dir}}/{{vectors_file}}
-
-sync-jade-fixtures:
-  @if [ ! -d {{jade_fixtures_dir}} ]; then echo "Missing destination directory: {{jade_fixtures_dir}}" >&2; exit 1; fi
-  @just gen-jade
-  @if [ ! -d {{out_dir}}/jade ]; then echo "Missing generated directory: {{out_dir}}/jade" >&2; exit 1; fi
-  @echo "Removing stale psbt_sp_375_*.json in {{jade_fixtures_dir}}"
-  rm -f {{jade_fixtures_dir}}/psbt_sp_375_*.json
-  @echo "Copying {{out_dir}}/jade/psbt_sp_375_*.json -> {{jade_fixtures_dir}}/"
-  cp {{out_dir}}/jade/psbt_sp_375_*.json {{jade_fixtures_dir}}/
-
-sync-all:
-  @just sync-bip
-  @just sync-rust
-  @just sync-spdk
+# Targets: bip, rust, spdk, jade, jade-fixtures. tier overrides the target's default.
+[doc("Generate a target's tier (from rev when given) and copy it into the target's repo.")]
+sync target tier="":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  case "{{target}}" in
+    bip) default=standard; dest={{bips_dir}} ;;
+    rust) default=extended; dest={{rust_psbt_dir}}/tests/data ;;
+    spdk) default=extended; dest={{spdk_dir}} ;;
+    jade) default=extended; dest={{jade_dir}} ;;
+    jade-fixtures) default=jade; dest={{jade_fixtures_dir}} ;;
+    *) echo "Invalid sync target: {{target}}. Expected one of: bip, rust, spdk, jade, jade-fixtures" >&2; exit 1 ;;
+  esac
+  tier="{{tier}}"
+  tier=${tier:-$default}
+  if [ ! -d "$dest" ]; then echo "Missing destination directory: $dest" >&2; exit 1; fi
+  just rev="{{rev}}" gen "$tier"
+  dir={{out_dir}}/$tier
+  if [ -n "{{rev}}" ]; then dir={{out_dir}}/at/{{rev}}/$tier; fi
+  case "{{target}}" in
+    rust) src=$dir/{{rust_vectors_file}} ;;
+    jade-fixtures)
+      echo "Removing stale psbt_sp_375_*.json in $dest"
+      rm -f "$dest"/psbt_sp_375_*.json
+      echo "Copying $dir/psbt_sp_375_*.json -> $dest/"
+      cp "$dir"/psbt_sp_375_*.json "$dest"/
+      exit 0 ;;
+    *) src=$dir/{{vectors_file}} ;;
+  esac
+  echo "Copying $src -> $dest/$(basename "$src")"
+  cp "$src" "$dest"/
 
 # Regenerate the vectors in each mutable revision of revs, oldest first, overwriting any conflicted copy.
 regen-stack revs="@::":
@@ -116,9 +109,8 @@ test:
   mkdir -p {{out_dir}}/test
   python {{project_root}}/test_generator.py --output {{out_dir}}/test/{{vectors_file}}
   cmp {{out_dir}}/test/{{vectors_file}} {{project_root}}/{{vectors_file}}
-  @just gen-extended
-  python {{convert_script}} {{extended_path}} -o {{out_dir}}/test/{{rust_vectors_file}}
-  @just gen-jade
+  @just gen extended
+  @just gen jade
   python -m unittest discover -s {{project_root}}/tests
 
 # Generate with the Python and Rust (spdk_psbt) backends into out/parity and require identical output.

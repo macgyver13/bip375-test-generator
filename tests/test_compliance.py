@@ -55,8 +55,8 @@ from test_framework.script import (
 )
 from test_framework.script_util import keyhash_to_p2pkh_script
 
-# The committed standard set, and the extended set `just gen-extended` writes to out/.
-VECTOR_FILES = (ROOT / "bip375_test_vectors.json", ROOT / "out" / "bip375_test_vectors_extended.json")
+# The committed standard set, and the extended set `just gen extended` writes to out/extended.
+VECTOR_FILES = (ROOT / "bip375_test_vectors.json", ROOT / "out" / "extended" / "bip375_test_vectors.json")
 INVALID_CONFIGS = ROOT / "test_configs" / "invalid"
 
 NUMS_H = bytes.fromhex("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0")

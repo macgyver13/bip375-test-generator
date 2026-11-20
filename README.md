@@ -6,7 +6,7 @@ Reads YAML test configurations from `test_configs/` and produces `bip375_test_ve
 
 ## Vector revisions
 
-Significant changes to the vector files from the `v1.1.1` baseline. From the Workflows row on, `just gen-extended` also writes `out/bip375_test_vectors_extended.json`, which is not committed. Rows describe the committed standard file unless they say otherwise. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
+Significant changes to the vector files from the `v1.1.1` baseline. From the Workflows row on, `just gen extended` also writes the extended file (now `out/extended/bip375_test_vectors.json`), which is not committed. Rows describe the committed standard file unless they say otherwise. The file version is the `version` string in that revision's JSON, and is shown only when it changes. A blank version cell belongs to the version above it. Milestone names the capability completed at that row, independent of the file version; a blank Milestone cell means no new milestone.
 
 | File version | Milestone | Vector changes |
 | --- | --- | --- |
@@ -106,13 +106,13 @@ cd bip375-test-generator
 pip install pyyaml
 python test_generator.py                                    # or: just gen
 python test_generator.py --include workflows,experimental \
-  --output out/bip375_test_vectors_extended.json             # or: just gen-extended
+  --output out/extended/bip375_test_vectors.json             # or: just gen extended
 ```
 
 Output:
 - `bip375_test_vectors.json`: the standard vectors, what a validator for the merged
   BIP-375 text should accept and reject.
-- `out/bip375_test_vectors_extended.json`: the standard vectors plus the optional sets
+- `out/extended/bip375_test_vectors.json`: the standard vectors plus the optional sets
   named in its `includes` field. It is generated, not committed. The standard file has
   no `includes` field.
 
@@ -134,33 +134,57 @@ the PSBT. Every valid vector must pass every check. Each invalid vector must fai
 the checks named in its config's `violates` list.
 
 ```bash
-just gen           # bip375_test_vectors.json, the standard set
-just gen-extended  # out/bip375_test_vectors_extended.json, with --include workflows,experimental
-just gen-all       # both
+just gen           # out/standard and bip375_test_vectors.json, the standard set
+just gen extended  # out/extended, with --include workflows,experimental
+just gen jade      # out/jade, Jade's keys and device fixtures
 ```
 
-Syncing: `just sync-bip` copies the standard file into bips, and `just sync-bip-extended`
-copies the extended file under the standard name for a bips branch that runs workflows.
-`sync-rust`, `sync-spdk` and `sync-jade` use the extended file. Each of these runs
-`gen-extended` first. `just sync <bip|rust|spdk>` runs one of them by name, and
-`just sync-all` runs `sync-bip`, `sync-rust` and `sync-spdk`.
+Each tier's directory also gets `bip375.json`, the rust-psbt export (not for `jade`).
+
+Syncing: `just sync <target> [tier]` generates the target's tier and copies it into the
+target's repo. The targets and their default tiers are `bip` (standard), `rust`, `spdk` and
+`jade` (extended), and `jade-fixtures` (jade). `rust` copies `bip375.json`, `jade-fixtures`
+replaces Jade's `psbt_sp_375_*.json`, and the rest copy `bip375_test_vectors.json`.
+
+```bash
+just sync bip           # the standard file into bips
+just sync bip extended  # the extended file under the standard name, for a bips branch that runs workflows
+```
+
+### Generating at a pinned revision
+
+Set `rev` to a bookmark or change id to run that revision's generator and converters instead
+of the working copy's. The recipes stay the working copy's, so destinations and tiers come
+from here, and only the scripts come from `rev`. Output goes to `out/at/<rev>/<tier>`, and the
+temporary checkout is removed afterwards.
+
+```bash
+jj bookmark create bips/validator-hardening -r wtzmlmwy
+just rev=bips/validator-hardening gen
+just rev=bips/validator-hardening sync bip
+```
+
+A `bips/<branch>` bookmark records which generator revision a bips branch's vectors came
+from, so they can be reproduced after the standard set changes. Move it with
+`jj bookmark set` when the branch takes newer vectors. A tier means what it meant at `rev`:
+standard is whatever that revision's `STANDARD_INCLUDES` says.
 
 Pass `--hex` to also write each serialized PSBT as `supplementary.hex`, for
 diagnostics.
 
 ### rust-psbt Format Helper
 ```bash
-just gen-rust
+just gen extended
 ```
 
-Writes `out/bip375.json` from the extended file, leaving out the cases marked
+Writes `out/extended/bip375.json` from the extended file, leaving out the cases marked
 `experimental`. Generated artifacts other than
 `bip375_test_vectors.json` live in the untracked `out/` directory and can be
 regenerated at any revision.
 
 ### Jade device fixtures
 ```bash
-just gen-jade
+just gen jade
 ```
 
 Generates the vectors with `--key-profile jade`, whose primary wallet is the single-sig
@@ -169,7 +193,7 @@ test wallet Jade's device test loads, and with `--include jade`, the device case
 policy rather than BIP-375 violations, so they carry no `violates` list and the
 compliance suite skips them. `convert_to_jade_fixtures.py` then writes one
 `out/jade/psbt_sp_375_*.json` per `jade` vector, the format Jade's device test reads.
-`just sync-jade-fixtures` copies them into Jade's `test_data`. The standard vectors keep
+`just sync jade-fixtures` copies them into Jade's `test_data`. The standard vectors keep
 their own wallets.
 
 ### Regenerating vectors across a jj stack
