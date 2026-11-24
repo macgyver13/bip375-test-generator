@@ -9,7 +9,7 @@ description: "Input public key selection among multiple PSBT_IN_BIP32_DERIVATION
 # decoy, fail DLEQ verification, and incorrectly reject these.
 
 test_cases:
-  - description: "can finalize: P2WPKH with decoy BIP32_DERIVATION before the matching key"
+  - description: "can finalize: P2WPKH with decoy PSBT_IN_BIP32_DERIVATION before the matching key"
     task: "finalize"
     validation_result: "valid"
     inputs:
@@ -23,7 +23,7 @@ test_cases:
     scan_keys:
       - key_id: "default"
 
-  - description: "can finalize: P2PKH with decoy BIP32_DERIVATION before the matching key"
+  - description: "can finalize: P2PKH with decoy PSBT_IN_BIP32_DERIVATION before the matching key"
     task: "finalize"
     validation_result: "valid"
     inputs:

@@ -13,7 +13,7 @@ description: "Input public key does not match the prevout script"
 # validation rather than anything BIP-375 specific.
 
 test_cases:
-  - description: "ecdh coverage: P2WPKH BIP32_DERIVATION pubkey does not match scriptPubKey"
+  - description: "ecdh coverage: P2WPKH PSBT_IN_BIP32_DERIVATION pubkey does not match scriptPubKey"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
     task: "fail_sign"
     validation_result: "invalid"
@@ -34,7 +34,7 @@ test_cases:
     control_override:
       force_output_script: true
 
-  - description: "ecdh coverage: P2PKH BIP32_DERIVATION pubkey does not match scriptPubKey"
+  - description: "ecdh coverage: P2PKH PSBT_IN_BIP32_DERIVATION pubkey does not match scriptPubKey"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
     task: "fail_sign"
     validation_result: "invalid"
@@ -55,7 +55,7 @@ test_cases:
     control_override:
       force_output_script: true
 
-  - description: "ecdh coverage: P2SH-P2WPKH BIP32_DERIVATION pubkey does not match scriptPubKey"
+  - description: "ecdh coverage: P2SH-P2WPKH PSBT_IN_BIP32_DERIVATION pubkey does not match scriptPubKey"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
     task: "fail_sign"
     validation_result: "invalid"
@@ -103,7 +103,7 @@ test_cases:
   # is key-path spendable and eligible, so it is missing its ECDH share. A verifier
   # that trusts the claim treats it as ineligible and finds the shares, DLEQ proofs
   # and output script all consistent.
-  - description: "ecdh coverage: P2TR input with NUMS internal key claim not matching scriptPubKey missing ECDH share"
+  - description: "ecdh coverage: P2TR input 1 with NUMS PSBT_IN_TAP_INTERNAL_KEY not matching scriptPubKey and no ECDH share when PSBT_OUT_SCRIPT set for sp output"
     violates: [bip352_outputs, bip371_taproot, bip375_eligibility]
     task: "fail_sign"
     validation_result: "invalid"
@@ -125,7 +125,7 @@ test_cases:
   # eligibility from the redeem script alone takes input 1 as ineligible, and the
   # share and output script are computed without its key. The receiver sums
   # input 1's key and does not find the payment.
-  - description: "ecdh coverage: P2SH-P2WPKH prevout with non-P2WPKH redeem script and no ECDH share when PSBT_OUT_SCRIPT set for sp output"
+  - description: "ecdh coverage: P2SH-P2WPKH scriptPubKey with non-P2WPKH redeem script and no ECDH share when PSBT_OUT_SCRIPT set for sp output"
     violates: [bip375_eligibility]
     task: "fail_sign"
     validation_result: "invalid"
