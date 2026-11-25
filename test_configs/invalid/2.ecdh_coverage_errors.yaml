@@ -39,6 +39,31 @@ test_cases:
       missing_ecdh_for_input: 0
       force_output_script: true
 
+  # Input 1 is P2WPKH but omits both UTXO fields, so its eligibility cannot be
+  # established. The share and output script are computed as if input 1 were
+  # ineligible: a Signer that defaults an unknown input to ineligible would
+  # accept this, and the receiver, who sums every eligible input, would not
+  # find the payment.
+  - description: "ecdh coverage: input 1 with no PSBT_IN_WITNESS_UTXO or PSBT_IN_NON_WITNESS_UTXO and no ECDH share"
+    violates: [bip375_eligibility]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+        skip_signing: true
+      - type: "p2wpkh"
+        amount: 10000
+        omit_utxo: true
+        eligible_override: false
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+
   - description: "ecdh coverage: missing PSBT_IN_SP_DLEQ field for input when PSBT_IN_SP_ECDH_SHARE set"
     violates: [bip374_dleq]
     task: "fail_sign"
@@ -55,6 +80,47 @@ test_cases:
       - key_id: "default"
     control_override:
       missing_dleq_for_input: 0
+
+  - description: "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field"
+    violates: [bip374_dleq]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+    outputs:
+      - type: "silent_payment"
+        amount: 95000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_dleq_for_input: 0
+
+  # Input 0's PSBT_IN_SP_DLEQ is proven with the wrong key, and input 1 has no
+  # share yet, so no PSBT_OUT_SCRIPT is set. A Signer about to complete coverage
+  # computes the output scripts from input 0's share, so it must verify the proof
+  # now, not only once an output script is set.
+  - description: "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field when PSBT_OUT_SCRIPT not set for sp output"
+    violates: [bip374_dleq]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2wpkh"
+        amount: 10000
+    outputs:
+      - type: "silent_payment"
+        amount: 105000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      invalid_dleq_for_input: 0
+      missing_ecdh_for_input: 1
 
   - description: "ecdh coverage: missing PSBT_GLOBAL_SP_DLEQ field when PSBT_GLOBAL_SP_ECDH_SHARE set"
     violates: [bip374_dleq]
@@ -74,23 +140,6 @@ test_cases:
       use_global_ecdh: true
       missing_global_dleq: true
 
-  - description: "ecdh coverage: invalid proof in PSBT_IN_SP_DLEQ field"
-    violates: [bip374_dleq]
-    task: "fail_sign"
-    validation_result: "invalid"
-    exclude_material: ["outputs"]
-    inputs:
-      - type: "p2wpkh"
-        amount: 100000
-    outputs:
-      - type: "silent_payment"
-        amount: 95000
-        scan_key_id: "default"
-    scan_keys:
-      - key_id: "default"
-    control_override:
-      invalid_dleq_for_input: 0
-
   - description: "ecdh coverage: invalid proof in PSBT_GLOBAL_SP_DLEQ field"
     violates: [bip374_dleq]
     task: "fail_sign"
@@ -108,6 +157,31 @@ test_cases:
     control_override:
       use_global_ecdh: true
       invalid_global_dleq: true
+
+  # The global share and its DLEQ proof cover input 0's key only, and the output
+  # script is derived from that share. The proof verifies against input 0's
+  # pubkey alone; BIP-375 verifies it against the sum of every eligible input's
+  # pubkey.
+  - description: "ecdh coverage: global ECDH share proven over a subset of eligible inputs"
+    violates: [bip374_dleq, bip375_ecdh]
+    task: "fail_sign"
+    validation_result: "invalid"
+    exclude_material: ["outputs"]
+    inputs:
+      - type: "p2wpkh"
+        amount: 100000
+      - type: "p2wpkh"
+        amount: 10000
+    outputs:
+      - type: "silent_payment"
+        amount: 105000
+        scan_key_id: "default"
+    scan_keys:
+      - key_id: "default"
+    control_override:
+      use_global_ecdh: true
+      missing_ecdh_for_input: 1
+      force_partial_ecdh_output_script: true
 
   - description: "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set"
     violates: [bip352_outputs, bip374_dleq, bip375_ecdh]
