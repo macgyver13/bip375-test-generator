@@ -48,6 +48,7 @@ Significant changes to the vector files from the `v1.1.1` baseline. From the Wor
 | | Sighash coverage | Added invalid “input eligibility: non-SIGHASH_ALL signature on ineligible input with sp output” and its PSBT_IN_SIGHASH_TYPE-omitted variant, “SIGHASH_ALL\|ANYONECANPAY sighash type on input with sp output”, “non-SIGHASH_ALL signature on taproot input with sp output” and “SIGHASH_DEFAULT sighash type on non-taproot input with sp output”. Added valid “can finalize: ineligible P2SH multisig input declaring SIGHASH_ALL”. 24 valid, 37 invalid, 17 workflow steps. |
 | | Extractor failures | Added invalid finalized NUMS witness claims that do not commit to the prevout, a P2SH-P2WPKH prevout with a non-P2WPKH redeem script and no ECDH share, a signature before the silent payment scripts are set, and the finalized form of that P2SH-P2WPKH input. `fail_extract` is a finalized PSBT an Extractor must reject. 24 valid, 41 invalid, 17 workflow steps. |
 | | Experimental set | Cases marked `experimental` are left out of `bip375_test_vectors.json` and added to `out/bip375_test_vectors_extended.json` with `--include experimental`. The `fail_extract` vectors above are marked experimental. Standard: 24 valid, 39 invalid. Extended: 24 valid, 41 invalid, 17 workflow steps. |
+| | | Valid vectors carry `expected.psbt` only with `--include workflows`, since it describes a role transition. `bip375_test_vectors.json` no longer has `expected`. PSBT maps are equivalent. |
 
 ---
 
@@ -239,7 +240,7 @@ what the acting role can't read from `psbt` or `expected.psbt`:
 It is diagnostic only. `expected.psbt` is the base64 PSBT after that role runs.
 
 Config-driven `valid`/`invalid` vectors keep `psbt` as the input/current scenario PSBT.
-One-shot `sign` and `finalize` vectors include `expected.psbt`: for `sign`, it is the PSBT after
+In the extended file, one-shot `sign` and `finalize` vectors include `expected.psbt`: for `sign`, it is the PSBT after
 the signer has added every signature it can from the supplied key material.
 For `finalize`, `psbt` is signed and `expected.psbt` is finalized. The valid `deserialize`
 vector and the failure tasks `fail_sign` and `fail_deserialize` omit `expected`. `fail_extract` is a finalized PSBT: every input has a final scriptSig or witness, and an Extractor must reject it. It also omits `expected`. For one-shot vectors,
