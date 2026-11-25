@@ -3050,6 +3050,10 @@ class TestVectorGenerator:
         # Generate workflow (step-by-step) vectors
         if "workflows" in self.includes:
             self.test_vectors["workflows"] = self.workflow_generator.generate()
+        else:
+            # expected.psbt describes a role transition, so it ships with the workflow set
+            for vector in self.test_vectors["valid"]:
+                vector.pop("expected", None)
         # The seeded wallets behind every input key, so any implementer can load them.
         # The current profile's keys come from no wallet, so it lists none, but the
         # workflow steps always use the workflow wallets.
